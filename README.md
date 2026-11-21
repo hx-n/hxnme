@@ -18,6 +18,12 @@ An application lists the plugins it uses, and only those are compiled.
 The physics code comes from Chimpmonk, with its checks and its benchmark. It
 still uses HashLink types, so it runs only on HashLink and Ash.
 
+The physics stores its arrays in `hl.NativeArray`, and in the `FloatBuffer`
+of Chimpmonk over `hl.Bytes`. It does not use the hxn typed buffers yet,
+because they are slower than `hl.NativeArray` on Ash at present. This is an
+exception for the physics only. Other hxnme code stores its data in hxn typed
+buffers.
+
 Requirements:
 
 - Haxe 4.3.6.
