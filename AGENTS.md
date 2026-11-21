@@ -28,8 +28,10 @@ conventions first. They apply here too.
 - If a change is not meant to alter the simulation, the physics checks must
   print the same values after it. Compare the output of the checks before
   and after the change.
-- Ash performance is the baseline. Run the benchmark on Ash before and after
-  a change, on the Mac and on the NUC, through `scripts/bench.py`.
+- Ash performance is the baseline. Run the benchmarks on Ash with
+  `--preset game`, the thresholds of a game, before and after a change, on
+  the Mac and on the NUC, through `scripts/bench.py`. Compare results only
+  with results of the same preset.
 - Put measurements in issues. Do not put them in code, comments or commit
   messages.
 
