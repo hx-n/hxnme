@@ -155,7 +155,7 @@ stays deterministic and the renderer can sample the same surface.
 
 hxnme-physics stores its data in `hl.NativeArray` and `hl.Bytes`, and requires
 the HashLink target. Its checks run on [Ash](https://ash.rayzor.tech/). The
-stock HashLink VM is not tested. hxcpp and CPPIA are not supported.
+stock HashLink VM is not tested.
 
 ## Checks and benchmarks
 
