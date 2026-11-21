@@ -1,0 +1,7 @@
+-L hashlink
+-L hxn
+--class-path ../../hxnme/src
+--class-path ../src
+--class-path src
+-main IslandParallelChecks
+-hl bin/island-parallel-checks-scalar.hl

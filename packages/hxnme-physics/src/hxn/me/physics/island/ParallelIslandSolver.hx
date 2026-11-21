@@ -4,26 +4,26 @@ import hxn.me.math.Vec3;
 import hxn.me.physics.core.World;
 import hxn.me.physics.collision.NarrowPhase.ContactManifoldPool;
 import hxn.me.physics.collision.PairScratch;
-import sys.thread.FixedThreadPool;
-import sys.thread.Lock;
-import sys.thread.Mutex;
+import hxn.me.WorkerPool;
 
 class ParallelIslandSolver {
 	var world:World;
-	var pool:FixedThreadPool;
-	var done:Lock;
-	var errorMutex:Mutex;
+	var pool:WorkerPool;
 	var partition:IslandPartition;
 	var workerCount:Int;
 
 	public var minConstraintsPerIsland(default, null):Int;
 	public var minPairsPerWorker(default, null):Int;
 
-	var failure:Dynamic;
+	// The jobs, kept in fields so that a substep starts them without making
+	// closures, and the arguments of a solve.
+	var laneJob:Int->Void;
+	var collideJob:Int->Void;
+	var solveJobs = 0;
+	var solveIterations = 0;
 	// Collision jobs: each worker tests one contiguous slice of the broadphase pairs.
 	var pairScratch:Array<PairScratch> = [];
 	var pairContacts:Array<ContactManifoldPool> = [];
-	var pairJobs:Array<Void->Void> = [];
 	var pairStart:Array<Int> = [];
 	var pairEnd:Array<Int> = [];
 	var mergeNormal:Vec3 = new Vec3();
@@ -41,24 +41,12 @@ class ParallelIslandSolver {
 			pairContacts.push(new ContactManifoldPool(world.contacts.maxContacts));
 			pairStart.push(0);
 			pairEnd.push(0);
-			// Built once so a collision pass dispatches without creating closures.
-			var lane = worker;
-			pairJobs.push(function() {
-				try {
-					collideSlice(lane);
-				} catch (error:Dynamic) {
-					errorMutex.acquire();
-					failure = error;
-					errorMutex.release();
-				}
-				done.release();
-			});
 		}
 		partition = new IslandPartition(world.bodyCapacity, world.contacts.capacity, world.joints.capacity);
 		world.solver.configureIslandWorkers(workerCount);
-		done = new Lock();
-		errorMutex = new Mutex();
-		pool = new FixedThreadPool(workerCount);
+		pool = new WorkerPool(workerCount);
+		laneJob = runLane;
+		collideJob = collideSlice;
 	}
 
 	/** Makes the partition for the world's present capacities; it is rebuilt every substep. */
@@ -80,31 +68,15 @@ class ParallelIslandSolver {
 
 	/** Solves the partition returned by `plan`, after the solver has prepared rows in its order. */
 	public function solve(iterations:Int):Void {
-		failure = null;
 		if (world.joints.count > 0)
 			for (index in 0...partition.activeCount) {
 				var task = partition.tasks[index];
 				world.joints.sortByColor(partition.jointIndices, task.jointStart, task.jointCount);
 			}
-		var jobs = Std.int(Math.min(workerCount, partition.activeCount));
+		solveJobs = Std.int(Math.min(workerCount, partition.activeCount));
+		solveIterations = iterations;
 		// Each task owns its dynamic-body writes; shared supports are read-only.
-		for (worker in 0...jobs) {
-			var lane = worker;
-			pool.run(function() {
-				try {
-					runLane(lane, jobs, iterations);
-				} catch (error:Dynamic) {
-					errorMutex.acquire();
-					failure = error;
-					errorMutex.release();
-				}
-				done.release();
-			});
-		}
-		for (_ in 0...jobs)
-			done.wait();
-		if (failure != null)
-			throw failure;
+		pool.run(solveJobs, laneJob);
 	}
 
 	/**
@@ -116,17 +88,12 @@ class ParallelIslandSolver {
 		var pairs = world.broadPhase.pairCount;
 		if (minPairsPerWorker == 0 || pairs < minPairsPerWorker * workerCount)
 			return false;
-		failure = null;
 		var slice = Std.int((pairs + workerCount - 1) / workerCount);
 		for (worker in 0...workerCount) {
 			pairStart[worker] = worker * slice;
 			pairEnd[worker] = Std.int(Math.min(pairs, (worker + 1) * slice));
-			pool.run(pairJobs[worker]);
 		}
-		for (_ in 0...workerCount)
-			done.wait();
-		if (failure != null)
-			throw failure;
+		pool.run(workerCount, collideJob);
 		var contacts = world.contacts;
 		var normal = mergeNormal, point = mergePoint;
 		for (worker in 0...workerCount) {
@@ -153,8 +120,8 @@ class ParallelIslandSolver {
 			world.collideOne(i, scratch, out);
 	}
 
-	function runLane(lane:Int, jobs:Int, iterations:Int):Void {
-		var index = lane;
+	function runLane(lane:Int):Void {
+		var index = lane, jobs = solveJobs, iterations = solveIterations;
 		while (index < partition.activeCount) {
 			world.solver.solveIsland(index, partition.tasks[index], iterations, lane);
 			index += jobs;

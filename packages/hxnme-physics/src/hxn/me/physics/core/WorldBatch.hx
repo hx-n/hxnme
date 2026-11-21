@@ -1,8 +1,6 @@
 package hxn.me.physics.core;
 
-import sys.thread.FixedThreadPool;
-import sys.thread.Lock;
-import sys.thread.Mutex;
+import hxn.me.WorkerPool;
 
 /**
  * Steps many independent worlds together, such as one per copy of a
@@ -34,34 +32,17 @@ class WorldBatch {
 	public var afterStep:Null<(Int, World) -> Void> = null;
 
 	var dt:Float = 0.0;
-	var pool:Null<FixedThreadPool> = null;
-	var jobs:Array<Void->Void> = [];
-	var done:Lock;
-	var errorMutex:Mutex;
-	var failure:Dynamic = null;
+	var pool:Null<WorkerPool> = null;
+	// Kept in a field, so that a step starts its jobs without making a closure.
+	var sliceJob:Int->Void;
 
 	public function new(workers:Int = 4) {
 		if (workers < 1)
 			throw 'A batch needs at least one worker';
 		this.workers = workers;
-		done = new Lock();
-		errorMutex = new Mutex();
 		if (workers > 1) {
-			pool = new FixedThreadPool(workers);
-			for (worker in 0...workers) {
-				// Built once, so a step dispatches without creating closures.
-				var lane = worker;
-				jobs.push(function() {
-					try {
-						stepSlice(lane);
-					} catch (error:Dynamic) {
-						errorMutex.acquire();
-						failure = error;
-						errorMutex.release();
-					}
-					done.release();
-				});
-			}
+			pool = new WorkerPool(workers);
+			sliceJob = stepSlice;
 		}
 	}
 
@@ -79,14 +60,8 @@ class WorldBatch {
 				stepOne(i);
 			return;
 		}
-		failure = null;
 		var used = workers < worlds.length ? workers : worlds.length;
-		for (worker in 0...used)
-			pool.run(jobs[worker]);
-		for (_ in 0...used)
-			done.wait();
-		if (failure != null)
-			throw failure;
+		pool.run(used, sliceJob);
 	}
 
 	/** Stops the workers. The batch steps on the calling thread afterwards. */

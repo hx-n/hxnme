@@ -1,0 +1,7 @@
+-L hashlink
+-L hxn
+--class-path ../../hxnme/src
+--class-path ../src
+--class-path src
+-main ConcurrentWorldChecks
+-hl bin/concurrent-checks-scalar.hl
