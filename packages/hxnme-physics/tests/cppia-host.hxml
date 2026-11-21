@@ -1,0 +1,12 @@
+-L hxn
+--class-path ../../hxnme/src
+--class-path ../src
+--class-path src
+--class-path cppia
+-main Host
+-cpp bin/cppia-host
+-D scriptable
+-dce no
+-D dll_export=bin/cppia-host.classes
+--macro include("hxn.me")
+-D HXCPP_QUIET

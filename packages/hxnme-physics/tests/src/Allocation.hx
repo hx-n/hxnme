@@ -52,6 +52,18 @@ class Allocation {
 		counted += added;
 		return counted;
 	}
+	#elseif cppia
+	// hxcpp telemetry faults on allocations made from script code. The engine
+	// runs as compiled host code here, the same code the hxcpp checks measure.
+	static var noted = false;
+
+	static function total():Float {
+		if (!noted) {
+			noted = true;
+			Sys.println("allocations: not measured in a CPPIA script; the hxcpp checks measure the same host code");
+		}
+		return 0;
+	}
 	#else
 	static function total():Float {
 		throw "Allocation is measured on HashLink and in hxcpp telemetry builds";

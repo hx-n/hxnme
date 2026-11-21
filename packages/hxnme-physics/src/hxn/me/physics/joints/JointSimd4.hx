@@ -1,5 +1,8 @@
 package hxn.me.physics.joints;
 
+// Four-wide solver paths over ash.simd, compiled for HashLink with -D ash_simd.
+#if (ash_simd && hl)
+
 import ash.simd.Float32x4;
 import hxn.me.math.Float32Bytes;
 
@@ -161,3 +164,4 @@ class JointSimd4 {
 		}
 	}
 }
+#end

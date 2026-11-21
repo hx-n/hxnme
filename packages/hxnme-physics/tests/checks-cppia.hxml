@@ -1,0 +1,7 @@
+-L hxn
+--class-path ../../hxnme/src
+--class-path ../src
+--class-path src
+-main PhysicsChecks
+-cppia bin/checks.cppia
+-D dll_import=bin/cppia-host.classes
