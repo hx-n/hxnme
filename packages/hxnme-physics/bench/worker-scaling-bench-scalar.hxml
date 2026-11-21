@@ -1,0 +1,8 @@
+-L hashlink
+-L hxn
+--class-path ../../hxnme/src
+--class-path ../src
+--class-path ../tests/src
+--class-path src
+-main WorkerScalingBench
+-hl bin/worker-scaling-bench-scalar.hl
