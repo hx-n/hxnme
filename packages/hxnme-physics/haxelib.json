@@ -7,7 +7,7 @@
   "contributors": [
     "darmie"
   ],
-  "releasenote": "The physics engine copied from Chimpmonk, with its checks and benchmarks.",
+  "releasenote": "Rigid-body physics with one API for 2D and 3D.",
   "classPath": "src",
   "dependencies": {
     "hxnme": "0.0.1",
