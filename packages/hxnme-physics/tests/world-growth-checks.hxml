@@ -1,9 +1,7 @@
--L hashlink
--L ash-simd
 -L hxn
 --class-path ../../hxnme/src
 --class-path ../src
 --class-path src
--D ash_simd=1
+--macro Allocation.setup()
 -main WorldGrowthChecks
--hl bin/world-growth-checks.hl
+-D HXCPP_QUIET

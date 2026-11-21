@@ -33,17 +33,21 @@ conventions first. They apply here too.
 
 ## Before calling a change done
 
-- Run the checks in the SIMD and scalar builds, on Ash in hybrid, JIT and
-  interpreter modes (`ash --mode jit`, `ash --mode interp`).
+- Run the checks with `hxn run` in `packages/hxnme-physics/tests`. Install
+  `hxn` from the hxn repository with `cargo install --path crates/hxn-cli`.
+  Each check program has two program files: `<name>.hxml` runs on every
+  runtime, and `<name>-simd.hxml` adds the SIMD paths, which run on Ash.
+- Run both files on Ash in hybrid, JIT and interpreter modes:
+  `hxn run hl checks-simd.hxml --vm "ash --mode jit"`.
+- Run `<name>.hxml` on hxcpp, CPPIA, and wasm with Ash and with hxcpp, with
+  and without threads: `hxn run cpp`, `hxn run cppia`,
+  `hxn run hl --wasm --threads`, `hxn run cpp --wasm --threads`. Add
+  `--browser` to run it in a web page. hxcpp does not start Haxe threads
+  under Emscripten, so `WorkerPool` runs its jobs on the calling thread
+  there.
+- The runtimes print different last digits. Compare the output of each
+  runtime with its own output from before the change.
 - Run every runtime that the changed code supports, under a timeout.
-- To run the checks on wasm with Ash, build the HashLink bytecode into a
-  module and run it with `ash run checks.wasm`. Build with
-  `ASH_WASM_FIBERS=1 ash --build checks.wasm --target wasm32-wasip1 bin/checks.hl`,
-  or with `--target wasm32-wasip1-threads` for threads.
-- To run the checks on wasm with hxcpp, put the emsdk on the PATH and compile
-  the `-emcc.hxml` files. Add `-D hxn_threads -D HXCPP_MULTI_THREADED_APP` for
-  threads. Run the `.js` file with node. hxcpp does not start Haxe threads
-  under Emscripten, so `WorkerPool` runs its jobs on the calling thread there.
 - Report each runtime that you did not run.
 
 ## Issues and commits

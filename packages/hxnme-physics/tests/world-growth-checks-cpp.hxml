@@ -1,8 +1,0 @@
--L hxn
---class-path ../../hxnme/src
---class-path ../src
---class-path src
--main WorldGrowthChecks
--cpp bin/cpp-world-growth-checks
--D HXCPP_QUIET
--D HXCPP_TELEMETRY

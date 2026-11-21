@@ -1,7 +1,9 @@
 -L hashlink
+-L ash-simd
 -L hxn
 --class-path ../../hxnme/src
 --class-path ../src
 --class-path src
--main PhysicsChecks
--hl bin/checks-scalar.hl
+--macro Allocation.setup()
+-D ash_simd=1
+-main WorldGrowthChecks

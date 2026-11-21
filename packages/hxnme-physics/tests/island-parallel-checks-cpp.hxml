@@ -1,8 +1,0 @@
--L hxn
---class-path ../../hxnme/src
---class-path ../src
---class-path src
--main IslandParallelChecks
--cpp bin/cpp-island-parallel-checks
--D HXCPP_QUIET
--D HXCPP_TELEMETRY

@@ -153,7 +153,24 @@ stays deterministic and the renderer can sample the same surface.
 
 ## Checks and benchmarks
 
-`tests/` holds the checks. `bench/` holds a benchmark that steps chains of 10
+`tests/` holds the checks. Each check program has a program file for the
+[hxn](https://github.com/hx-n/hxn) command, which compiles it for the runtime
+that you name and runs it:
+
+```
+cd tests
+hxn run hl checks.hxml
+hxn run cpp checks.hxml
+hxn run cppia checks.hxml
+hxn run hl --wasm checks.hxml
+hxn run cpp --wasm --threads checks.hxml
+```
+
+`checks-simd.hxml` compiles the same checks with the SIMD paths of the
+solver. The other programs are `concurrent-checks`, `island-parallel-checks`
+and `world-growth-checks`.
+
+`bench/` holds a benchmark that steps chains of 10
 hinged links. Its arguments are the chain count and a contact mode: `on`
 (adjacent links collide), `off` (no link collisions) or `gap` (narrower links
 that do not touch). It prints one JSON line with the sample times, the best

@@ -1,10 +1,9 @@
+-L hashlink
+-L ash-simd
 -L hxn
 --class-path ../../hxnme/src
 --class-path ../src
 --class-path src
+--macro Allocation.setup()
+-D ash_simd=1
 -main PhysicsChecks
--D HXCPP_QUIET
--cpp bin/emcc/checks
--D emscripten
--D HXCPP_M32
--D disable_unicode_strings

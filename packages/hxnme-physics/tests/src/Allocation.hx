@@ -9,6 +9,20 @@ class Allocation {
 	 * while the runtime's background threads only add to some windows, so the
 	 * least is the code's own.
 	 */
+	#if macro
+	/**
+	 * Turns on hxcpp telemetry in a native hxcpp build, where it counts
+	 * allocations. Telemetry does not start under Emscripten, and it faults on
+	 * allocations made from CPPIA script code, so those builds go without it.
+	 * Run it from the program file: `--macro Allocation.setup()`.
+	 */
+	public static function setup():Void {
+		var context = haxe.macro.Context;
+		if (context.defined("cpp") && !context.defined("cppia") && !context.defined("emscripten"))
+			haxe.macro.Compiler.define("HXCPP_TELEMETRY");
+	}
+	#end
+
 	public static function least(run:Void->Void, windows:Int = 5):Float {
 		var best = Math.POSITIVE_INFINITY;
 		for (_ in 0...windows) {
@@ -29,12 +43,23 @@ class Allocation {
 	#elseif (cpp && !cppia && HXCPP_TELEMETRY)
 	// hxcpp counts allocations only in a telemetry build (-D HXCPP_TELEMETRY):
 	// each frame lists the size of every allocation since the previous frame.
+	// hxcpp finds the frames by thread number. After worker threads have run,
+	// the main thread's number can find another thread's stack, or none.
+	// Reading through it would count nothing or read freed memory, so counting
+	// stops when the number no longer finds this thread.
 	static var thread = -1;
 	static var counted = 0.0;
+	static var lost = false;
 
 	static function total():Float {
 		if (thread < 0)
 			thread = untyped __cpp__("__hxcpp_hxt_start_telemetry(true, true)");
+		if (!lost && !untyped __cpp__("(hx::StackContext::getStackForId({0}) == hx::StackContext::getCurrent())", thread)) {
+			lost = true;
+			Sys.println("allocations: no longer measured: hxcpp's telemetry no longer finds this thread");
+		}
+		if (lost)
+			return counted;
 		var added:Float = untyped __cpp__("({
 			__hxcpp_hxt_stash_telemetry();
 			TelemetryFrame *frame = __hxcpp_hxt_dump_telemetry({0});

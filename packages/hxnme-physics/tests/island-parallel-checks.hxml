@@ -1,9 +1,7 @@
--L hashlink
--L ash-simd
 -L hxn
 --class-path ../../hxnme/src
 --class-path ../src
 --class-path src
--D ash_simd=1
+--macro Allocation.setup()
 -main IslandParallelChecks
--hl bin/island-parallel-checks.hl
+-D HXCPP_QUIET
