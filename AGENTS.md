@@ -36,6 +36,14 @@ conventions first. They apply here too.
 - Run the checks in the SIMD and scalar builds, on Ash in hybrid, JIT and
   interpreter modes (`ash --mode jit`, `ash --mode interp`).
 - Run every runtime that the changed code supports, under a timeout.
+- To run the checks on wasm with Ash, build the HashLink bytecode into a
+  module and run it with `ash run checks.wasm`. Build with
+  `ASH_WASM_FIBERS=1 ash --build checks.wasm --target wasm32-wasip1 bin/checks.hl`,
+  or with `--target wasm32-wasip1-threads` for threads.
+- To run the checks on wasm with hxcpp, put the emsdk on the PATH and compile
+  the `-emcc.hxml` files. Add `-D hxn_threads -D HXCPP_MULTI_THREADED_APP` for
+  threads. Run the `.js` file with node. hxcpp does not start Haxe threads
+  under Emscripten, so `WorkerPool` runs its jobs on the calling thread there.
 - Report each runtime that you did not run.
 
 ## Issues and commits

@@ -8,13 +8,14 @@ package hxn.me;
 	allocates.
 
 	In a program compiled without threads, `run` calls the job for each index
-	in turn on the calling thread.
+	in turn on the calling thread. So does an hxcpp program for Emscripten,
+	because hxcpp does not start Haxe threads there.
 **/
 class WorkerPool {
 	/** The number of workers. **/
 	public final size:Int;
 
-	#if target.threaded
+	#if (target.threaded && !emscripten)
 	final starts:Array<sys.thread.Lock> = [];
 	final done = new sys.thread.Lock();
 	final errorMutex = new sys.thread.Mutex();
@@ -27,7 +28,7 @@ class WorkerPool {
 		if (size < 1)
 			throw new haxe.exceptions.ArgumentException("size", 'a pool needs at least one worker, not $size');
 		this.size = size;
-		#if target.threaded
+		#if (target.threaded && !emscripten)
 		for (_ in 0...size)
 			starts.push(new sys.thread.Lock());
 		for (worker in 0...size) {
@@ -45,7 +46,7 @@ class WorkerPool {
 	public function run(count:Int, job:Int->Void):Void {
 		if (count < 0 || count > size)
 			throw new haxe.exceptions.ArgumentException("count", 'a pool of $size workers cannot run $count jobs');
-		#if target.threaded
+		#if (target.threaded && !emscripten)
 		this.job = job;
 		for (worker in 0...count)
 			starts[worker].release();
@@ -65,7 +66,7 @@ class WorkerPool {
 
 	/** Stops the workers. The pool cannot run jobs afterwards. **/
 	public function shutdown():Void {
-		#if target.threaded
+		#if (target.threaded && !emscripten)
 		stopping = true;
 		for (start in starts)
 			start.release();
@@ -74,7 +75,7 @@ class WorkerPool {
 		#end
 	}
 
-	#if target.threaded
+	#if (target.threaded && !emscripten)
 	function work(lane:Int):Void {
 		while (true) {
 			starts[lane].wait();

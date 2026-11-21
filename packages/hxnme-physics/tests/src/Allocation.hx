@@ -1,5 +1,5 @@
 /** Measures how much a piece of code allocates, steadily despite the runtime's own background work. */
-#if (cpp && !cppia)
+#if (cpp && !cppia && HXCPP_TELEMETRY)
 @:cppFileCode('#include <hx/Telemetry.h>')
 #end
 class Allocation {
@@ -26,7 +26,7 @@ class Allocation {
 	static inline function total():Float {
 		return hl.Gc.stats().totalAllocated;
 	}
-	#elseif (cpp && !cppia)
+	#elseif (cpp && !cppia && HXCPP_TELEMETRY)
 	// hxcpp counts allocations only in a telemetry build (-D HXCPP_TELEMETRY):
 	// each frame lists the size of every allocation since the previous frame.
 	static var thread = -1;
@@ -52,15 +52,16 @@ class Allocation {
 		counted += added;
 		return counted;
 	}
-	#elseif cppia
-	// hxcpp telemetry faults on allocations made from script code. The engine
-	// runs as compiled host code here, the same code the hxcpp checks measure.
+	#elseif cpp
+	// hxcpp telemetry faults on allocations made from CPPIA script code, and
+	// does not start under Emscripten. The native hxcpp checks measure the
+	// same engine code.
 	static var noted = false;
 
 	static function total():Float {
 		if (!noted) {
 			noted = true;
-			Sys.println("allocations: not measured in a CPPIA script; the hxcpp checks measure the same host code");
+			Sys.println(#if cppia "allocations: not measured in a CPPIA script; the hxcpp checks measure the same host code" #else "allocations: not measured without HXCPP_TELEMETRY; the native hxcpp checks measure the same code" #end);
 		}
 		return 0;
 	}
