@@ -9,18 +9,14 @@ conventions first. They apply here too.
 - Keep the data layout data-oriented. Store components and engine state as
   struct-of-arrays in hxn typed buffers (`hxn.Float32Buffer` and the others),
   so that Rust libraries and the GPU read them without a copy.
-- The physics is the one exception: it keeps `hl.NativeArray` until the hxn
-  typed buffers are as fast on Ash (hxn issue
-  064c2decaf30855db4a978552bbe8f5e609b466c5cbba2be071f9c86d55cd578). Do
-  not copy its storage into other code.
 - Do the work on the GPU. Use the CPU only where the GPU cannot do the work,
   and document each such case.
 - Compose plugins at compile time. Do not look up plugins, systems or
   components by name at run time.
 - Do not allocate in a frame. The physics checks measure allocations around
-  `World.step`. On Ash, run them with `ASH_GC_TLAB=0`: without it, Ash counts
-  allocations only in whole 32 KiB regions, and a check can pass when the
-  code allocates. The setting is safe for checks, and it makes programs that
+  `World.step`. On Ash, run them with `ASH_GC_TLAB=0`. If it is not set,
+  Ash counts allocations only in whole 32 KiB regions, and a check can pass
+  when the code allocates. The setting is safe for checks, and it makes programs that
   allocate a lot use more memory.
 
 ## Physics
