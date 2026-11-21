@@ -42,7 +42,7 @@ class Main {
 }
 ```
 
-Output on Ash:
+Output:
 
 ```
 disc -1.000000000 0.247930959 0.000000000
@@ -150,12 +150,6 @@ stays deterministic and the renderer can sample the same surface.
   density for each shape.
 - Generational handles. Using a handle to a destroyed body throws.
 - `World.validate`, which reports invalid state with a fault code and a path.
-
-## Runtimes
-
-hxnme-physics stores its data in `hl.NativeArray` and `hl.Bytes`, and requires
-the HashLink target. Its checks run on [Ash](https://ash.rayzor.tech/). The
-stock HashLink VM is not tested.
 
 ## Checks and benchmarks
 
