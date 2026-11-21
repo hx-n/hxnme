@@ -162,5 +162,5 @@ build.
 
 ## Credits
 
-hxnme-physics is derived from the physics engine of the Chimpmonk game engine,
+hxnme-physics is derived from the physics engine of the ChimpMonk game engine,
 privately maintained by [darmie](https://github.com/darmie).
