@@ -45,14 +45,12 @@ To run the benchmark, go to `packages/hxnme-physics/bench` and run:
 
 ```sh
 haxe hinged-chain-bench.hxml
-../../../scripts/bench.py -- ash bin/hinged-chain-bench.hl 20 on
+ash bin/hinged-chain-bench.hl 20 on
 ```
 
 The arguments are the number of chains and the contact mode (`on`, `off` or
 `gap`). The program prints one JSON line with the time of each sample, the
-best time and the final energy. `scripts/bench.py` runs one benchmark at a
-time. If the host is low on memory, it does not start the benchmark. If the
-benchmark uses too much memory, output or time, it stops the benchmark.
+best time and the final energy.
 
 ## License
 
