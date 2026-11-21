@@ -18,7 +18,10 @@ conventions first. They apply here too.
 - Compose plugins at compile time. Do not look up plugins, systems or
   components by name at run time.
 - Do not allocate in a frame. The physics checks measure allocations around
-  `World.step`.
+  `World.step`. On Ash, run them with `ASH_GC_TLAB=0`: without it, Ash counts
+  allocations only in whole 32 KiB regions, and a check can pass when the
+  code allocates. The setting is safe for checks, and it makes programs that
+  allocate a lot use more memory.
 
 ## Physics
 
