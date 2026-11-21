@@ -3,34 +3,34 @@ package hxn.me.physics.geom;
 /** Contiguous SoA vertex storage shared by shape descriptors. */
 import hxn.me.math.Grow;
 import hxn.me.math.Vec3;
-import hxn.me.math.Simd.FloatBuffer;
-import hl.NativeArray;
+import hxn.Float32Buffer;
+import hxn.Int32Buffer;
 
 class VertexPool {
-	public var vx:FloatBuffer;
-	public var vy:FloatBuffer;
-	public var vz:FloatBuffer;
+	public var vx:Float32Buffer;
+	public var vy:Float32Buffer;
+	public var vz:Float32Buffer;
 	public var count:Int = 0; // High-water mark; released builder blocks stay below it.
 	public var capacity:Int;
 
-	var blockOrder:NativeArray<Int>;
-	var blockActive:NativeArray<Int>;
-	var blockRefs:NativeArray<Int>;
-	var blockGeneration:NativeArray<Int>;
-	var nextFree:NativeArray<Int>;
+	var blockOrder:Int32Buffer;
+	var blockActive:Int32Buffer;
+	var blockRefs:Int32Buffer;
+	var blockGeneration:Int32Buffer;
+	var nextFree:Int32Buffer;
 	var freeHead:Array<Int>;
 
 	public function new(maxVerts:Int = 16384) {
 		var cap = (maxVerts + 3) & ~3;
 		capacity = cap;
-		vx = new FloatBuffer(cap);
-		vy = new FloatBuffer(cap);
-		vz = new FloatBuffer(cap);
-		blockOrder = new NativeArray<Int>(cap);
-		blockActive = new NativeArray<Int>(cap);
-		blockRefs = new NativeArray<Int>(cap);
-		blockGeneration = new NativeArray<Int>(cap);
-		nextFree = new NativeArray<Int>(cap);
+		vx = new Float32Buffer(cap);
+		vy = new Float32Buffer(cap);
+		vz = new Float32Buffer(cap);
+		blockOrder = new Int32Buffer(cap);
+		blockActive = new Int32Buffer(cap);
+		blockRefs = new Int32Buffer(cap);
+		blockGeneration = new Int32Buffer(cap);
+		nextFree = new Int32Buffer(cap);
 		for (i in 0...cap)
 			blockOrder[i] = -1;
 		freeHead = [];

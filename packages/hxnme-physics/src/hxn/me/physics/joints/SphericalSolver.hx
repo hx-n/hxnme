@@ -3,69 +3,69 @@ package hxn.me.physics.joints;
 import hxn.me.math.Grow;
 import hxn.me.math.Quat;
 import hxn.me.math.Vec3;
-import hxn.me.math.Simd.FloatBuffer;
-import hl.NativeArray;
+import hxn.Float32Buffer;
+import hxn.Int32Buffer;
 
 class SphericalSolver {
 	var pool:JointPool;
-	var localAxisAX:FloatBuffer;
-	var localAxisAY:FloatBuffer;
-	var localAxisAZ:FloatBuffer;
-	var localAxisBX:FloatBuffer;
-	var localAxisBY:FloatBuffer;
-	var localAxisBZ:FloatBuffer;
-	var localRefAX:FloatBuffer;
-	var localRefAY:FloatBuffer;
-	var localRefAZ:FloatBuffer;
-	var localRefBX:FloatBuffer;
-	var localRefBY:FloatBuffer;
-	var localRefBZ:FloatBuffer;
-	var axisAX:FloatBuffer;
-	var axisAY:FloatBuffer;
-	var axisAZ:FloatBuffer;
-	var axisBX:FloatBuffer;
-	var axisBY:FloatBuffer;
-	var axisBZ:FloatBuffer;
-	var refAX:FloatBuffer;
-	var refAY:FloatBuffer;
-	var refAZ:FloatBuffer;
-	var refBX:FloatBuffer;
-	var refBY:FloatBuffer;
-	var refBZ:FloatBuffer;
-	var pointImpulseX:FloatBuffer;
-	var pointImpulseY:FloatBuffer;
-	var pointImpulseZ:FloatBuffer;
-	var swingImpulse:FloatBuffer;
-	var swingActive:NativeArray<Int>;
-	var twistImpulse:FloatBuffer;
-	var twistState:NativeArray<Int>;
-	var swingLimit:FloatBuffer;
-	var lowerTwist:FloatBuffer;
-	var upperTwist:FloatBuffer;
-	var neutralX:FloatBuffer;
-	var neutralY:FloatBuffer;
-	var neutralZ:FloatBuffer;
-	var neutralW:FloatBuffer;
-	var targetX:FloatBuffer;
-	var targetY:FloatBuffer;
-	var targetZ:FloatBuffer;
-	var targetW:FloatBuffer;
-	var driveGain:FloatBuffer;
-	var driveDamping:FloatBuffer;
-	var driveTorque:FloatBuffer;
-	var driveImpulseX:FloatBuffer;
-	var driveImpulseY:FloatBuffer;
-	var driveImpulseZ:FloatBuffer;
+	var localAxisAX:Float32Buffer;
+	var localAxisAY:Float32Buffer;
+	var localAxisAZ:Float32Buffer;
+	var localAxisBX:Float32Buffer;
+	var localAxisBY:Float32Buffer;
+	var localAxisBZ:Float32Buffer;
+	var localRefAX:Float32Buffer;
+	var localRefAY:Float32Buffer;
+	var localRefAZ:Float32Buffer;
+	var localRefBX:Float32Buffer;
+	var localRefBY:Float32Buffer;
+	var localRefBZ:Float32Buffer;
+	var axisAX:Float32Buffer;
+	var axisAY:Float32Buffer;
+	var axisAZ:Float32Buffer;
+	var axisBX:Float32Buffer;
+	var axisBY:Float32Buffer;
+	var axisBZ:Float32Buffer;
+	var refAX:Float32Buffer;
+	var refAY:Float32Buffer;
+	var refAZ:Float32Buffer;
+	var refBX:Float32Buffer;
+	var refBY:Float32Buffer;
+	var refBZ:Float32Buffer;
+	var pointImpulseX:Float32Buffer;
+	var pointImpulseY:Float32Buffer;
+	var pointImpulseZ:Float32Buffer;
+	var swingImpulse:Float32Buffer;
+	var swingActive:Int32Buffer;
+	var twistImpulse:Float32Buffer;
+	var twistState:Int32Buffer;
+	var swingLimit:Float32Buffer;
+	var lowerTwist:Float32Buffer;
+	var upperTwist:Float32Buffer;
+	var neutralX:Float32Buffer;
+	var neutralY:Float32Buffer;
+	var neutralZ:Float32Buffer;
+	var neutralW:Float32Buffer;
+	var targetX:Float32Buffer;
+	var targetY:Float32Buffer;
+	var targetZ:Float32Buffer;
+	var targetW:Float32Buffer;
+	var driveGain:Float32Buffer;
+	var driveDamping:Float32Buffer;
+	var driveTorque:Float32Buffer;
+	var driveImpulseX:Float32Buffer;
+	var driveImpulseY:Float32Buffer;
+	var driveImpulseZ:Float32Buffer;
 	// Axes the drive impulses above were last solved along.
-	var driveAxis0X:FloatBuffer;
-	var driveAxis0Y:FloatBuffer;
-	var driveAxis0Z:FloatBuffer;
-	var driveAxis1X:FloatBuffer;
-	var driveAxis1Y:FloatBuffer;
-	var driveAxis1Z:FloatBuffer;
-	var driveAxis2X:FloatBuffer;
-	var driveAxis2Y:FloatBuffer;
-	var driveAxis2Z:FloatBuffer;
+	var driveAxis0X:Float32Buffer;
+	var driveAxis0Y:Float32Buffer;
+	var driveAxis0Z:Float32Buffer;
+	var driveAxis1X:Float32Buffer;
+	var driveAxis1Y:Float32Buffer;
+	var driveAxis1Z:Float32Buffer;
+	var driveAxis2X:Float32Buffer;
+	var driveAxis2Y:Float32Buffer;
+	var driveAxis2Z:Float32Buffer;
 
 	static inline function multiply(a:Quat, b:Quat):Quat {
 		return new Quat(a.w * b.x
@@ -89,63 +89,63 @@ class SphericalSolver {
 
 	public function new(pool:JointPool, capacity:Int) {
 		this.pool = pool;
-		localAxisAX = new FloatBuffer(capacity);
-		localAxisAY = new FloatBuffer(capacity);
-		localAxisAZ = new FloatBuffer(capacity);
-		localAxisBX = new FloatBuffer(capacity);
-		localAxisBY = new FloatBuffer(capacity);
-		localAxisBZ = new FloatBuffer(capacity);
-		localRefAX = new FloatBuffer(capacity);
-		localRefAY = new FloatBuffer(capacity);
-		localRefAZ = new FloatBuffer(capacity);
-		localRefBX = new FloatBuffer(capacity);
-		localRefBY = new FloatBuffer(capacity);
-		localRefBZ = new FloatBuffer(capacity);
-		axisAX = new FloatBuffer(capacity);
-		axisAY = new FloatBuffer(capacity);
-		axisAZ = new FloatBuffer(capacity);
-		axisBX = new FloatBuffer(capacity);
-		axisBY = new FloatBuffer(capacity);
-		axisBZ = new FloatBuffer(capacity);
-		refAX = new FloatBuffer(capacity);
-		refAY = new FloatBuffer(capacity);
-		refAZ = new FloatBuffer(capacity);
-		refBX = new FloatBuffer(capacity);
-		refBY = new FloatBuffer(capacity);
-		refBZ = new FloatBuffer(capacity);
-		pointImpulseX = new FloatBuffer(capacity);
-		pointImpulseY = new FloatBuffer(capacity);
-		pointImpulseZ = new FloatBuffer(capacity);
-		swingImpulse = new FloatBuffer(capacity);
-		swingActive = new NativeArray<Int>(capacity);
-		twistImpulse = new FloatBuffer(capacity);
-		twistState = new NativeArray<Int>(capacity);
-		swingLimit = new FloatBuffer(capacity);
-		lowerTwist = new FloatBuffer(capacity);
-		upperTwist = new FloatBuffer(capacity);
-		neutralX = new FloatBuffer(capacity);
-		neutralY = new FloatBuffer(capacity);
-		neutralZ = new FloatBuffer(capacity);
-		neutralW = new FloatBuffer(capacity);
-		targetX = new FloatBuffer(capacity);
-		targetY = new FloatBuffer(capacity);
-		targetZ = new FloatBuffer(capacity);
-		targetW = new FloatBuffer(capacity);
-		driveGain = new FloatBuffer(capacity);
-		driveDamping = new FloatBuffer(capacity);
-		driveTorque = new FloatBuffer(capacity);
-		driveImpulseX = new FloatBuffer(capacity);
-		driveImpulseY = new FloatBuffer(capacity);
-		driveImpulseZ = new FloatBuffer(capacity);
-		driveAxis0X = new FloatBuffer(capacity);
-		driveAxis0Y = new FloatBuffer(capacity);
-		driveAxis0Z = new FloatBuffer(capacity);
-		driveAxis1X = new FloatBuffer(capacity);
-		driveAxis1Y = new FloatBuffer(capacity);
-		driveAxis1Z = new FloatBuffer(capacity);
-		driveAxis2X = new FloatBuffer(capacity);
-		driveAxis2Y = new FloatBuffer(capacity);
-		driveAxis2Z = new FloatBuffer(capacity);
+		localAxisAX = new Float32Buffer(capacity);
+		localAxisAY = new Float32Buffer(capacity);
+		localAxisAZ = new Float32Buffer(capacity);
+		localAxisBX = new Float32Buffer(capacity);
+		localAxisBY = new Float32Buffer(capacity);
+		localAxisBZ = new Float32Buffer(capacity);
+		localRefAX = new Float32Buffer(capacity);
+		localRefAY = new Float32Buffer(capacity);
+		localRefAZ = new Float32Buffer(capacity);
+		localRefBX = new Float32Buffer(capacity);
+		localRefBY = new Float32Buffer(capacity);
+		localRefBZ = new Float32Buffer(capacity);
+		axisAX = new Float32Buffer(capacity);
+		axisAY = new Float32Buffer(capacity);
+		axisAZ = new Float32Buffer(capacity);
+		axisBX = new Float32Buffer(capacity);
+		axisBY = new Float32Buffer(capacity);
+		axisBZ = new Float32Buffer(capacity);
+		refAX = new Float32Buffer(capacity);
+		refAY = new Float32Buffer(capacity);
+		refAZ = new Float32Buffer(capacity);
+		refBX = new Float32Buffer(capacity);
+		refBY = new Float32Buffer(capacity);
+		refBZ = new Float32Buffer(capacity);
+		pointImpulseX = new Float32Buffer(capacity);
+		pointImpulseY = new Float32Buffer(capacity);
+		pointImpulseZ = new Float32Buffer(capacity);
+		swingImpulse = new Float32Buffer(capacity);
+		swingActive = new Int32Buffer(capacity);
+		twistImpulse = new Float32Buffer(capacity);
+		twistState = new Int32Buffer(capacity);
+		swingLimit = new Float32Buffer(capacity);
+		lowerTwist = new Float32Buffer(capacity);
+		upperTwist = new Float32Buffer(capacity);
+		neutralX = new Float32Buffer(capacity);
+		neutralY = new Float32Buffer(capacity);
+		neutralZ = new Float32Buffer(capacity);
+		neutralW = new Float32Buffer(capacity);
+		targetX = new Float32Buffer(capacity);
+		targetY = new Float32Buffer(capacity);
+		targetZ = new Float32Buffer(capacity);
+		targetW = new Float32Buffer(capacity);
+		driveGain = new Float32Buffer(capacity);
+		driveDamping = new Float32Buffer(capacity);
+		driveTorque = new Float32Buffer(capacity);
+		driveImpulseX = new Float32Buffer(capacity);
+		driveImpulseY = new Float32Buffer(capacity);
+		driveImpulseZ = new Float32Buffer(capacity);
+		driveAxis0X = new Float32Buffer(capacity);
+		driveAxis0Y = new Float32Buffer(capacity);
+		driveAxis0Z = new Float32Buffer(capacity);
+		driveAxis1X = new Float32Buffer(capacity);
+		driveAxis1Y = new Float32Buffer(capacity);
+		driveAxis1Z = new Float32Buffer(capacity);
+		driveAxis2X = new Float32Buffer(capacity);
+		driveAxis2Y = new Float32Buffer(capacity);
+		driveAxis2Z = new Float32Buffer(capacity);
 	}
 
 	/** Room for `to` joints, keeping the first `from`. */
@@ -369,7 +369,7 @@ class SphericalSolver {
 		return Math.max(-10.0, Math.min(10.0, 0.2 * (error < 0.0 ? -correction : correction) / h));
 	}
 
-	function rotateInto(body:Int, lx:Float, ly:Float, lz:Float, outX:FloatBuffer, outY:FloatBuffer, outZ:FloatBuffer, id:Int):Void {
+	function rotateInto(body:Int, lx:Float, ly:Float, lz:Float, outX:Float32Buffer, outY:Float32Buffer, outZ:Float32Buffer, id:Int):Void {
 		var world = pool.world;
 		var qx = world.rotX[body],
 			qy = world.rotY[body],
@@ -383,7 +383,7 @@ class SphericalSolver {
 		outZ[id] = lz + qw * tz + qx * ty - qy * tx;
 	}
 
-	inline function pointRow(rows:JointRows, id:Int, x:Float, y:Float, z:Float, error:Float, h:Single, store:FloatBuffer):Void {
+	inline function pointRow(rows:JointRows, id:Int, x:Float, y:Float, z:Float, error:Float, h:Single, store:Float32Buffer):Void {
 		var k = rows.linear(x, y, z, pool.rAX[id], pool.rAY[id], pool.rAZ[id], pool.rBX[id], pool.rBY[id], pool.rBZ[id]);
 		rows.setEquality(k > 0.0 ? 1.0 / k : 0.0, positionBias(error, h), 0.0, store, id);
 	}
@@ -623,7 +623,7 @@ class SphericalSolver {
 		driveAxis2Z[id] = v22;
 	}
 
-	inline function driveRow(rows:JointRows, id:Int, x:Float, y:Float, z:Float, gainError:Float, damping:Float, store:FloatBuffer):Void {
+	inline function driveRow(rows:JointRows, id:Int, x:Float, y:Float, z:Float, gainError:Float, damping:Float, store:Float32Buffer):Void {
 		var k = rows.angular(x, y, z);
 		var mass = k > 0.0 ? 1.0 / k : 0.0;
 		// Solved exactly toward speed stiffness * error / damping; with no damping the push is limited by the torque alone.

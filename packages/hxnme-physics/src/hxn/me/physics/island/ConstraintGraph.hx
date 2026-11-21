@@ -2,28 +2,28 @@ package hxn.me.physics.island;
 
 import hxn.me.physics.collision.NarrowPhase.ContactManifoldPool;
 import hxn.me.physics.core.Handles.BodyType;
-import hl.NativeArray;
+import hxn.Int32Buffer;
 
 class ConstraintGraph {
 	public static inline var SIMD_COLORS:Int = 23;
 	public static inline var FALLBACK_COLOR:Int = 23;
 	public static inline var COLOR_COUNT:Int = 24;
 
-	public var colors:NativeArray<Int>;
-	public var indices:NativeArray<Int>;
-	public var counts:NativeArray<Int>;
-	public var offsets:NativeArray<Int>;
+	public var colors:Int32Buffer;
+	public var indices:Int32Buffer;
+	public var counts:Int32Buffer;
+	public var offsets:Int32Buffer;
 
-	var usedColors:NativeArray<Int>;
-	var cursors:NativeArray<Int>;
+	var usedColors:Int32Buffer;
+	var cursors:Int32Buffer;
 
 	public function new(bodyCapacity:Int, contactCapacity:Int) {
-		colors = new NativeArray<Int>(contactCapacity < 4 ? 4 : contactCapacity);
-		indices = new NativeArray<Int>(contactCapacity < 4 ? 4 : contactCapacity);
-		counts = new NativeArray<Int>(COLOR_COUNT);
-		offsets = new NativeArray<Int>(COLOR_COUNT);
-		cursors = new NativeArray<Int>(COLOR_COUNT);
-		usedColors = new NativeArray<Int>(bodyCapacity);
+		colors = new Int32Buffer(contactCapacity < 4 ? 4 : contactCapacity);
+		indices = new Int32Buffer(contactCapacity < 4 ? 4 : contactCapacity);
+		counts = new Int32Buffer(COLOR_COUNT);
+		offsets = new Int32Buffer(COLOR_COUNT);
+		cursors = new Int32Buffer(COLOR_COUNT);
+		usedColors = new Int32Buffer(bodyCapacity);
 	}
 
 	/** Room for `n` bodies. */
@@ -39,11 +39,11 @@ class ConstraintGraph {
 		var cap = colors.length;
 		while (cap < n)
 			cap *= 2;
-		colors = new NativeArray<Int>(cap);
-		indices = new NativeArray<Int>(cap);
+		colors = new Int32Buffer(cap);
+		indices = new Int32Buffer(cap);
 	}
 
-	public function assign(contacts:ContactManifoldPool, bodyType:NativeArray<Int>, bodyCount:Int):Void {
+	public function assign(contacts:ContactManifoldPool, bodyType:Int32Buffer, bodyCount:Int):Void {
 		reserve(contacts.count);
 		for (body in 0...bodyCount)
 			usedColors[body] = 0;

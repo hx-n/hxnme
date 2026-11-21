@@ -1,6 +1,7 @@
 package hxn.me.physics.collision;
 
-import hl.NativeArray;
+import hxn.Float32Buffer;
+import hxn.Int32Buffer;
 import hxn.me.physics.geom.ShapeDef;
 import hxn.me.physics.geom.ShapeDef.ShapeKind;
 import hxn.me.math.Quat;
@@ -26,10 +27,10 @@ class TimeOfImpact {
 	public var resolvedImpacts(default, null):Int = 0;
 
 	var world:World;
-	var dx:NativeArray<Single>;
-	var dy:NativeArray<Single>;
-	var dz:NativeArray<Single>;
-	var fast:NativeArray<Int>;
+	var dx:Float32Buffer;
+	var dy:Float32Buffer;
+	var dz:Float32Buffer;
+	var fast:Int32Buffer;
 	// The largest move any body not checked as fast makes this segment; fast bodies' sweeps are widened by it.
 	var slowReach:Float = 0.0;
 	// Per-pair scratch and the hits of the current search, reused across calls.
@@ -41,26 +42,26 @@ class TimeOfImpact {
 	var rotB:Quat = new Quat();
 	var atA:Vec3 = new Vec3();
 	var atB:Vec3 = new Vec3();
-	var candidates:NativeArray<Int>;
+	var candidates:Int32Buffer;
 	var candidate:ToiHit = new ToiHit(0.0, -1, -1, new Vec3());
 	var earliest:ToiHit = new ToiHit(0.0, -1, -1, new Vec3());
 
 	public function new(world:World) {
 		this.world = world;
-		dx = new NativeArray<Single>(world.bodyCapacity);
-		dy = new NativeArray<Single>(world.bodyCapacity);
-		dz = new NativeArray<Single>(world.bodyCapacity);
-		fast = new NativeArray<Int>(world.bodyCapacity);
-		candidates = new NativeArray<Int>(world.shapeCapacity);
+		dx = new Float32Buffer(world.bodyCapacity);
+		dy = new Float32Buffer(world.bodyCapacity);
+		dz = new Float32Buffer(world.bodyCapacity);
+		fast = new Int32Buffer(world.bodyCapacity);
+		candidates = new Int32Buffer(world.shapeCapacity);
 	}
 
 	/** Makes the per-step scratch for the world's present capacities; it holds nothing between steps. */
 	public function resize():Void {
-		dx = new NativeArray<Single>(world.bodyCapacity);
-		dy = new NativeArray<Single>(world.bodyCapacity);
-		dz = new NativeArray<Single>(world.bodyCapacity);
-		fast = new NativeArray<Int>(world.bodyCapacity);
-		candidates = new NativeArray<Int>(world.shapeCapacity);
+		dx = new Float32Buffer(world.bodyCapacity);
+		dy = new Float32Buffer(world.bodyCapacity);
+		dz = new Float32Buffer(world.bodyCapacity);
+		fast = new Int32Buffer(world.bodyCapacity);
+		candidates = new Int32Buffer(world.shapeCapacity);
 	}
 
 	public function beginStep():Void {

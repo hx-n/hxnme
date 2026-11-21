@@ -3,96 +3,96 @@ package hxn.me.physics.joints;
 import hxn.me.math.Grow;
 import hxn.me.math.Quat;
 import hxn.me.math.Vec3;
-import hxn.me.math.Simd.FloatBuffer;
+import hxn.Float32Buffer;
 import hxn.me.physics.core.Handles.DoFMask;
 
 class HingeSolver {
 	var pool:JointPool;
-	var localAxisAX:FloatBuffer;
-	var localAxisAY:FloatBuffer;
-	var localAxisAZ:FloatBuffer;
-	var localAxisBX:FloatBuffer;
-	var localAxisBY:FloatBuffer;
-	var localAxisBZ:FloatBuffer;
-	var localRefAX:FloatBuffer;
-	var localRefAY:FloatBuffer;
-	var localRefAZ:FloatBuffer;
-	var localRefBX:FloatBuffer;
-	var localRefBY:FloatBuffer;
-	var localRefBZ:FloatBuffer;
-	var axisAX:FloatBuffer;
-	var axisAY:FloatBuffer;
-	var axisAZ:FloatBuffer;
-	var axisBX:FloatBuffer;
-	var axisBY:FloatBuffer;
-	var axisBZ:FloatBuffer;
-	var refAX:FloatBuffer;
-	var refAY:FloatBuffer;
-	var refAZ:FloatBuffer;
-	var refBX:FloatBuffer;
-	var refBY:FloatBuffer;
-	var refBZ:FloatBuffer;
-	var pointImpulseX:FloatBuffer;
-	var pointImpulseY:FloatBuffer;
-	var pointImpulseZ:FloatBuffer;
-	var tiltImpulse1:FloatBuffer;
-	var tiltImpulse2:FloatBuffer;
-	var limitState:hl.NativeArray<Int>;
-	var limitImpulse:FloatBuffer;
-	var motorImpulse:FloatBuffer;
-	var lowerAngle:FloatBuffer;
-	var upperAngle:FloatBuffer;
-	var motorSpeed:FloatBuffer;
-	var maxMotorTorque:FloatBuffer;
-	var driveConfigured:hl.NativeArray<Int>;
-	var driveTarget:FloatBuffer;
-	var driveStiffness:FloatBuffer;
-	var driveDamping:FloatBuffer;
-	var driveTorque:FloatBuffer;
+	var localAxisAX:Float32Buffer;
+	var localAxisAY:Float32Buffer;
+	var localAxisAZ:Float32Buffer;
+	var localAxisBX:Float32Buffer;
+	var localAxisBY:Float32Buffer;
+	var localAxisBZ:Float32Buffer;
+	var localRefAX:Float32Buffer;
+	var localRefAY:Float32Buffer;
+	var localRefAZ:Float32Buffer;
+	var localRefBX:Float32Buffer;
+	var localRefBY:Float32Buffer;
+	var localRefBZ:Float32Buffer;
+	var axisAX:Float32Buffer;
+	var axisAY:Float32Buffer;
+	var axisAZ:Float32Buffer;
+	var axisBX:Float32Buffer;
+	var axisBY:Float32Buffer;
+	var axisBZ:Float32Buffer;
+	var refAX:Float32Buffer;
+	var refAY:Float32Buffer;
+	var refAZ:Float32Buffer;
+	var refBX:Float32Buffer;
+	var refBY:Float32Buffer;
+	var refBZ:Float32Buffer;
+	var pointImpulseX:Float32Buffer;
+	var pointImpulseY:Float32Buffer;
+	var pointImpulseZ:Float32Buffer;
+	var tiltImpulse1:Float32Buffer;
+	var tiltImpulse2:Float32Buffer;
+	var limitState:hxn.Int32Buffer;
+	var limitImpulse:Float32Buffer;
+	var motorImpulse:Float32Buffer;
+	var lowerAngle:Float32Buffer;
+	var upperAngle:Float32Buffer;
+	var motorSpeed:Float32Buffer;
+	var maxMotorTorque:Float32Buffer;
+	var driveConfigured:hxn.Int32Buffer;
+	var driveTarget:Float32Buffer;
+	var driveStiffness:Float32Buffer;
+	var driveDamping:Float32Buffer;
+	var driveTorque:Float32Buffer;
 
 	public function new(pool:JointPool, capacity:Int) {
 		this.pool = pool;
-		localAxisAX = new FloatBuffer(capacity);
-		localAxisAY = new FloatBuffer(capacity);
-		localAxisAZ = new FloatBuffer(capacity);
-		localAxisBX = new FloatBuffer(capacity);
-		localAxisBY = new FloatBuffer(capacity);
-		localAxisBZ = new FloatBuffer(capacity);
-		localRefAX = new FloatBuffer(capacity);
-		localRefAY = new FloatBuffer(capacity);
-		localRefAZ = new FloatBuffer(capacity);
-		localRefBX = new FloatBuffer(capacity);
-		localRefBY = new FloatBuffer(capacity);
-		localRefBZ = new FloatBuffer(capacity);
-		axisAX = new FloatBuffer(capacity);
-		axisAY = new FloatBuffer(capacity);
-		axisAZ = new FloatBuffer(capacity);
-		axisBX = new FloatBuffer(capacity);
-		axisBY = new FloatBuffer(capacity);
-		axisBZ = new FloatBuffer(capacity);
-		refAX = new FloatBuffer(capacity);
-		refAY = new FloatBuffer(capacity);
-		refAZ = new FloatBuffer(capacity);
-		refBX = new FloatBuffer(capacity);
-		refBY = new FloatBuffer(capacity);
-		refBZ = new FloatBuffer(capacity);
-		pointImpulseX = new FloatBuffer(capacity);
-		pointImpulseY = new FloatBuffer(capacity);
-		pointImpulseZ = new FloatBuffer(capacity);
-		tiltImpulse1 = new FloatBuffer(capacity);
-		tiltImpulse2 = new FloatBuffer(capacity);
-		limitState = new hl.NativeArray<Int>(capacity);
-		limitImpulse = new FloatBuffer(capacity);
-		motorImpulse = new FloatBuffer(capacity);
-		lowerAngle = new FloatBuffer(capacity);
-		upperAngle = new FloatBuffer(capacity);
-		motorSpeed = new FloatBuffer(capacity);
-		maxMotorTorque = new FloatBuffer(capacity);
-		driveConfigured = new hl.NativeArray<Int>(capacity);
-		driveTarget = new FloatBuffer(capacity);
-		driveStiffness = new FloatBuffer(capacity);
-		driveDamping = new FloatBuffer(capacity);
-		driveTorque = new FloatBuffer(capacity);
+		localAxisAX = new Float32Buffer(capacity);
+		localAxisAY = new Float32Buffer(capacity);
+		localAxisAZ = new Float32Buffer(capacity);
+		localAxisBX = new Float32Buffer(capacity);
+		localAxisBY = new Float32Buffer(capacity);
+		localAxisBZ = new Float32Buffer(capacity);
+		localRefAX = new Float32Buffer(capacity);
+		localRefAY = new Float32Buffer(capacity);
+		localRefAZ = new Float32Buffer(capacity);
+		localRefBX = new Float32Buffer(capacity);
+		localRefBY = new Float32Buffer(capacity);
+		localRefBZ = new Float32Buffer(capacity);
+		axisAX = new Float32Buffer(capacity);
+		axisAY = new Float32Buffer(capacity);
+		axisAZ = new Float32Buffer(capacity);
+		axisBX = new Float32Buffer(capacity);
+		axisBY = new Float32Buffer(capacity);
+		axisBZ = new Float32Buffer(capacity);
+		refAX = new Float32Buffer(capacity);
+		refAY = new Float32Buffer(capacity);
+		refAZ = new Float32Buffer(capacity);
+		refBX = new Float32Buffer(capacity);
+		refBY = new Float32Buffer(capacity);
+		refBZ = new Float32Buffer(capacity);
+		pointImpulseX = new Float32Buffer(capacity);
+		pointImpulseY = new Float32Buffer(capacity);
+		pointImpulseZ = new Float32Buffer(capacity);
+		tiltImpulse1 = new Float32Buffer(capacity);
+		tiltImpulse2 = new Float32Buffer(capacity);
+		limitState = new hxn.Int32Buffer(capacity);
+		limitImpulse = new Float32Buffer(capacity);
+		motorImpulse = new Float32Buffer(capacity);
+		lowerAngle = new Float32Buffer(capacity);
+		upperAngle = new Float32Buffer(capacity);
+		motorSpeed = new Float32Buffer(capacity);
+		maxMotorTorque = new Float32Buffer(capacity);
+		driveConfigured = new hxn.Int32Buffer(capacity);
+		driveTarget = new Float32Buffer(capacity);
+		driveStiffness = new Float32Buffer(capacity);
+		driveDamping = new Float32Buffer(capacity);
+		driveTorque = new Float32Buffer(capacity);
 	}
 
 	/** Room for `to` joints, keeping the first `from`. */
@@ -210,12 +210,12 @@ class HingeSolver {
 		return Math.max(-10.0, Math.min(10.0, 0.2 * (error < 0 ? -correction : correction) / h));
 	}
 
-	inline function pointRow(rows:JointRows, id:Int, x:Float, y:Float, z:Float, error:Float, h:Single, store:FloatBuffer):Void {
+	inline function pointRow(rows:JointRows, id:Int, x:Float, y:Float, z:Float, error:Float, h:Single, store:Float32Buffer):Void {
 		var k = rows.linear(x, y, z, pool.rAX[id], pool.rAY[id], pool.rAZ[id], pool.rBX[id], pool.rBY[id], pool.rBZ[id]);
 		rows.setEquality(k > 0.0 ? 1.0 / k : 0.0, positionBias(error, h), 0.0, store, id);
 	}
 
-	inline function tiltRow(rows:JointRows, id:Int, x:Float, y:Float, z:Float, error:Float, h:Single, store:FloatBuffer):Void {
+	inline function tiltRow(rows:JointRows, id:Int, x:Float, y:Float, z:Float, error:Float, h:Single, store:Float32Buffer):Void {
 		var k = rows.angular(x, y, z);
 		rows.setEquality(k > 0.0 ? 1.0 / k : 0.0, positionBias(error, h), 0.0, store, id);
 	}
@@ -330,7 +330,7 @@ class HingeSolver {
 		return Math.atan2(sine, wrax * wrbx + wray * wrby + wraz * wrbz);
 	}
 
-	function rotateInto(body:Int, lx:Float, ly:Float, lz:Float, outX:FloatBuffer, outY:FloatBuffer, outZ:FloatBuffer, id:Int):Void {
+	function rotateInto(body:Int, lx:Float, ly:Float, lz:Float, outX:Float32Buffer, outY:Float32Buffer, outZ:Float32Buffer, id:Int):Void {
 		var world = pool.world;
 		var qx = world.rotX[body],
 			qy = world.rotY[body],

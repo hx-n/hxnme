@@ -1,7 +1,8 @@
 package hxn.me.physics.core;
 
 import hxn.me.physics.core.Handles.ShapeId;
-import hl.NativeArray;
+import hxn.Float64Buffer;
+import hxn.Int32Buffer;
 
 /**
  * Shape pairs reported by one step, each with the two shapes' user values.
@@ -13,16 +14,16 @@ import hl.NativeArray;
 class ShapePairEvents {
 	public var count(default, null):Int = 0;
 
-	var a:NativeArray<Int>;
-	var b:NativeArray<Int>;
-	var userA:NativeArray<Int>;
-	var userB:NativeArray<Int>;
+	var a:Int32Buffer;
+	var b:Int32Buffer;
+	var userA:Int32Buffer;
+	var userB:Int32Buffer;
 
 	public function new() {
-		a = new NativeArray<Int>(16);
-		b = new NativeArray<Int>(16);
-		userA = new NativeArray<Int>(16);
-		userB = new NativeArray<Int>(16);
+		a = new Int32Buffer(16);
+		b = new Int32Buffer(16);
+		userA = new Int32Buffer(16);
+		userB = new Int32Buffer(16);
 	}
 
 	public inline function shapeA(i:Int):ShapeId
@@ -106,15 +107,15 @@ class ShapePairEvents {
 @:allow(hxn.me.physics.core.WorldEvents)
 @:allow(hxn.me.physics.core.World)
 class ImpactEvents extends ShapePairEvents {
-	var speeds:NativeArray<Float>;
-	var points:NativeArray<Float>;
-	var normals:NativeArray<Float>;
+	var speeds:Float64Buffer;
+	var points:Float64Buffer;
+	var normals:Float64Buffer;
 
 	public function new() {
 		super();
-		speeds = new NativeArray<Float>(16);
-		points = new NativeArray<Float>(48);
-		normals = new NativeArray<Float>(48);
+		speeds = new Float64Buffer(16);
+		points = new Float64Buffer(48);
+		normals = new Float64Buffer(48);
 	}
 
 	/** Approach speed along the contact normal, positive, just before the contact was solved. */
@@ -268,14 +269,14 @@ class WorldEvents {
 		overlappingNext = new ShapePairEvents();
 	}
 
-	static function grow(values:NativeArray<Int>, size:Int):NativeArray<Int> {
-		var next = new NativeArray<Int>(size);
+	static function grow(values:Int32Buffer, size:Int):Int32Buffer {
+		var next = new Int32Buffer(size);
 		next.blit(0, values, 0, values.length);
 		return next;
 	}
 
-	static function growFloat(values:NativeArray<Float>, size:Int):NativeArray<Float> {
-		var next = new NativeArray<Float>(size);
+	static function growFloat(values:Float64Buffer, size:Int):Float64Buffer {
+		var next = new Float64Buffer(size);
 		next.blit(0, values, 0, values.length);
 		return next;
 	}

@@ -1,11 +1,11 @@
 package hxn.me.physics.island;
 
 import hxn.me.math.Grow;
-import hxn.me.math.Simd.FloatBuffer;
+import hxn.Float32Buffer;
 import hxn.me.physics.collision.NarrowPhase.ContactManifoldPool;
 import hxn.me.physics.core.Handles.BodyType;
 import hxn.me.physics.joints.JointPool;
-import hl.NativeArray;
+import hxn.Int32Buffer;
 
 class IslandManager {
 	public static inline var LINEAR_TOLERANCE:Float = 0.01;
@@ -14,40 +14,40 @@ class IslandManager {
 	static inline var POSITION_TOLERANCE:Float = 0.01;
 	static inline var ROTATION_DOT_TOLERANCE:Float = 0.9998875;
 
-	public var isAwake:NativeArray<Int>;
-	public var integrationMask:FloatBuffer;
-	public var sleepTimer:FloatBuffer;
-	public var parent:NativeArray<Int>;
+	public var isAwake:Int32Buffer;
+	public var integrationMask:Float32Buffer;
+	public var sleepTimer:Float32Buffer;
+	public var parent:Int32Buffer;
 	public var islandCount(default, null):Int = 0;
 
-	var sleepGroup:NativeArray<Int>;
-	var eligible:NativeArray<Int>;
-	var minimumTime:FloatBuffer;
-	var referenceValid:NativeArray<Int>;
-	var referenceX:FloatBuffer;
-	var referenceY:FloatBuffer;
-	var referenceZ:FloatBuffer;
-	var referenceQX:FloatBuffer;
-	var referenceQY:FloatBuffer;
-	var referenceQZ:FloatBuffer;
-	var referenceQW:FloatBuffer;
+	var sleepGroup:Int32Buffer;
+	var eligible:Int32Buffer;
+	var minimumTime:Float32Buffer;
+	var referenceValid:Int32Buffer;
+	var referenceX:Float32Buffer;
+	var referenceY:Float32Buffer;
+	var referenceZ:Float32Buffer;
+	var referenceQX:Float32Buffer;
+	var referenceQY:Float32Buffer;
+	var referenceQZ:Float32Buffer;
+	var referenceQW:Float32Buffer;
 
 	public function new(capacity:Int) {
-		isAwake = new NativeArray<Int>(capacity);
-		integrationMask = new FloatBuffer(capacity);
-		sleepTimer = new FloatBuffer(capacity);
-		parent = new NativeArray<Int>(capacity);
-		sleepGroup = new NativeArray<Int>(capacity);
-		eligible = new NativeArray<Int>(capacity);
-		minimumTime = new FloatBuffer(capacity);
-		referenceValid = new NativeArray<Int>(capacity);
-		referenceX = new FloatBuffer(capacity);
-		referenceY = new FloatBuffer(capacity);
-		referenceZ = new FloatBuffer(capacity);
-		referenceQX = new FloatBuffer(capacity);
-		referenceQY = new FloatBuffer(capacity);
-		referenceQZ = new FloatBuffer(capacity);
-		referenceQW = new FloatBuffer(capacity);
+		isAwake = new Int32Buffer(capacity);
+		integrationMask = new Float32Buffer(capacity);
+		sleepTimer = new Float32Buffer(capacity);
+		parent = new Int32Buffer(capacity);
+		sleepGroup = new Int32Buffer(capacity);
+		eligible = new Int32Buffer(capacity);
+		minimumTime = new Float32Buffer(capacity);
+		referenceValid = new Int32Buffer(capacity);
+		referenceX = new Float32Buffer(capacity);
+		referenceY = new Float32Buffer(capacity);
+		referenceZ = new Float32Buffer(capacity);
+		referenceQX = new Float32Buffer(capacity);
+		referenceQY = new Float32Buffer(capacity);
+		referenceQZ = new Float32Buffer(capacity);
+		referenceQW = new Float32Buffer(capacity);
 		for (i in 0...capacity)
 			sleepGroup[i] = -1;
 	}
@@ -86,7 +86,7 @@ class IslandManager {
 		integrationMask[body] = type == BodyType.Static ? 0.0 : 1.0;
 	}
 
-	public function wakeBody(body:Int, bodyType:NativeArray<Int>, bodyCount:Int):Void {
+	public function wakeBody(body:Int, bodyType:Int32Buffer, bodyCount:Int):Void {
 		if (body < 0 || body >= bodyCount || bodyType[body] != BodyType.Dynamic)
 			return;
 		var group = sleepGroup[body];
@@ -108,7 +108,7 @@ class IslandManager {
 		}
 	}
 
-	public function build(contacts:ContactManifoldPool, bodyType:NativeArray<Int>, bodyCount:Int, joints:JointPool = null):Void {
+	public function build(contacts:ContactManifoldPool, bodyType:Int32Buffer, bodyCount:Int, joints:JointPool = null):Void {
 		islandCount = 0;
 		for (body in 0...bodyCount)
 			parent[body] = body;
@@ -153,9 +153,9 @@ class IslandManager {
 			parent[ra] = rb;
 	}
 
-	public function updateSleep(dt:Single, bodyType:NativeArray<Int>, bodyCount:Int, velX:FloatBuffer, velY:FloatBuffer, velZ:FloatBuffer,
-			angVelX:FloatBuffer, angVelY:FloatBuffer, angVelZ:FloatBuffer, posX:FloatBuffer, posY:FloatBuffer, posZ:FloatBuffer, rotX:FloatBuffer,
-			rotY:FloatBuffer, rotZ:FloatBuffer, rotW:FloatBuffer):Void {
+	public function updateSleep(dt:Single, bodyType:Int32Buffer, bodyCount:Int, velX:Float32Buffer, velY:Float32Buffer, velZ:Float32Buffer,
+			angVelX:Float32Buffer, angVelY:Float32Buffer, angVelZ:Float32Buffer, posX:Float32Buffer, posY:Float32Buffer, posZ:Float32Buffer, rotX:Float32Buffer,
+			rotY:Float32Buffer, rotZ:Float32Buffer, rotW:Float32Buffer):Void {
 		for (body in 0...bodyCount) {
 			eligible[body] = 1;
 			minimumTime[body] = 1.0e9;

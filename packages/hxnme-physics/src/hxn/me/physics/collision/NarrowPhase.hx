@@ -1,6 +1,8 @@
 package hxn.me.physics.collision;
 
-import hl.NativeArray;
+import hxn.Float32Buffer;
+import hxn.Float64Buffer;
+import hxn.Int32Buffer;
 import hxn.me.math.Vec3;
 import hxn.me.math.Quat;
 import hxn.me.physics.geom.VertexPool;
@@ -19,34 +21,34 @@ class ContactManifoldPool {
 	/** Contacts the storage holds now. It doubles toward `maxContacts` when a step needs more. */
 	public var capacity(default, null):Int = 0;
 
-	public var bodyA:NativeArray<Int>;
-	public var bodyB:NativeArray<Int>;
-	public var shapeA:NativeArray<Int>;
-	public var shapeB:NativeArray<Int>;
-	public var featureId:NativeArray<Int>;
-	public var normalX:NativeArray<Single>;
-	public var normalY:NativeArray<Single>;
-	public var normalZ:NativeArray<Single>;
-	public var pointX:NativeArray<Single>;
-	public var pointY:NativeArray<Single>;
-	public var pointZ:NativeArray<Single>;
-	public var penetration:NativeArray<Single>;
-	public var normalImpulse:NativeArray<Single>;
-	public var tangentImpulse1:NativeArray<Single>;
-	public var tangentImpulse2:NativeArray<Single>;
+	public var bodyA:Int32Buffer;
+	public var bodyB:Int32Buffer;
+	public var shapeA:Int32Buffer;
+	public var shapeB:Int32Buffer;
+	public var featureId:Int32Buffer;
+	public var normalX:Float32Buffer;
+	public var normalY:Float32Buffer;
+	public var normalZ:Float32Buffer;
+	public var pointX:Float32Buffer;
+	public var pointY:Float32Buffer;
+	public var pointZ:Float32Buffer;
+	public var penetration:Float32Buffer;
+	public var normalImpulse:Float32Buffer;
+	public var tangentImpulse1:Float32Buffer;
+	public var tangentImpulse2:Float32Buffer;
 
 	var previousCount:Int = 0;
-	var previousShapeA:NativeArray<Int>;
-	var previousShapeB:NativeArray<Int>;
-	var previousFeatureId:NativeArray<Int>;
-	var previousNormalX:NativeArray<Single>;
-	var previousNormalY:NativeArray<Single>;
-	var previousNormalZ:NativeArray<Single>;
-	var previousNormalImpulse:NativeArray<Single>;
-	var previousTangentImpulse1:NativeArray<Single>;
-	var previousTangentImpulse2:NativeArray<Single>;
-	var hashStamp:NativeArray<Int>;
-	var hashIndex:NativeArray<Int>;
+	var previousShapeA:Int32Buffer;
+	var previousShapeB:Int32Buffer;
+	var previousFeatureId:Int32Buffer;
+	var previousNormalX:Float32Buffer;
+	var previousNormalY:Float32Buffer;
+	var previousNormalZ:Float32Buffer;
+	var previousNormalImpulse:Float32Buffer;
+	var previousTangentImpulse1:Float32Buffer;
+	var previousTangentImpulse2:Float32Buffer;
+	var hashStamp:Int32Buffer;
+	var hashIndex:Int32Buffer;
 	var hashMask:Int;
 	var epoch:Int = 1;
 
@@ -58,14 +60,14 @@ class ContactManifoldPool {
 
 	function allocate(cap:Int):Void {
 		var old = capacity, keep = count, keepPrevious = previousCount;
-		inline function ints(a:NativeArray<Int>, n:Int):NativeArray<Int> {
-			var b = new NativeArray<Int>(cap);
+		inline function ints(a:Int32Buffer, n:Int):Int32Buffer {
+			var b = new Int32Buffer(cap);
 			if (a != null)
 				b.blit(0, a, 0, n);
 			return b;
 		}
-		inline function singles(a:NativeArray<Single>, n:Int):NativeArray<Single> {
-			var b = new NativeArray<Single>(cap);
+		inline function singles(a:Float32Buffer, n:Int):Float32Buffer {
+			var b = new Float32Buffer(cap);
 			if (a != null)
 				b.blit(0, a, 0, n);
 			return b;
@@ -101,8 +103,8 @@ class ContactManifoldPool {
 		if (hashStamp != null && hashCapacity == hashStamp.length)
 			return;
 		hashMask = hashCapacity - 1;
-		hashStamp = new NativeArray<Int>(hashCapacity);
-		hashIndex = new NativeArray<Int>(hashCapacity);
+		hashStamp = new Int32Buffer(hashCapacity);
+		hashIndex = new Int32Buffer(hashCapacity);
 		for (i in 0...hashCapacity)
 			hashStamp[i] = 0;
 		// The last step's contacts are looked up by the new table too.
@@ -288,36 +290,36 @@ class ContactManifoldPool {
 // A and B support points that produced it so witness points can be rebuilt.
 private class GjkSimplex {
 	public var n:Int = 0;
-	public var wx:NativeArray<Float>;
-	public var wy:NativeArray<Float>;
-	public var wz:NativeArray<Float>;
-	public var ax:NativeArray<Float>;
-	public var ay:NativeArray<Float>;
-	public var az:NativeArray<Float>;
-	public var bx:NativeArray<Float>;
-	public var by:NativeArray<Float>;
-	public var bz:NativeArray<Float>;
+	public var wx:Float64Buffer;
+	public var wy:Float64Buffer;
+	public var wz:Float64Buffer;
+	public var ax:Float64Buffer;
+	public var ay:Float64Buffer;
+	public var az:Float64Buffer;
+	public var bx:Float64Buffer;
+	public var by:Float64Buffer;
+	public var bz:Float64Buffer;
 	// Barycentric weights of the closest point, indexed like the vertices.
-	public var lam:NativeArray<Float>;
+	public var lam:Float64Buffer;
 	// Scratch weights for tetrahedron faces and degenerate-triangle edges.
-	public var faceLam:NativeArray<Float>;
-	public var edgeLam:NativeArray<Float>;
-	public var bestLam:NativeArray<Float>;
+	public var faceLam:Float64Buffer;
+	public var edgeLam:Float64Buffer;
+	public var bestLam:Float64Buffer;
 
 	public function new() {
-		wx = new NativeArray<Float>(4);
-		wy = new NativeArray<Float>(4);
-		wz = new NativeArray<Float>(4);
-		ax = new NativeArray<Float>(4);
-		ay = new NativeArray<Float>(4);
-		az = new NativeArray<Float>(4);
-		bx = new NativeArray<Float>(4);
-		by = new NativeArray<Float>(4);
-		bz = new NativeArray<Float>(4);
-		lam = new NativeArray<Float>(4);
-		faceLam = new NativeArray<Float>(4);
-		edgeLam = new NativeArray<Float>(4);
-		bestLam = new NativeArray<Float>(4);
+		wx = new Float64Buffer(4);
+		wy = new Float64Buffer(4);
+		wz = new Float64Buffer(4);
+		ax = new Float64Buffer(4);
+		ay = new Float64Buffer(4);
+		az = new Float64Buffer(4);
+		bx = new Float64Buffer(4);
+		by = new Float64Buffer(4);
+		bz = new Float64Buffer(4);
+		lam = new Float64Buffer(4);
+		faceLam = new Float64Buffer(4);
+		edgeLam = new Float64Buffer(4);
+		bestLam = new Float64Buffer(4);
 	}
 
 	public inline function set(i:Int, a:Vec3, b:Vec3):Void {
@@ -506,14 +508,14 @@ class NarrowPhase {
 		ws.supportZ = pz + bz + qw * uz + (qx * uy - qy * ux);
 	}
 
-	static inline function clear(l:NativeArray<Float>):Void {
+	static inline function clear(l:Float64Buffer):Void {
 		l[0] = 0.0;
 		l[1] = 0.0;
 		l[2] = 0.0;
 		l[3] = 0.0;
 	}
 
-	static inline function copyLam(dst:NativeArray<Float>, src:NativeArray<Float>):Void {
+	static inline function copyLam(dst:Float64Buffer, src:Float64Buffer):Void {
 		dst[0] = src[0];
 		dst[1] = src[1];
 		dst[2] = src[2];
@@ -521,7 +523,7 @@ class NarrowPhase {
 	}
 
 	// Squared length of the point sum(l[i] * W[i]).
-	static function weightedSq(s:GjkSimplex, l:NativeArray<Float>):Float {
+	static function weightedSq(s:GjkSimplex, l:Float64Buffer):Float {
 		var x = 0.0, y = 0.0, z = 0.0;
 		for (i in 0...s.n) {
 			x += l[i] * s.wx[i];
@@ -532,7 +534,7 @@ class NarrowPhase {
 	}
 
 	// Closest point to the origin on segment W[i0]W[i1].
-	static function segment(s:GjkSimplex, i0:Int, i1:Int, l:NativeArray<Float>):Void {
+	static function segment(s:GjkSimplex, i0:Int, i1:Int, l:Float64Buffer):Void {
 		clear(l);
 		var px = s.wx[i0], py = s.wy[i0], pz = s.wz[i0];
 		var ex = s.wx[i1] - px, ey = s.wy[i1] - py, ez = s.wz[i1] - pz;
@@ -553,7 +555,7 @@ class NarrowPhase {
 	}
 
 	// Closest point to the origin on triangle W[i0]W[i1]W[i2], by Voronoi region.
-	static function triangle(s:GjkSimplex, i0:Int, i1:Int, i2:Int, l:NativeArray<Float>):Void {
+	static function triangle(s:GjkSimplex, i0:Int, i1:Int, i2:Int, l:Float64Buffer):Void {
 		clear(l);
 		var ax = s.wx[i0], ay = s.wy[i0], az = s.wz[i0];
 		var bx = s.wx[i1], by = s.wy[i1], bz = s.wz[i1];
@@ -662,7 +664,7 @@ class NarrowPhase {
 
 	// Closest point to the origin on tetrahedron W[0..3]. A face is searched when the
 	// origin lies on the far side of it from the opposite vertex; if none, the origin is inside.
-	static function tetrahedron(s:GjkSimplex, l:NativeArray<Float>):Void {
+	static function tetrahedron(s:GjkSimplex, l:Float64Buffer):Void {
 		var vol = det(s, 0, 1, 2, 3);
 		var e1 = (s.wx[1]
 			- s.wx[0]) * (s.wx[1] - s.wx[0])

@@ -1,6 +1,7 @@
 package hxn.me.physics.collision;
 
-import hl.NativeArray;
+import hxn.Float64Buffer;
+import hxn.Int32Buffer;
 
 class BroadPhase {
 	public static inline var NULL_NODE:Int = -1;
@@ -11,18 +12,18 @@ class BroadPhase {
 	public var freeList:Int = 0;
 
 	// Flat SoA Node Buffers
-	public var aabb:NativeArray<Float>; // stride 6: minX, minY, minZ, maxX, maxY, maxZ
-	public var parent:NativeArray<Int>;
-	public var child1:NativeArray<Int>;
-	public var child2:NativeArray<Int>;
-	public var height:NativeArray<Int>;
-	public var userData:NativeArray<Int>; // Stores ShapeId
+	public var aabb:Float64Buffer; // stride 6: minX, minY, minZ, maxX, maxY, maxZ
+	public var parent:Int32Buffer;
+	public var child1:Int32Buffer;
+	public var child2:Int32Buffer;
+	public var height:Int32Buffer;
+	public var userData:Int32Buffer; // Stores ShapeId
 
 	// Flat stack for allocation-free tree queries
-	var queryStack:NativeArray<Int>;
+	var queryStack:Int32Buffer;
 
 	// Output pairs buffer: stride 2 (shapeA, shapeB)
-	public var pairs:NativeArray<Int>;
+	public var pairs:Int32Buffer;
 	public var pairCount:Int = 0;
 	public var maxPairs:Int;
 
@@ -30,14 +31,14 @@ class BroadPhase {
 		this.nodeCapacity = capacity;
 		this.maxPairs = maxPairs;
 
-		aabb = new NativeArray<Float>(capacity * 6);
-		parent = new NativeArray<Int>(capacity);
-		child1 = new NativeArray<Int>(capacity);
-		child2 = new NativeArray<Int>(capacity);
-		height = new NativeArray<Int>(capacity);
-		userData = new NativeArray<Int>(capacity);
-		queryStack = new NativeArray<Int>(capacity);
-		pairs = new NativeArray<Int>(Std.int(Math.min(maxPairs, 4096)) * 2);
+		aabb = new Float64Buffer(capacity * 6);
+		parent = new Int32Buffer(capacity);
+		child1 = new Int32Buffer(capacity);
+		child2 = new Int32Buffer(capacity);
+		height = new Int32Buffer(capacity);
+		userData = new Int32Buffer(capacity);
+		queryStack = new Int32Buffer(capacity);
+		pairs = new Int32Buffer(Std.int(Math.min(maxPairs, 4096)) * 2);
 
 		for (i in 0...capacity - 1) {
 			parent[i] = i + 1;
@@ -55,7 +56,7 @@ class BroadPhase {
 		if (capacity <= nodeCapacity)
 			return;
 		var old = nodeCapacity;
-		var wide = new NativeArray<Float>(capacity * 6);
+		var wide = new Float64Buffer(capacity * 6);
 		wide.blit(0, aabb, 0, old * 6);
 		aabb = wide;
 		parent = hxn.me.math.Grow.ints(parent, old, capacity);
@@ -179,14 +180,14 @@ class BroadPhase {
 			&& (aabb[a + 2] <= aabb[b + 5] && aabb[a + 5] >= aabb[b + 2]);
 	}
 
-	public static inline function filtersAllow(a:Int, b:Int, categoryBits:NativeArray<Int>, maskBits:NativeArray<Int>, groupIndex:NativeArray<Int>):Bool {
+	public static inline function filtersAllow(a:Int, b:Int, categoryBits:Int32Buffer, maskBits:Int32Buffer, groupIndex:Int32Buffer):Bool {
 		var group = groupIndex[a];
 		return group != 0
 			&& group == groupIndex[b] ? group > 0 : (categoryBits[a] & maskBits[b]) != 0 && (categoryBits[b] & maskBits[a]) != 0;
 	}
 
 	/** Writes the shapes whose boxes overlap proxy `proxy`'s box into `out`, including its own; returns the count. */
-	public function overlapping(proxy:Int, out:hl.NativeArray<Int>):Int {
+	public function overlapping(proxy:Int, out:hxn.Int32Buffer):Int {
 		if (root == NULL_NODE)
 			return 0;
 		var count = 0;
@@ -209,7 +210,7 @@ class BroadPhase {
 	}
 
 	/** Writes the shapes whose boxes overlap the given box into `out`; returns the count. */
-	public function overlappingBox(minX:Float, minY:Float, minZ:Float, maxX:Float, maxY:Float, maxZ:Float, out:hl.NativeArray<Int>):Int {
+	public function overlappingBox(minX:Float, minY:Float, minZ:Float, maxX:Float, maxY:Float, maxZ:Float, out:hxn.Int32Buffer):Int {
 		if (root == NULL_NODE)
 			return 0;
 		var count = 0;
@@ -458,9 +459,9 @@ class BroadPhase {
 	}
 
 	// Finds all overlapping shape pairs in the shared 2D/3D world
-	public function findPairs(shapeCount:Int, shapeProxy:NativeArray<Int>, shapeBody:NativeArray<Int>, bodyType:NativeArray<Int>,
-			categoryBits:NativeArray<Int>, maskBits:NativeArray<Int>, groupIndex:NativeArray<Int>, isAwake:NativeArray<Int> = null,
-			activeIds:NativeArray<Int> = null):Void {
+	public function findPairs(shapeCount:Int, shapeProxy:Int32Buffer, shapeBody:Int32Buffer, bodyType:Int32Buffer,
+			categoryBits:Int32Buffer, maskBits:Int32Buffer, groupIndex:Int32Buffer, isAwake:Int32Buffer = null,
+			activeIds:Int32Buffer = null):Void {
 		pairCount = 0;
 		if (root == NULL_NODE)
 			return;
@@ -513,7 +514,7 @@ class BroadPhase {
 
 	/** Doubles the pair storage toward `maxPairs`, keeping the pairs found so far. */
 	function growPairs():Void {
-		var bigger = new NativeArray<Int>(Std.int(Math.min(maxPairs * 2.0, pairs.length * 2.0)));
+		var bigger = new Int32Buffer(Std.int(Math.min(maxPairs * 2.0, pairs.length * 2.0)));
 		bigger.blit(0, pairs, 0, pairCount * 2);
 		pairs = bigger;
 	}

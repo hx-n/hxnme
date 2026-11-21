@@ -4,8 +4,8 @@ import hxn.me.physics.diagnostics.Diagnostics;
 import hxn.me.physics.geom.ConvexHull;
 import hxn.me.physics.geom.MassProperties;
 import hxn.me.physics.geom.ShapeDef.ShapeKind;
-import hxn.me.math.Simd.FloatBuffer;
-import hxn.me.math.Simd.IntBuffer;
+import hxn.Float32Buffer;
+import hxn.Int32Buffer;
 import hxn.me.math.Vec3;
 import hxn.me.physics.core.Handles.BodyId;
 import hxn.me.physics.core.Handles.BodyType;
@@ -95,8 +95,8 @@ class Water {
 	var builtFor = -1;
 
 	// Per body slot: the share of its volume under water at the last `apply`.
-	final fraction:FloatBuffer;
-	final wasIn:IntBuffer;
+	final fraction:Float32Buffer;
+	final wasIn:Int32Buffer;
 
 	/** Bodies that came into the water, and that left it, at the last `apply`. */
 	public final entered:Array<BodyId> = [];
@@ -107,13 +107,13 @@ class Water {
 	public var touching(default, null) = 0;
 
 	// Scratch for a shape's vertices in the world and their heights above the cutting plane.
-	var wx:FloatBuffer;
-	var wy:FloatBuffer;
-	var wz:FloatBuffer;
-	var above:FloatBuffer;
+	var wx:Float32Buffer;
+	var wy:Float32Buffer;
+	var wz:Float32Buffer;
+	var above:Float32Buffer;
 	var scratch = 64;
 	// Each cut shape of the body being applied: volume, centre and shape slot, five numbers each.
-	var cuts:FloatBuffer;
+	var cuts:Float32Buffer;
 	var cutRoom = 16;
 	// The body being pressed on, its step, and its velocity's lead to the step's average; the last placed shape's centre.
 	var pressed = 0;
@@ -124,18 +124,18 @@ class Water {
 	var centreX = 0.0;
 	var centreY = 0.0;
 	// The drag on the body being applied, gathered by `row`: its response to the body's motion (six by six), its push, and room to solve.
-	final dragMatrix = new FloatBuffer(36);
-	final dragImpulse = new FloatBuffer(6);
-	final dragSystem = new FloatBuffer(42);
+	final dragMatrix = new Float32Buffer(36);
+	final dragImpulse = new Float32Buffer(6);
+	final dragSystem = new Float32Buffer(42);
 	// A face's part under water as a convex polygon of at most five corners, with a value at each to clip by; and room to clip into.
-	final polyX = new FloatBuffer(8);
-	final polyY = new FloatBuffer(8);
-	final polyZ = new FloatBuffer(8);
-	final polyD = new FloatBuffer(8);
-	final clipX = new FloatBuffer(8);
-	final clipY = new FloatBuffer(8);
-	final clipZ = new FloatBuffer(8);
-	final clipD = new FloatBuffer(8);
+	final polyX = new Float32Buffer(8);
+	final polyY = new Float32Buffer(8);
+	final polyZ = new Float32Buffer(8);
+	final polyD = new Float32Buffer(8);
+	final clipX = new Float32Buffer(8);
+	final clipY = new Float32Buffer(8);
+	final clipZ = new Float32Buffer(8);
+	final clipD = new Float32Buffer(8);
 	var polyCount = 0;
 	// Results of a cut: volume and the volume-weighted centre.
 	var cutV = 0.0;
@@ -161,13 +161,13 @@ class Water {
 		minZ = b == null ? Math.NEGATIVE_INFINITY : b[2];
 		maxZ = b == null ? Math.POSITIVE_INFINITY : b[3];
 		var bodies = world.bodyType.length;
-		fraction = new FloatBuffer(bodies);
-		wasIn = new IntBuffer(bodies);
-		wx = new FloatBuffer(64);
-		wy = new FloatBuffer(64);
-		wz = new FloatBuffer(64);
-		above = new FloatBuffer(64);
-		cuts = new FloatBuffer(cutRoom * 5);
+		fraction = new Float32Buffer(bodies);
+		wasIn = new Int32Buffer(bodies);
+		wx = new Float32Buffer(64);
+		wy = new Float32Buffer(64);
+		wz = new Float32Buffer(64);
+		above = new Float32Buffer(64);
+		cuts = new Float32Buffer(cutRoom * 5);
 	}
 
 	/**
@@ -254,7 +254,7 @@ class Water {
 						cut(solid, b, false);
 						if (cutV > 0.0) {
 							if (pieces == cutRoom) {
-								var grown = new FloatBuffer(cutRoom * 10);
+								var grown = new Float32Buffer(cutRoom * 10);
 								for (i in 0...cutRoom * 5)
 									grown[i] = cuts[i];
 								cuts = grown;
@@ -722,10 +722,10 @@ class Water {
 		var n = solid.count;
 		if (n > scratch) {
 			scratch = n;
-			wx = new FloatBuffer(n);
-			wy = new FloatBuffer(n);
-			wz = new FloatBuffer(n);
-			above = new FloatBuffer(n);
+			wx = new Float32Buffer(n);
+			wy = new Float32Buffer(n);
+			wz = new Float32Buffer(n);
+			above = new Float32Buffer(n);
 		}
 		var v = solid.points;
 		for (i in 0...n) {
@@ -791,7 +791,7 @@ class Water {
 	}
 
 	// Points where edges meet the plane, three numbers each, for the pieces of a cut tetrahedron.
-	final crossing = new FloatBuffer(12);
+	final crossing = new Float32Buffer(12);
 
 	/** Where the edge from scratch point `i` to `j` meets the plane, into crossing point `slot`. */
 	inline function meet(i:Int, j:Int, slot:Int):Void {
@@ -910,12 +910,12 @@ private class Solid {
 	public var planar = false;
 
 	/** Points, three numbers each; a solid's last point is its centre. */
-	public var points:FloatBuffer;
+	public var points:Float32Buffer;
 
 	public var count = 0;
 
 	/** Triangles, as three point indices each: a planar shape's pieces, or a solid's surface. */
-	public var cells:IntBuffer;
+	public var cells:Int32Buffer;
 
 	public var cellCount = 0;
 	public var volume = 0.0;
@@ -993,7 +993,7 @@ private class Solid {
 			cx /= 3 * twice;
 			cy /= 3 * twice;
 			var scale = Math.sqrt(exact / (Math.abs(twice) / 2));
-			solid.points = new FloatBuffer(n * 3);
+			solid.points = new Float32Buffer(n * 3);
 			for (i in 0...n) {
 				solid.points[i * 3] = cx + (outline[i * 2] - cx) * scale;
 				solid.points[i * 3 + 1] = cy + (outline[i * 2 + 1] - cy) * scale;
@@ -1002,7 +1002,7 @@ private class Solid {
 			}
 			solid.count = n;
 			solid.cellCount = n - 2;
-			solid.cells = new IntBuffer(solid.cellCount * 3);
+			solid.cells = new Int32Buffer(solid.cellCount * 3);
 			for (k in 0...n - 2) {
 				solid.cells[k * 3] = 0;
 				solid.cells[k * 3 + 1] = k + 1;
@@ -1072,7 +1072,7 @@ private class Solid {
 			return solid;
 		var cx = sx / hv, cy = sy / hv, cz = sz / hv, scale = Math.pow(exact / Math.abs(hv), 1 / 3);
 		var n = cloud.length;
-		solid.points = new FloatBuffer((n + 1) * 3);
+		solid.points = new Float32Buffer((n + 1) * 3);
 		for (i in 0...n) {
 			var p = cloud[i];
 			solid.points[i * 3] = cx + (p.x - cx) * scale;
@@ -1085,7 +1085,7 @@ private class Solid {
 		solid.points[n * 3 + 2] = cz;
 		solid.count = n + 1;
 		solid.cellCount = Std.int(faces.length / 3);
-		solid.cells = new IntBuffer(faces.length);
+		solid.cells = new Int32Buffer(faces.length);
 		for (i in 0...faces.length)
 			solid.cells[i] = faces[i];
 		solid.volume = exact;

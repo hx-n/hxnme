@@ -7,8 +7,8 @@ import hxn.me.physics.island.ConstraintGraph;
 import hxn.me.physics.island.IslandPartition;
 import hxn.me.physics.island.IslandPartition.IslandTask;
 import hl.Bytes;
-import hl.NativeArray;
-#if ash_simd
+import hxn.Int32Buffer;
+#if (ash_simd && hl)
 import hxn.me.physics.solver.SimdSolver4;
 #end
 
@@ -52,19 +52,19 @@ class SoftStepSolver {
 	public var graph:ConstraintGraph;
 	public var rowCount(default, null):Int = 0;
 
-	#if ash_simd
+	#if (ash_simd && hl)
 	var simd:SimdSolver4;
 	var workerSimd:Array<SimdSolver4> = [];
 	#end
 	var rows:Bytes;
 	var stride:Int;
-	var rowContact:NativeArray<Int>;
-	var rowBodyA:NativeArray<Int>;
-	var rowBodyB:NativeArray<Int>;
-	var rowWriteA:NativeArray<Int>;
-	var rowWriteB:NativeArray<Int>;
+	var rowContact:Int32Buffer;
+	var rowBodyA:Int32Buffer;
+	var rowBodyB:Int32Buffer;
+	var rowWriteA:Int32Buffer;
+	var rowWriteB:Int32Buffer;
 	// Rows without normal effective mass take the scalar path, which leaves them untouched.
-	var rowSkip:NativeArray<Int>;
+	var rowSkip:Int32Buffer;
 	// Lane constants for the SIMD kernel: -1, 0, 1.
 	var lanes:Bytes;
 	var partition:IslandPartition;
@@ -74,7 +74,7 @@ class SoftStepSolver {
 	public function new(world:World, capacity:Int) {
 		this.world = world;
 		graph = new ConstraintGraph(world.bodyCapacity, capacity);
-		#if ash_simd
+		#if (ash_simd && hl)
 		simd = new SimdSolver4();
 		#end
 		allocate(capacity < 4 ? 4 : capacity);
@@ -91,12 +91,12 @@ class SoftStepSolver {
 		var bytes = FIELDS * ((((cap + 7) & ~7) + 4) << 2);
 		rows = new Bytes(bytes);
 		rows.fill(0, bytes, 0);
-		rowContact = new NativeArray<Int>(cap);
-		rowBodyA = new NativeArray<Int>(cap);
-		rowBodyB = new NativeArray<Int>(cap);
-		rowWriteA = new NativeArray<Int>(cap);
-		rowWriteB = new NativeArray<Int>(cap);
-		rowSkip = new NativeArray<Int>(cap);
+		rowContact = new Int32Buffer(cap);
+		rowBodyA = new Int32Buffer(cap);
+		rowBodyB = new Int32Buffer(cap);
+		rowWriteA = new Int32Buffer(cap);
+		rowWriteB = new Int32Buffer(cap);
+		rowSkip = new Int32Buffer(cap);
 	}
 
 	/** Colors the current contacts; island planning reads the colors before `prepare`. */
@@ -384,7 +384,7 @@ class SoftStepSolver {
 	}
 
 	/** Restarts loop contacts from the restored physical velocity, without correction impulses. */
-	public function clearCorrectionImpulses(mask:NativeArray<Int>):Void {
+	public function clearCorrectionImpulses(mask:Int32Buffer):Void {
 		for (slot in 0...rowCount)
 			if (mask[rowBodyA[slot]] != 0 || mask[rowBodyB[slot]] != 0) {
 				put(rows, stride, IMPULSE_N, slot, 0.0);
@@ -421,7 +421,7 @@ class SoftStepSolver {
 	}
 
 	public function configureIslandWorkers(count:Int):Void {
-		#if ash_simd
+		#if (ash_simd && hl)
 		while (workerSimd.length < count)
 			workerSimd.push(new SimdSolver4());
 		#end

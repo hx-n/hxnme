@@ -1,7 +1,8 @@
 package hxn.me.physics.core;
 
-import hxn.me.math.Simd.FloatBuffer;
-import hl.NativeArray;
+import hxn.Float32Buffer;
+import hxn.Float64Buffer;
+import hxn.Int32Buffer;
 
 /**
  * Everything about a world that decides how it steps next: bodies, shapes'
@@ -51,27 +52,27 @@ class WorldSnapshot {
 	var jointCapacity = 0;
 	// One pool per element type. The k-th buffer of a type sits at offset[k] in its pool and holds length[k]
 	// entries; saving lays the buffers out in visiting order, so a later save of the same world reuses the space.
-	var scalars = new NativeArray<Float>(64);
+	var scalars = new Float64Buffer(64);
 	var scalarAt = 0;
-	var intPool = new NativeArray<Int>(0);
-	var intOffset = new NativeArray<Int>(16);
-	var intLength = new NativeArray<Int>(16);
+	var intPool = new Int32Buffer(0);
+	var intOffset = new Int32Buffer(16);
+	var intLength = new Int32Buffer(16);
 	var intUsed = 0;
 	var intAt = 0;
-	var singlePool = new NativeArray<Single>(0);
-	var singleOffset = new NativeArray<Int>(16);
-	var singleLength = new NativeArray<Int>(16);
+	var singlePool = new Float32Buffer(0);
+	var singleOffset = new Int32Buffer(16);
+	var singleLength = new Int32Buffer(16);
 	var singleUsed = 0;
 	var singleAt = 0;
-	var doublePool = new NativeArray<Float>(0);
-	var doubleOffset = new NativeArray<Int>(16);
-	var doubleLength = new NativeArray<Int>(16);
+	var doublePool = new Float64Buffer(0);
+	var doubleOffset = new Int32Buffer(16);
+	var doubleLength = new Int32Buffer(16);
 	var doubleUsed = 0;
 	var doubleAt = 0;
-	var floatPool = new hl.Bytes(4);
+	var floatPool = new Float32Buffer(1);
 	var floatCapacity = 1;
-	var floatOffset = new NativeArray<Int>(16);
-	var floatLength = new NativeArray<Int>(16);
+	var floatOffset = new Int32Buffer(16);
+	var floatLength = new Int32Buffer(16);
 	var floatUsed = 0;
 	var floatAt = 0;
 
@@ -145,7 +146,7 @@ class WorldSnapshot {
 	inline function span(live:Int, restored:Int):Int
 		return restoring && live > restored ? live : restored;
 
-	function ints(a:NativeArray<Int>, n:Int):Void {
+	function ints(a:Int32Buffer, n:Int):Void {
 		var i = intAt++;
 		if (restoring) {
 			var m = intLength[i];
@@ -168,7 +169,7 @@ class WorldSnapshot {
 		intUsed += n;
 	}
 
-	function singles(a:NativeArray<Single>, n:Int):Void {
+	function singles(a:Float32Buffer, n:Int):Void {
 		var i = singleAt++;
 		if (restoring) {
 			var m = singleLength[i];
@@ -183,7 +184,7 @@ class WorldSnapshot {
 			singleLength = grownInts(singleLength, i + 1);
 		}
 		if (singleUsed + n > singlePool.length) {
-			var grown = new NativeArray<Single>(capacityFor(singlePool.length, singleUsed + n));
+			var grown = new Float32Buffer(capacityFor(singlePool.length, singleUsed + n));
 			if (singleUsed > 0)
 				grown.blit(0, singlePool, 0, singleUsed);
 			singlePool = grown;
@@ -195,7 +196,7 @@ class WorldSnapshot {
 		singleUsed += n;
 	}
 
-	function doubles(a:NativeArray<Float>, n:Int):Void {
+	function doubles(a:Float64Buffer, n:Int):Void {
 		var i = doubleAt++;
 		if (restoring) {
 			var m = doubleLength[i];
@@ -218,15 +219,14 @@ class WorldSnapshot {
 		doubleUsed += n;
 	}
 
-	function floats(b:FloatBuffer, n:Int):Void {
+	function floats(b:Float32Buffer, n:Int):Void {
 		var i = floatAt++;
-		var bytes:hl.Bytes = b;
 		if (restoring) {
 			var m = floatLength[i];
 			if (m > 0)
-				bytes.blit(0, floatPool, floatOffset[i] << 2, m << 2);
+				b.blit(0, floatPool, floatOffset[i], m);
 			if (n > m)
-				bytes.fill(m << 2, (n - m) << 2, 0);
+				b.fill(0, m, n - m);
 			return;
 		}
 		if (i == floatOffset.length) {
@@ -235,13 +235,13 @@ class WorldSnapshot {
 		}
 		if (floatUsed + n > floatCapacity) {
 			floatCapacity = capacityFor(floatCapacity, floatUsed + n);
-			var grown = new hl.Bytes(floatCapacity << 2);
+			var grown = new Float32Buffer(floatCapacity);
 			if (floatUsed > 0)
-				grown.blit(0, floatPool, 0, floatUsed << 2);
+				grown.blit(0, floatPool, 0, floatUsed);
 			floatPool = grown;
 		}
 		if (n > 0)
-			floatPool.blit(floatUsed << 2, bytes, 0, n << 2);
+			floatPool.blit(floatUsed, b, 0, n);
 		floatOffset[i] = floatUsed;
 		floatLength[i] = n;
 		floatUsed += n;
@@ -252,24 +252,24 @@ class WorldSnapshot {
 		return c > needed ? c : needed;
 	}
 
-	static function grownInts(a:NativeArray<Int>, needed:Int):NativeArray<Int> {
-		var grown = new NativeArray<Int>(capacityFor(a.length, needed));
+	static function grownInts(a:Int32Buffer, needed:Int):Int32Buffer {
+		var grown = new Int32Buffer(capacityFor(a.length, needed));
 		if (a.length > 0)
 			grown.blit(0, a, 0, a.length);
 		return grown;
 	}
 
-	static function grownFloats(a:NativeArray<Float>, needed:Int):NativeArray<Float> {
-		var grown = new NativeArray<Float>(capacityFor(a.length, needed));
+	static function grownFloats(a:Float64Buffer, needed:Int):Float64Buffer {
+		var grown = new Float64Buffer(capacityFor(a.length, needed));
 		if (a.length > 0)
 			grown.blit(0, a, 0, a.length);
 		return grown;
 	}
 
 	/** A growable int array: restoring returns a larger array when the saved one does not fit. */
-	function growingInts(a:NativeArray<Int>, n:Int):NativeArray<Int> {
+	function growingInts(a:Int32Buffer, n:Int):Int32Buffer {
 		if (restoring && intLength[intAt] > a.length) {
-			var grown = new NativeArray<Int>(intLength[intAt]);
+			var grown = new Int32Buffer(intLength[intAt]);
 			grown.blit(0, a, 0, a.length);
 			a = grown;
 		}

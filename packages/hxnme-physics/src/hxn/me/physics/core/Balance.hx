@@ -1,8 +1,8 @@
 package hxn.me.physics.core;
 
 import hxn.me.physics.diagnostics.Diagnostics;
-import hxn.me.math.Simd.FloatBuffer;
-import hxn.me.math.Simd.IntBuffer;
+import hxn.Float32Buffer;
+import hxn.Int32Buffer;
 import hxn.me.math.Vec3;
 import hxn.me.physics.core.Handles;
 
@@ -63,37 +63,37 @@ class Balance {
 	/** Corners of the support polygon (two ends of the interval when planar) in world space, anticlockwise seen from above. */
 	public var supportCount(default, null):Int = 0;
 
-	public var supportX(default, null):FloatBuffer;
-	public var supportY(default, null):FloatBuffer;
-	public var supportZ(default, null):FloatBuffer;
+	public var supportX(default, null):Float32Buffer;
+	public var supportY(default, null):Float32Buffer;
+	public var supportZ(default, null):Float32Buffer;
 
 	var bodies:Array<BodyId>;
-	var slots:IntBuffer;
-	var mass:FloatBuffer;
-	var centroidX:FloatBuffer;
-	var centroidY:FloatBuffer;
-	var centroidZ:FloatBuffer;
+	var slots:Int32Buffer;
+	var mass:Float32Buffer;
+	var centroidX:Float32Buffer;
+	var centroidY:Float32Buffer;
+	var centroidZ:Float32Buffer;
 	// Index + 1 of each body of the set by slot, 0 for others, to tell the set's contacts from others.
-	var member:IntBuffer;
+	var member:Int32Buffer;
 
 	/** The bodies `member` has room for: bodies made after the world grew are not in the set. */
 	var memberRoom = 0;
 	// Support points last seen under each body (body index, world position), kept for bodies that sleep, since sleeping bodies keep no contacts.
-	var keptBody:IntBuffer;
-	var keptX:FloatBuffer;
-	var keptY:FloatBuffer;
-	var keptZ:FloatBuffer;
+	var keptBody:Int32Buffer;
+	var keptX:Float32Buffer;
+	var keptY:Float32Buffer;
+	var keptZ:Float32Buffer;
 	var keptCount = 0;
-	var newBody:IntBuffer;
-	var newX:FloatBuffer;
-	var newY:FloatBuffer;
-	var newZ:FloatBuffer;
+	var newBody:Int32Buffer;
+	var newX:Float32Buffer;
+	var newY:Float32Buffer;
+	var newZ:Float32Buffer;
 	// Whether each body has been seen awake, so its support is known.
-	var seen:IntBuffer;
+	var seen:Int32Buffer;
 	// Support points in plane coordinates, sorted, then the hull's indices.
-	var pu:FloatBuffer;
-	var pv:FloatBuffer;
-	var hull:IntBuffer;
+	var pu:Float32Buffer;
+	var pv:Float32Buffer;
+	var hull:Int32Buffer;
 	var hullCount = 0;
 	// Up and two directions across it.
 	var ux = 0.0;
@@ -112,13 +112,13 @@ class Balance {
 		this.bodies = bodies.copy();
 		this.planar = planar;
 		var n = bodies.length;
-		slots = new IntBuffer(n + 1);
-		mass = new FloatBuffer(n + 1);
-		centroidX = new FloatBuffer(n + 1);
-		centroidY = new FloatBuffer(n + 1);
-		centroidZ = new FloatBuffer(n + 1);
+		slots = new Int32Buffer(n + 1);
+		mass = new Float32Buffer(n + 1);
+		centroidX = new Float32Buffer(n + 1);
+		centroidY = new Float32Buffer(n + 1);
+		centroidZ = new Float32Buffer(n + 1);
 		memberRoom = world.bodyCapacity;
-		member = new IntBuffer(memberRoom);
+		member = new Int32Buffer(memberRoom);
 		for (i in 0...memberRoom)
 			member[i] = 0;
 		var c = new Vec3();
@@ -131,23 +131,23 @@ class Balance {
 			centroidZ[i] = c.z;
 			totalMass += mass[i];
 		}
-		pu = new FloatBuffer(MAX_POINTS);
-		pv = new FloatBuffer(MAX_POINTS);
-		keptBody = new IntBuffer(MAX_POINTS);
-		keptX = new FloatBuffer(MAX_POINTS);
-		keptY = new FloatBuffer(MAX_POINTS);
-		keptZ = new FloatBuffer(MAX_POINTS);
-		newBody = new IntBuffer(MAX_POINTS);
-		newX = new FloatBuffer(MAX_POINTS);
-		newY = new FloatBuffer(MAX_POINTS);
-		newZ = new FloatBuffer(MAX_POINTS);
-		seen = new IntBuffer(n + 1);
+		pu = new Float32Buffer(MAX_POINTS);
+		pv = new Float32Buffer(MAX_POINTS);
+		keptBody = new Int32Buffer(MAX_POINTS);
+		keptX = new Float32Buffer(MAX_POINTS);
+		keptY = new Float32Buffer(MAX_POINTS);
+		keptZ = new Float32Buffer(MAX_POINTS);
+		newBody = new Int32Buffer(MAX_POINTS);
+		newX = new Float32Buffer(MAX_POINTS);
+		newY = new Float32Buffer(MAX_POINTS);
+		newZ = new Float32Buffer(MAX_POINTS);
+		seen = new Int32Buffer(n + 1);
 		for (i in 0...n)
 			seen[i] = 0;
-		hull = new IntBuffer(MAX_POINTS * 2 + 2);
-		supportX = new FloatBuffer(MAX_POINTS);
-		supportY = new FloatBuffer(MAX_POINTS);
-		supportZ = new FloatBuffer(MAX_POINTS);
+		hull = new Int32Buffer(MAX_POINTS * 2 + 2);
+		supportX = new Float32Buffer(MAX_POINTS);
+		supportY = new Float32Buffer(MAX_POINTS);
+		supportZ = new Float32Buffer(MAX_POINTS);
 	}
 
 	/** Measures the bodies as the last step left them. */

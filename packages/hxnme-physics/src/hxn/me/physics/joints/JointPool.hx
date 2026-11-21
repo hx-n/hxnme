@@ -3,13 +3,13 @@ package hxn.me.physics.joints;
 import hxn.me.math.Grow;
 import hxn.me.math.Vec3;
 import hxn.me.math.Quat;
-import hxn.me.math.Simd.FloatBuffer;
+import hxn.Float32Buffer;
 import hxn.me.physics.core.World;
 import hxn.me.physics.core.Handles.BodyId;
 import hxn.me.physics.core.Handles.BodyType;
 import hxn.me.physics.core.Handles.DoFMask;
 import hxn.me.physics.core.Handles.JointId;
-import hl.NativeArray;
+import hxn.Int32Buffer;
 
 @:allow(hxn.me.physics.joints.HingeSolver)
 @:allow(hxn.me.physics.joints.PrismaticSolver)
@@ -27,102 +27,102 @@ class JointPool {
 	public var world:World;
 	public var capacity:Int;
 	public var count(default, null):Int = 0;
-	public var activeIds:NativeArray<Int>;
-	public var bodyA:NativeArray<Int>;
-	public var bodyB:NativeArray<Int>;
+	public var activeIds:Int32Buffer;
+	public var bodyA:Int32Buffer;
+	public var bodyB:Int32Buffer;
 
-	var kind:NativeArray<Int>;
+	var kind:Int32Buffer;
 	var rows:JointRows;
 	var hinge:HingeSolver;
 	var prismatic:PrismaticSolver;
 	var weld:WeldSolver;
 	var spherical:SphericalSolver;
 
-	public var restLength:FloatBuffer;
-	public var frequencyHz:FloatBuffer;
-	public var dampingRatio:FloatBuffer;
+	public var restLength:Float32Buffer;
+	public var frequencyHz:Float32Buffer;
+	public var dampingRatio:Float32Buffer;
 
-	var activePosition:NativeArray<Int>;
-	var generation:NativeArray<Int>;
-	var nextFree:NativeArray<Int>;
-	var collisionDisabled:NativeArray<Int>;
-	var firstExcluded:NativeArray<Int>;
-	var nextExcludedA:NativeArray<Int>;
-	var nextExcludedB:NativeArray<Int>;
+	var activePosition:Int32Buffer;
+	var generation:Int32Buffer;
+	var nextFree:Int32Buffer;
+	var collisionDisabled:Int32Buffer;
+	var firstExcluded:Int32Buffer;
+	var nextExcludedA:Int32Buffer;
+	var nextExcludedB:Int32Buffer;
 	var used:Int = 0;
 	var freeHead:Int = -1;
 
 	/** Each joint's anchor in body A's and body B's frames, by joint slot. */
-	public var anchorAX(default, null):FloatBuffer;
+	public var anchorAX(default, null):Float32Buffer;
 
-	public var anchorAY(default, null):FloatBuffer;
-	public var anchorAZ(default, null):FloatBuffer;
-	public var anchorBX(default, null):FloatBuffer;
-	public var anchorBY(default, null):FloatBuffer;
-	public var anchorBZ(default, null):FloatBuffer;
+	public var anchorAY(default, null):Float32Buffer;
+	public var anchorAZ(default, null):Float32Buffer;
+	public var anchorBX(default, null):Float32Buffer;
+	public var anchorBY(default, null):Float32Buffer;
+	public var anchorBZ(default, null):Float32Buffer;
 
-	var axisX:FloatBuffer;
-	var axisY:FloatBuffer;
-	var axisZ:FloatBuffer;
-	var rAX:FloatBuffer;
-	var rAY:FloatBuffer;
-	var rAZ:FloatBuffer;
-	var rBX:FloatBuffer;
-	var rBY:FloatBuffer;
-	var rBZ:FloatBuffer;
-	var impulse:FloatBuffer;
-	var loopParent:NativeArray<Int>;
-	var loopRank:NativeArray<Int>;
-	var loopMarked:NativeArray<Int>;
-	var jointParent:NativeArray<Int>;
-	var jointRank:NativeArray<Int>;
+	var axisX:Float32Buffer;
+	var axisY:Float32Buffer;
+	var axisZ:Float32Buffer;
+	var rAX:Float32Buffer;
+	var rAY:Float32Buffer;
+	var rAZ:Float32Buffer;
+	var rBX:Float32Buffer;
+	var rBY:Float32Buffer;
+	var rBZ:Float32Buffer;
+	var impulse:Float32Buffer;
+	var loopParent:Int32Buffer;
+	var loopRank:Int32Buffer;
+	var loopMarked:Int32Buffer;
+	var jointParent:Int32Buffer;
+	var jointRank:Int32Buffer;
 
 	/** Bodies in a contact loop through joints, including their dynamic contact neighbours. */
-	@:noCompletion public var splitVelocity(default, null):NativeArray<Int>;
+	@:noCompletion public var splitVelocity(default, null):Int32Buffer;
 
 	public function new(world:World, capacity:Int) {
 		if (capacity < 0 || capacity > (1 << 20))
 			throw 'Invalid joint capacity';
 		this.world = world;
 		this.capacity = capacity;
-		loopParent = new NativeArray<Int>(world.bodyCapacity);
-		loopRank = new NativeArray<Int>(world.bodyCapacity);
-		loopMarked = new NativeArray<Int>(world.bodyCapacity);
-		jointParent = new NativeArray<Int>(world.bodyCapacity);
-		jointRank = new NativeArray<Int>(world.bodyCapacity);
-		splitVelocity = new NativeArray<Int>(world.bodyCapacity);
+		loopParent = new Int32Buffer(world.bodyCapacity);
+		loopRank = new Int32Buffer(world.bodyCapacity);
+		loopMarked = new Int32Buffer(world.bodyCapacity);
+		jointParent = new Int32Buffer(world.bodyCapacity);
+		jointRank = new Int32Buffer(world.bodyCapacity);
+		splitVelocity = new Int32Buffer(world.bodyCapacity);
 		for (b in 0...world.bodyCapacity)
 			splitVelocity[b] = 0;
-		activeIds = new NativeArray<Int>(capacity);
-		bodyA = new NativeArray<Int>(capacity);
-		bodyB = new NativeArray<Int>(capacity);
-		kind = new NativeArray<Int>(capacity);
-		activePosition = new NativeArray<Int>(capacity);
-		generation = new NativeArray<Int>(capacity);
-		nextFree = new NativeArray<Int>(capacity);
-		collisionDisabled = new NativeArray<Int>(capacity);
-		firstExcluded = new NativeArray<Int>(world.bodyCapacity);
-		nextExcludedA = new NativeArray<Int>(capacity);
-		nextExcludedB = new NativeArray<Int>(capacity);
-		anchorAX = new FloatBuffer(capacity);
-		anchorAY = new FloatBuffer(capacity);
-		anchorAZ = new FloatBuffer(capacity);
-		anchorBX = new FloatBuffer(capacity);
-		anchorBY = new FloatBuffer(capacity);
-		anchorBZ = new FloatBuffer(capacity);
-		restLength = new FloatBuffer(capacity);
-		frequencyHz = new FloatBuffer(capacity);
-		dampingRatio = new FloatBuffer(capacity);
-		axisX = new FloatBuffer(capacity);
-		axisY = new FloatBuffer(capacity);
-		axisZ = new FloatBuffer(capacity);
-		rAX = new FloatBuffer(capacity);
-		rAY = new FloatBuffer(capacity);
-		rAZ = new FloatBuffer(capacity);
-		rBX = new FloatBuffer(capacity);
-		rBY = new FloatBuffer(capacity);
-		rBZ = new FloatBuffer(capacity);
-		impulse = new FloatBuffer(capacity);
+		activeIds = new Int32Buffer(capacity);
+		bodyA = new Int32Buffer(capacity);
+		bodyB = new Int32Buffer(capacity);
+		kind = new Int32Buffer(capacity);
+		activePosition = new Int32Buffer(capacity);
+		generation = new Int32Buffer(capacity);
+		nextFree = new Int32Buffer(capacity);
+		collisionDisabled = new Int32Buffer(capacity);
+		firstExcluded = new Int32Buffer(world.bodyCapacity);
+		nextExcludedA = new Int32Buffer(capacity);
+		nextExcludedB = new Int32Buffer(capacity);
+		anchorAX = new Float32Buffer(capacity);
+		anchorAY = new Float32Buffer(capacity);
+		anchorAZ = new Float32Buffer(capacity);
+		anchorBX = new Float32Buffer(capacity);
+		anchorBY = new Float32Buffer(capacity);
+		anchorBZ = new Float32Buffer(capacity);
+		restLength = new Float32Buffer(capacity);
+		frequencyHz = new Float32Buffer(capacity);
+		dampingRatio = new Float32Buffer(capacity);
+		axisX = new Float32Buffer(capacity);
+		axisY = new Float32Buffer(capacity);
+		axisZ = new Float32Buffer(capacity);
+		rAX = new Float32Buffer(capacity);
+		rAY = new Float32Buffer(capacity);
+		rAZ = new Float32Buffer(capacity);
+		rBX = new Float32Buffer(capacity);
+		rBY = new Float32Buffer(capacity);
+		rBZ = new Float32Buffer(capacity);
+		impulse = new Float32Buffer(capacity);
 		rows = new JointRows(world, capacity);
 		for (i in 0...capacity) {
 			activePosition[i] = -1;
@@ -539,7 +539,7 @@ class JointPool {
 		return true;
 	}
 
-	static function root(parent:NativeArray<Int>, body:Int):Int {
+	static function root(parent:Int32Buffer, body:Int):Int {
 		while (parent[body] != body) {
 			parent[body] = parent[parent[body]];
 			body = parent[body];
@@ -550,7 +550,7 @@ class JointPool {
 	inline function loopRoot(body:Int):Int
 		return root(loopParent, body);
 
-	static function join(parent:NativeArray<Int>, rank:NativeArray<Int>, marked:NativeArray<Int>, a:Int, b:Int):Void {
+	static function join(parent:Int32Buffer, rank:Int32Buffer, marked:Int32Buffer, a:Int, b:Int):Void {
 		a = root(parent, a);
 		b = root(parent, b);
 		if (a == b)
@@ -797,7 +797,7 @@ class JointPool {
 	}
 
 	/** Orders an island task's joints by color so workers follow the serial color sequence. */
-	public function sortByColor(ids:NativeArray<Int>, start:Int, count:Int):Void {
+	public function sortByColor(ids:Int32Buffer, start:Int, count:Int):Void {
 		rows.sortByColor(ids, start, count);
 	}
 
@@ -827,7 +827,7 @@ class JointPool {
 	}
 
 	/** Solves island task `task`'s joints once, in the serial solve's color order; `ids` from `start` holds them sorted by color. */
-	public function solveTask(task:Int, ids:hl.NativeArray<Int>, start:Int, count:Int, worker:Int):Void {
+	public function solveTask(task:Int, ids:hxn.Int32Buffer, start:Int, count:Int, worker:Int):Void {
 		rows.solveTask(task, ids, start, count, worker);
 	}
 

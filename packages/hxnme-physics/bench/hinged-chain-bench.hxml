@@ -1,5 +1,6 @@
 -L hashlink
 -L ash-simd
+-L hxn
 --class-path ../../hxnme/src
 --class-path ../src
 --class-path ../tests/src

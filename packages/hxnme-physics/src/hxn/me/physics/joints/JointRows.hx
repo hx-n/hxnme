@@ -1,11 +1,12 @@
 package hxn.me.physics.joints;
 
-import hxn.me.math.Simd.FloatBuffer;
+import hxn.Float32Buffer;
 import hxn.me.physics.core.World;
 import hxn.me.physics.core.Handles.BodyType;
 import hl.Bytes;
-import hl.NativeArray;
-#if ash_simd
+import hxn.Int32Buffer;
+import hxn.me.math.BufferArray;
+#if (ash_simd && hl)
 import hxn.me.physics.joints.JointSimd4;
 #end
 
@@ -75,46 +76,46 @@ class JointRows {
 	inline function get_packedBatches():Int
 		return scheduled ? batchTotal : 0;
 
-	var rowBodyA:NativeArray<Int>;
-	var rowBodyB:NativeArray<Int>;
-	var rowWriteA:NativeArray<Int>;
-	var rowWriteB:NativeArray<Int>;
-	var rowBlock:NativeArray<Int>;
-	var storeBuffer:NativeArray<Bytes>;
-	var storeIndex:NativeArray<Int>;
-	var jointStart:NativeArray<Int>;
-	var jointCount:NativeArray<Int>;
+	var rowBodyA:Int32Buffer;
+	var rowBodyB:Int32Buffer;
+	var rowWriteA:Int32Buffer;
+	var rowWriteB:Int32Buffer;
+	var rowBlock:Int32Buffer;
+	var storeBuffer:BufferArray<Float32Buffer>;
+	var storeIndex:Int32Buffer;
+	var jointStart:Int32Buffer;
+	var jointCount:Int32Buffer;
 	// Joints with rows this substep, in emission order, and whether each has a norm block.
-	var emitted:NativeArray<Int>;
+	var emitted:Int32Buffer;
 	var emittedCount:Int = 0;
-	var hasBlock:NativeArray<Int>;
+	var hasBlock:Int32Buffer;
 	// Color schedule, built on the first solve of a substep.
 	var scheduled:Bool = false;
 	// Set once batches are solved from the packed buffer, which then holds their impulses.
 	var packedSolved:Bool = false;
-	var usedColors:NativeArray<Int>;
-	var jointColor:NativeArray<Int>;
-	var colorCounts:NativeArray<Int>;
-	var scalarOffset:NativeArray<Int>;
-	var scalarCount:NativeArray<Int>;
-	var scalarJoints:NativeArray<Int>;
-	var batchOffset:NativeArray<Int>;
-	var batchCount:NativeArray<Int>;
-	var batchCursor:NativeArray<Int>;
+	var usedColors:Int32Buffer;
+	var jointColor:Int32Buffer;
+	var colorCounts:Int32Buffer;
+	var scalarOffset:Int32Buffer;
+	var scalarCount:Int32Buffer;
+	var scalarJoints:Int32Buffer;
+	var batchOffset:Int32Buffer;
+	var batchCount:Int32Buffer;
+	var batchCursor:Int32Buffer;
 	var batchTotal:Int = 0;
-	var batchJoint:NativeArray<Int>;
-	var batchLevelStart:NativeArray<Int>;
-	var batchLevels:NativeArray<Int>;
+	var batchJoint:Int32Buffer;
+	var batchLevelStart:Int32Buffer;
+	var batchLevels:Int32Buffer;
 	var packed:Bytes;
 	var packedLevels:Int = 0;
 	// The island partition batches are formed within, or null for one group; each joint's group; each (color, group)'s batches.
 	var partition:Null<hxn.me.physics.island.IslandPartition>;
-	var jointGroup:NativeArray<Int>;
-	var groupBatchStart:NativeArray<Int>;
-	var groupBatchCount:NativeArray<Int>;
-	var groupCursor:NativeArray<Int>;
+	var jointGroup:Int32Buffer;
+	var groupBatchStart:Int32Buffer;
+	var groupBatchCount:Int32Buffer;
+	var groupCursor:Int32Buffer;
 	var groups = 1;
-	#if ash_simd
+	#if (ash_simd && hl)
 	var simd:JointSimd4;
 	var workerSimd:Array<JointSimd4> = [];
 	#end
@@ -145,31 +146,31 @@ class JointRows {
 
 	public function new(world:World, jointCapacity:Int) {
 		this.world = world;
-		jointStart = new NativeArray<Int>(jointCapacity);
-		jointCount = new NativeArray<Int>(jointCapacity);
-		emitted = new NativeArray<Int>(jointCapacity);
-		hasBlock = new NativeArray<Int>(jointCapacity);
-		jointColor = new NativeArray<Int>(jointCapacity);
-		usedColors = new NativeArray<Int>(world.bodyCapacity);
-		colorCounts = new NativeArray<Int>(COLORS);
-		scalarOffset = new NativeArray<Int>(COLORS);
-		scalarCount = new NativeArray<Int>(COLORS);
-		batchOffset = new NativeArray<Int>(COLORS);
-		batchCount = new NativeArray<Int>(COLORS);
-		batchCursor = new NativeArray<Int>(COLORS);
-		scalarJoints = new NativeArray<Int>(jointCapacity);
-		jointGroup = new NativeArray<Int>(jointCapacity);
-		groupBatchStart = new NativeArray<Int>(COLORS);
-		groupBatchCount = new NativeArray<Int>(COLORS);
-		groupCursor = new NativeArray<Int>(COLORS);
+		jointStart = new Int32Buffer(jointCapacity);
+		jointCount = new Int32Buffer(jointCapacity);
+		emitted = new Int32Buffer(jointCapacity);
+		hasBlock = new Int32Buffer(jointCapacity);
+		jointColor = new Int32Buffer(jointCapacity);
+		usedColors = new Int32Buffer(world.bodyCapacity);
+		colorCounts = new Int32Buffer(COLORS);
+		scalarOffset = new Int32Buffer(COLORS);
+		scalarCount = new Int32Buffer(COLORS);
+		batchOffset = new Int32Buffer(COLORS);
+		batchCount = new Int32Buffer(COLORS);
+		batchCursor = new Int32Buffer(COLORS);
+		scalarJoints = new Int32Buffer(jointCapacity);
+		jointGroup = new Int32Buffer(jointCapacity);
+		groupBatchStart = new Int32Buffer(COLORS);
+		groupBatchCount = new Int32Buffer(COLORS);
+		groupCursor = new Int32Buffer(COLORS);
 		// Partial batches can leave every group of every color one batch more than a quarter of the joints.
 		var batches = (jointCapacity >> 2) + jointCapacity + 1;
-		batchJoint = new NativeArray<Int>(batches * 4);
-		batchLevelStart = new NativeArray<Int>(batches);
-		batchLevels = new NativeArray<Int>(batches);
+		batchJoint = new Int32Buffer(batches * 4);
+		batchLevelStart = new Int32Buffer(batches);
+		batchLevels = new Int32Buffer(batches);
 		packed = new Bytes(LEVEL_BYTES * 16);
 		packedLevels = 16;
-		#if ash_simd
+		#if (ash_simd && hl)
 		simd = new JointSimd4();
 		#end
 		reserve(64);
@@ -183,13 +184,13 @@ class JointRows {
 			next <<= 1;
 		var grown = new Bytes(next * ROW_BYTES);
 		grown.fill(0, next * ROW_BYTES, 0);
-		var bodyA = new NativeArray<Int>(next),
-			bodyB = new NativeArray<Int>(next);
-		var writeA = new NativeArray<Int>(next),
-			writeB = new NativeArray<Int>(next);
-		var block = new NativeArray<Int>(next),
-			index = new NativeArray<Int>(next);
-		var buffers = new NativeArray<Bytes>(next);
+		var bodyA = new Int32Buffer(next),
+			bodyB = new Int32Buffer(next);
+		var writeA = new Int32Buffer(next),
+			writeB = new Int32Buffer(next);
+		var block = new Int32Buffer(next),
+			index = new Int32Buffer(next);
+		var buffers = new BufferArray<Float32Buffer>(next);
 		// Rows are rebuilt every substep, so growing only needs fresh storage.
 		rows = grown;
 		rowBodyA = bodyA;
@@ -334,7 +335,7 @@ class JointRows {
 	 * impulse lives in `store[index]`, which warm-starts the row and receives
 	 * the result in `storeImpulses`.
 	 */
-	public function set(target:Float, gain:Float, decay:Float, lower:Float, upper:Float, store:FloatBuffer, index:Int):Void {
+	public function set(target:Float, gain:Float, decay:Float, lower:Float, upper:Float, store:Float32Buffer, index:Int):Void {
 		var r = count - 1;
 		var base = r * ROW_BYTES;
 		put(base, TARGET, target);
@@ -352,7 +353,7 @@ class JointRows {
 	 * Shorthand for the common equality row: impulse += -mass * (speed + bias + gamma * impulse).
 	 * A rigid row's bias only corrects position, so it relaxes without it; a soft row's is its spring.
 	 */
-	public inline function setEquality(mass:Float, bias:Float, gamma:Float, store:FloatBuffer, index:Int):Void {
+	public inline function setEquality(mass:Float, bias:Float, gamma:Float, store:Float32Buffer, index:Int):Void {
 		set(-mass * bias, mass, mass * gamma, Math.NEGATIVE_INFINITY, Math.POSITIVE_INFINITY, store, index);
 		if (gamma == 0.0)
 			relaxWithout();
@@ -388,7 +389,7 @@ class JointRows {
 	}
 
 	/** Keeps scalar and packed impulses consistent when restarting the velocity solve. */
-	public function clearCorrectionImpulses(mask:NativeArray<Int>):Void {
+	public function clearCorrectionImpulses(mask:Int32Buffer):Void {
 		for (r in 0...count)
 			if (mask[rowBodyA[r]] != 0 || mask[rowBodyB[r]] != 0)
 				rows.setF32(r * ROW_BYTES + (IMPULSE << 2), 0.0);
@@ -431,7 +432,7 @@ class JointRows {
 	 * an island task. Joints of one color share no dynamic body, so order
 	 * within a color does not change the result.
 	 */
-	public function sortByColor(ids:NativeArray<Int>, start:Int, count:Int):Void {
+	public function sortByColor(ids:Int32Buffer, start:Int, count:Int):Void {
 		for (i in start + 1...start + count) {
 			var id = ids[i], color = jointColor[id];
 			var j = i - 1;
@@ -450,7 +451,7 @@ class JointRows {
 
 	/** Gives each island worker its own batch kernel. */
 	public function configureWorkers(count:Int):Void {
-		#if ash_simd
+		#if (ash_simd && hl)
 		while (workerSimd.length < count)
 			workerSimd.push(new JointSimd4());
 		#end
@@ -462,13 +463,13 @@ class JointRows {
 	 * that are not batched. `ids` from `start` holds the task's joints sorted
 	 * by color.
 	 */
-	public function solveTask(task:Int, ids:NativeArray<Int>, start:Int, count:Int, worker:Int):Void {
+	public function solveTask(task:Int, ids:Int32Buffer, start:Int, count:Int, worker:Int):Void {
 		if (!scheduled)
 			schedule();
 		packedSolved = true;
 		var p = start, end = start + count;
 		for (color in 0...COLORS) {
-			#if ash_simd
+			#if (ash_simd && hl)
 			var at = color * groups + task;
 			var first = groupBatchStart[at];
 			for (batch in first...first + groupBatchCount[at])
@@ -488,7 +489,7 @@ class JointRows {
 			schedule();
 		packedSolved = true;
 		for (color in 0...COLORS) {
-			#if ash_simd
+			#if (ash_simd && hl)
 			var first = batchOffset[color];
 			for (batch in first...first + batchCount[color])
 				simd.solve(this, batch);
@@ -546,9 +547,9 @@ class JointRows {
 			}
 		var cells = COLORS * groups;
 		if (groupBatchStart.length < cells) {
-			groupBatchStart = new NativeArray<Int>(cells);
-			groupBatchCount = new NativeArray<Int>(cells);
-			groupCursor = new NativeArray<Int>(cells);
+			groupBatchStart = new Int32Buffer(cells);
+			groupBatchCount = new Int32Buffer(cells);
+			groupCursor = new Int32Buffer(cells);
 		}
 		for (c in 0...cells) {
 			groupBatchCount[c] = 0;
@@ -768,7 +769,7 @@ class JointRows {
 			unpack();
 		var rows = this.rows;
 		for (r in 0...count) {
-			var store:FloatBuffer = storeBuffer[r];
+			var store = storeBuffer[r];
 			store[storeIndex[r]] = rows.getF32(r * ROW_BYTES + (IMPULSE << 2));
 		}
 	}

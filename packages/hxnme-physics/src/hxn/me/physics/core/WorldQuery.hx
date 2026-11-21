@@ -5,7 +5,8 @@ import hxn.me.math.Quat;
 import hxn.me.math.Vec3;
 import hxn.me.physics.collision.NarrowPhase;
 import hxn.me.physics.core.Handles.ShapeId;
-import hl.NativeArray;
+import hxn.Float64Buffer;
+import hxn.Int32Buffer;
 
 class QueryHit {
 	public var shape:ShapeId;
@@ -24,8 +25,8 @@ class QueryHit {
 class WorldQuery {
 	var world:World;
 	// Candidate lists, one per nesting level: a queryAABB callback may run another query.
-	var candidates:Array<NativeArray<Int>> = [];
-	var entries:Array<NativeArray<Float>> = [];
+	var candidates:Array<Int32Buffer> = [];
+	var entries:Array<Float64Buffer> = [];
 	var depth:Int = 0;
 	// Box written by `bounds`.
 	var minX:Float = 0.0;
@@ -79,8 +80,8 @@ class WorldQuery {
 	/** Takes the candidate buffers for one more level of nesting. */
 	function enter():Int {
 		if (depth == candidates.length) {
-			candidates.push(new NativeArray<Int>(world.shapeCapacity));
-			entries.push(new NativeArray<Float>(world.shapeCapacity));
+			candidates.push(new Int32Buffer(world.shapeCapacity));
+			entries.push(new Float64Buffer(world.shapeCapacity));
 		}
 		return depth++;
 	}

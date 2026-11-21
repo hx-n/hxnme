@@ -1,6 +1,7 @@
 package hxn.me.physics.collision;
 
-import hl.NativeArray;
+import hxn.Float64Buffer;
+import hxn.Int32Buffer;
 
 /**
  * Expands a Minkowski polytope around the origin for core penetration, over
@@ -21,42 +22,42 @@ class Epa {
 
 	// Vertices: W = A - B, and the A and B support points.
 	var count = 0;
-	var wx = new NativeArray<Float>(MAX_VERTICES);
-	var wy = new NativeArray<Float>(MAX_VERTICES);
-	var wz = new NativeArray<Float>(MAX_VERTICES);
-	var ax = new NativeArray<Float>(MAX_VERTICES);
-	var ay = new NativeArray<Float>(MAX_VERTICES);
-	var az = new NativeArray<Float>(MAX_VERTICES);
-	var bx = new NativeArray<Float>(MAX_VERTICES);
-	var by = new NativeArray<Float>(MAX_VERTICES);
-	var bz = new NativeArray<Float>(MAX_VERTICES);
+	var wx = new Float64Buffer(MAX_VERTICES);
+	var wy = new Float64Buffer(MAX_VERTICES);
+	var wz = new Float64Buffer(MAX_VERTICES);
+	var ax = new Float64Buffer(MAX_VERTICES);
+	var ay = new Float64Buffer(MAX_VERTICES);
+	var az = new Float64Buffer(MAX_VERTICES);
+	var bx = new Float64Buffer(MAX_VERTICES);
+	var by = new Float64Buffer(MAX_VERTICES);
+	var bz = new Float64Buffer(MAX_VERTICES);
 
 	// Faces: three vertex indices, the outward unit normal and the plane's distance from the origin.
 	var faceCount = 0;
-	var fa = new NativeArray<Int>(MAX_FACES);
-	var fb = new NativeArray<Int>(MAX_FACES);
-	var fc = new NativeArray<Int>(MAX_FACES);
-	var fnx = new NativeArray<Float>(MAX_FACES);
-	var fny = new NativeArray<Float>(MAX_FACES);
-	var fnz = new NativeArray<Float>(MAX_FACES);
-	var fdepth = new NativeArray<Float>(MAX_FACES);
+	var fa = new Int32Buffer(MAX_FACES);
+	var fb = new Int32Buffer(MAX_FACES);
+	var fc = new Int32Buffer(MAX_FACES);
+	var fnx = new Float64Buffer(MAX_FACES);
+	var fny = new Float64Buffer(MAX_FACES);
+	var fnz = new Float64Buffer(MAX_FACES);
+	var fdepth = new Float64Buffer(MAX_FACES);
 
 	// Horizon edges while a vertex is added; the 2D ring of vertex indices.
 	var edgeCount = 0;
-	var ea = new NativeArray<Int>(MAX_EDGES);
-	var eb = new NativeArray<Int>(MAX_EDGES);
+	var ea = new Int32Buffer(MAX_EDGES);
+	var eb = new Int32Buffer(MAX_EDGES);
 	var ringCount = 0;
-	var ring = new NativeArray<Int>(MAX_VERTICES);
+	var ring = new Int32Buffer(MAX_VERTICES);
 
 	// Scratch for the initial hull: faces seen, by their points as bits, and a face's points ordered in its plane.
 	var seenCount = 0;
-	var seen = new NativeArray<Int>(4096);
+	var seen = new Int32Buffer(4096);
 	var orderCount = 0;
-	var order = new NativeArray<Int>(MAX_SEED);
-	var orderX = new NativeArray<Float>(MAX_SEED);
-	var orderY = new NativeArray<Float>(MAX_SEED);
-	var lower = new NativeArray<Int>(MAX_SEED + 1);
-	var upper = new NativeArray<Int>(MAX_SEED + 1);
+	var order = new Int32Buffer(MAX_SEED);
+	var orderX = new Float64Buffer(MAX_SEED);
+	var orderY = new Float64Buffer(MAX_SEED);
+	var lower = new Int32Buffer(MAX_SEED + 1);
+	var upper = new Int32Buffer(MAX_SEED + 1);
 
 	/** The result: unit normal from B toward A's side, as the old solver gave it, the depth, and the witness points. */
 	public var normalX(default, null) = 0.0;

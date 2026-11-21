@@ -2,38 +2,38 @@ package hxn.me.physics.joints;
 
 import hxn.me.math.Grow;
 import hxn.me.math.Quat;
-import hxn.me.math.Simd.FloatBuffer;
+import hxn.Float32Buffer;
 import hxn.me.physics.core.Handles.DoFMask;
 
 class WeldSolver {
 	var pool:JointPool;
-	var relativeX:FloatBuffer;
-	var relativeY:FloatBuffer;
-	var relativeZ:FloatBuffer;
-	var relativeW:FloatBuffer;
-	var frequencyHz:FloatBuffer;
-	var dampingRatio:FloatBuffer;
-	var linearImpulseX:FloatBuffer;
-	var linearImpulseY:FloatBuffer;
-	var linearImpulseZ:FloatBuffer;
-	var angularImpulseX:FloatBuffer;
-	var angularImpulseY:FloatBuffer;
-	var angularImpulseZ:FloatBuffer;
+	var relativeX:Float32Buffer;
+	var relativeY:Float32Buffer;
+	var relativeZ:Float32Buffer;
+	var relativeW:Float32Buffer;
+	var frequencyHz:Float32Buffer;
+	var dampingRatio:Float32Buffer;
+	var linearImpulseX:Float32Buffer;
+	var linearImpulseY:Float32Buffer;
+	var linearImpulseZ:Float32Buffer;
+	var angularImpulseX:Float32Buffer;
+	var angularImpulseY:Float32Buffer;
+	var angularImpulseZ:Float32Buffer;
 
 	public function new(pool:JointPool, capacity:Int) {
 		this.pool = pool;
-		relativeX = new FloatBuffer(capacity);
-		relativeY = new FloatBuffer(capacity);
-		relativeZ = new FloatBuffer(capacity);
-		relativeW = new FloatBuffer(capacity);
-		frequencyHz = new FloatBuffer(capacity);
-		dampingRatio = new FloatBuffer(capacity);
-		linearImpulseX = new FloatBuffer(capacity);
-		linearImpulseY = new FloatBuffer(capacity);
-		linearImpulseZ = new FloatBuffer(capacity);
-		angularImpulseX = new FloatBuffer(capacity);
-		angularImpulseY = new FloatBuffer(capacity);
-		angularImpulseZ = new FloatBuffer(capacity);
+		relativeX = new Float32Buffer(capacity);
+		relativeY = new Float32Buffer(capacity);
+		relativeZ = new Float32Buffer(capacity);
+		relativeW = new Float32Buffer(capacity);
+		frequencyHz = new Float32Buffer(capacity);
+		dampingRatio = new Float32Buffer(capacity);
+		linearImpulseX = new Float32Buffer(capacity);
+		linearImpulseY = new Float32Buffer(capacity);
+		linearImpulseZ = new Float32Buffer(capacity);
+		angularImpulseX = new Float32Buffer(capacity);
+		angularImpulseY = new Float32Buffer(capacity);
+		angularImpulseZ = new Float32Buffer(capacity);
 	}
 
 	/** Room for `to` joints, keeping the first `from`. */
@@ -65,7 +65,7 @@ class WeldSolver {
 	}
 
 	/** Finishes a row with inverse effective mass `k`, soft when the weld has a frequency. */
-	function finishRow(rows:JointRows, id:Int, k:Float, error:Float, h:Single, store:FloatBuffer):Void {
+	function finishRow(rows:JointRows, id:Int, k:Float, error:Float, h:Single, store:Float32Buffer):Void {
 		if (k <= 0.0) {
 			rows.setEquality(0.0, 0.0, 0.0, store, id);
 			return;
@@ -86,7 +86,7 @@ class WeldSolver {
 		rows.setEquality(1.0 / (k + gamma), bias, gamma, store, id);
 	}
 
-	inline function linearRow(rows:JointRows, id:Int, x:Float, y:Float, z:Float, error:Float, h:Single, store:FloatBuffer):Void {
+	inline function linearRow(rows:JointRows, id:Int, x:Float, y:Float, z:Float, error:Float, h:Single, store:Float32Buffer):Void {
 		var k = rows.linear(x, y, z, pool.rAX[id], pool.rAY[id], pool.rAZ[id], pool.rBX[id], pool.rBY[id], pool.rBZ[id]);
 		finishRow(rows, id, k, error, h, store);
 	}

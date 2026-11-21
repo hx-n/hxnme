@@ -1,11 +1,11 @@
 package hxn.me.physics.core;
 
 import hxn.me.math.Grow;
-import hl.NativeArray;
+import hxn.Float32Buffer;
+import hxn.Int32Buffer;
 import hxn.me.math.Vec3;
 import hxn.me.math.Quat;
 import hxn.me.math.Mat3;
-import hxn.me.math.Simd.FloatBuffer;
 import hxn.me.math.Simd.SimdBatch;
 import hxn.me.physics.geom.VertexPool;
 import hxn.me.physics.geom.ShapeDef;
@@ -48,7 +48,7 @@ class World {
 	public var joints:JointPool;
 	public var query(default, null):WorldQuery;
 	public var toi(default, null):TimeOfImpact;
-	public var isBullet:NativeArray<Int>;
+	public var isBullet:Int32Buffer;
 
 	// De-Interleaved 32-bit Single SoA Buffers (4-wide SIMD aligned)
 	// SoA slots stay stable; count is the high-water mark and activeBodyCount is the live count.
@@ -57,29 +57,29 @@ class World {
 	public var bodyCapacity:Int;
 	public var shapeCapacity:Int;
 
-	var bodyGeneration:NativeArray<Int>;
-	var bodyActive:NativeArray<Int>;
-	var activeBodyIds:NativeArray<Int>;
-	var bodyActivePosition:NativeArray<Int>;
-	var bodyNextFree:NativeArray<Int>;
+	var bodyGeneration:Int32Buffer;
+	var bodyActive:Int32Buffer;
+	var activeBodyIds:Int32Buffer;
+	var bodyActivePosition:Int32Buffer;
+	var bodyNextFree:Int32Buffer;
 	var bodyFreeHead:Int = -1;
-	var kinematicPending:NativeArray<Int>;
+	var kinematicPending:Int32Buffer;
 	// Pose at the start of the step a kinematic target is consumed in.
-	var kinematicStartX:FloatBuffer;
-	var kinematicStartY:FloatBuffer;
-	var kinematicStartZ:FloatBuffer;
-	var kinematicStartQx:FloatBuffer;
-	var kinematicStartQy:FloatBuffer;
-	var kinematicStartQz:FloatBuffer;
-	var kinematicStartQw:FloatBuffer;
+	var kinematicStartX:Float32Buffer;
+	var kinematicStartY:Float32Buffer;
+	var kinematicStartZ:Float32Buffer;
+	var kinematicStartQx:Float32Buffer;
+	var kinematicStartQy:Float32Buffer;
+	var kinematicStartQz:Float32Buffer;
+	var kinematicStartQw:Float32Buffer;
 	// Motion a kinematic body took through its target in the step it last moved, kept for a switch to dynamic.
-	var kinematicVelX:FloatBuffer;
-	var kinematicVelY:FloatBuffer;
-	var kinematicVelZ:FloatBuffer;
-	var kinematicAngX:FloatBuffer;
-	var kinematicAngY:FloatBuffer;
-	var kinematicAngZ:FloatBuffer;
-	var kinematicMovedStep:NativeArray<Int>;
+	var kinematicVelX:Float32Buffer;
+	var kinematicVelY:Float32Buffer;
+	var kinematicVelZ:Float32Buffer;
+	var kinematicAngX:Float32Buffer;
+	var kinematicAngY:Float32Buffer;
+	var kinematicAngZ:Float32Buffer;
+	var kinematicMovedStep:Int32Buffer;
 	var stepCount = 0;
 
 	/** Steps taken since the world was created. */
@@ -89,117 +89,117 @@ class World {
 		return stepCount;
 
 	/** Kinematic target poses by body slot. Write them, then call `commitKinematicTarget`. */
-	public var targetX(default, null):FloatBuffer;
+	public var targetX(default, null):Float32Buffer;
 
-	public var targetY(default, null):FloatBuffer;
-	public var targetZ(default, null):FloatBuffer;
-	public var targetQx(default, null):FloatBuffer;
-	public var targetQy(default, null):FloatBuffer;
-	public var targetQz(default, null):FloatBuffer;
-	public var targetQw(default, null):FloatBuffer;
+	public var targetY(default, null):Float32Buffer;
+	public var targetZ(default, null):Float32Buffer;
+	public var targetQx(default, null):Float32Buffer;
+	public var targetQy(default, null):Float32Buffer;
+	public var targetQz(default, null):Float32Buffer;
+	public var targetQw(default, null):Float32Buffer;
 
 	var kinematicElapsed:Single = 0.0;
 	var kinematicStepDt:Single = 0.0;
 
-	public var bodyType:NativeArray<Int>;
-	public var bodyDoF:NativeArray<Int>;
+	public var bodyType:Int32Buffer;
+	public var bodyDoF:Int32Buffer;
 
 	// Field declarations:
-	public var posX:FloatBuffer;
-	public var posY:FloatBuffer;
-	public var posZ:FloatBuffer;
+	public var posX:Float32Buffer;
+	public var posY:Float32Buffer;
+	public var posZ:Float32Buffer;
 
-	public var rotX:FloatBuffer;
-	public var rotY:FloatBuffer;
-	public var rotZ:FloatBuffer;
-	public var rotW:FloatBuffer;
+	public var rotX:Float32Buffer;
+	public var rotY:Float32Buffer;
+	public var rotZ:Float32Buffer;
+	public var rotW:Float32Buffer;
 
 	/**
 	 * Each body's pose before the most recent step, kept while
 	 * `keepPreviousPoses` is on, for drawing between steps. A teleport sets it
 	 * to the new pose, so a cut is never drawn halfway.
 	 */
-	public var prevPosX(default, null):FloatBuffer;
+	public var prevPosX(default, null):Float32Buffer;
 
-	public var prevPosY(default, null):FloatBuffer;
-	public var prevPosZ(default, null):FloatBuffer;
-	public var prevRotX(default, null):FloatBuffer;
-	public var prevRotY(default, null):FloatBuffer;
-	public var prevRotZ(default, null):FloatBuffer;
-	public var prevRotW(default, null):FloatBuffer;
+	public var prevPosY(default, null):Float32Buffer;
+	public var prevPosZ(default, null):Float32Buffer;
+	public var prevRotX(default, null):Float32Buffer;
+	public var prevRotY(default, null):Float32Buffer;
+	public var prevRotZ(default, null):Float32Buffer;
+	public var prevRotW(default, null):Float32Buffer;
 
 	/** Record each body's pose at the start of every step into `prevPosX`..`prevRotW`. Costs one copy per moving body per step. */
 	public var keepPreviousPoses = false;
 
-	public var velX:FloatBuffer;
-	public var velY:FloatBuffer;
-	public var velZ:FloatBuffer;
+	public var velX:Float32Buffer;
+	public var velY:Float32Buffer;
+	public var velZ:Float32Buffer;
 
-	public var angVelX:FloatBuffer;
-	public var angVelY:FloatBuffer;
-	public var angVelZ:FloatBuffer;
+	public var angVelX:Float32Buffer;
+	public var angVelY:Float32Buffer;
+	public var angVelZ:Float32Buffer;
 
-	public var invMassX:FloatBuffer;
-	public var invMassY:FloatBuffer;
-	public var invMassZ:FloatBuffer;
+	public var invMassX:Float32Buffer;
+	public var invMassY:Float32Buffer;
+	public var invMassZ:Float32Buffer;
 
-	public var invInertiaX:FloatBuffer;
-	public var invInertiaY:FloatBuffer;
-	public var invInertiaZ:FloatBuffer;
-	public var invInertiaXY:FloatBuffer;
-	public var invInertiaXZ:FloatBuffer;
-	public var invInertiaYZ:FloatBuffer;
-	public var localCenterX:FloatBuffer;
-	public var localCenterY:FloatBuffer;
-	public var localCenterZ:FloatBuffer;
-	public var worldCenterX:FloatBuffer;
-	public var worldCenterY:FloatBuffer;
-	public var worldCenterZ:FloatBuffer;
-	public var invIxx:FloatBuffer;
-	public var invIyy:FloatBuffer;
-	public var invIzz:FloatBuffer;
-	public var invIxy:FloatBuffer;
-	public var invIxz:FloatBuffer;
-	public var invIyz:FloatBuffer;
+	public var invInertiaX:Float32Buffer;
+	public var invInertiaY:Float32Buffer;
+	public var invInertiaZ:Float32Buffer;
+	public var invInertiaXY:Float32Buffer;
+	public var invInertiaXZ:Float32Buffer;
+	public var invInertiaYZ:Float32Buffer;
+	public var localCenterX:Float32Buffer;
+	public var localCenterY:Float32Buffer;
+	public var localCenterZ:Float32Buffer;
+	public var worldCenterX:Float32Buffer;
+	public var worldCenterY:Float32Buffer;
+	public var worldCenterZ:Float32Buffer;
+	public var invIxx:Float32Buffer;
+	public var invIyy:Float32Buffer;
+	public var invIzz:Float32Buffer;
+	public var invIxy:Float32Buffer;
+	public var invIxz:Float32Buffer;
+	public var invIyz:Float32Buffer;
 
-	public var firstShape:NativeArray<Int>;
+	public var firstShape:Int32Buffer;
 
 	// Shape SoA Buffers
 	// Shape slots follow the same high-water and active-count convention.
 	public var shapeCount:Int = 0;
 	public var activeShapeCount(default, null):Int = 0;
 
-	var shapeGeneration:NativeArray<Int>;
-	var shapeActive:NativeArray<Int>;
-	var activeShapeIds:NativeArray<Int>;
-	var shapeActivePosition:NativeArray<Int>;
-	var shapeNextFree:NativeArray<Int>;
+	var shapeGeneration:Int32Buffer;
+	var shapeActive:Int32Buffer;
+	var activeShapeIds:Int32Buffer;
+	var shapeActivePosition:Int32Buffer;
+	var shapeNextFree:Int32Buffer;
 	var shapeFreeHead:Int = -1;
 
-	public var shapeBody:NativeArray<Int>;
+	public var shapeBody:Int32Buffer;
 
-	var shapeVertexOwned:NativeArray<Int>;
+	var shapeVertexOwned:Int32Buffer;
 
-	public var shapeSensor(default, null):NativeArray<Int>;
+	public var shapeSensor(default, null):Int32Buffer;
 
-	var shapeUserData:NativeArray<Int>;
+	var shapeUserData:Int32Buffer;
 	// Set once a reshaped shape has its own vertex block instead of its descriptor's.
-	var shapeVertexPrivate:NativeArray<Int>;
+	var shapeVertexPrivate:Int32Buffer;
 
-	public var shapeNext:NativeArray<Int>;
-	public var shapeProxy:NativeArray<Int>;
-	public var shapeKind:NativeArray<Int>;
-	public var shapeVertOffset:NativeArray<Int>;
-	public var shapeVertCount:NativeArray<Int>;
-	public var shapeDepth:NativeArray<Single>;
-	public var shapeRadius:NativeArray<Single>;
-	public var shapeLocalZ:NativeArray<Single>;
-	public var shapeDensity:NativeArray<Single>;
-	public var shapeCategoryBits:NativeArray<Int>;
-	public var shapeMaskBits:NativeArray<Int>;
-	public var shapeGroupIndex:NativeArray<Int>;
-	public var shapeFriction:FloatBuffer;
-	public var shapeRestitution:FloatBuffer;
+	public var shapeNext:Int32Buffer;
+	public var shapeProxy:Int32Buffer;
+	public var shapeKind:Int32Buffer;
+	public var shapeVertOffset:Int32Buffer;
+	public var shapeVertCount:Int32Buffer;
+	public var shapeDepth:Float32Buffer;
+	public var shapeRadius:Float32Buffer;
+	public var shapeLocalZ:Float32Buffer;
+	public var shapeDensity:Float32Buffer;
+	public var shapeCategoryBits:Int32Buffer;
+	public var shapeMaskBits:Int32Buffer;
+	public var shapeGroupIndex:Int32Buffer;
+	public var shapeFriction:Float32Buffer;
+	public var shapeRestitution:Float32Buffer;
 	public var shapeTopology:Array<ClipTopology>;
 	public var clipWorkspace:ClipWorkspace;
 	public var narrowWorkspace(default, null):NarrowPhaseWorkspace;
@@ -211,11 +211,11 @@ class World {
 	public var events(default, null):WorldEvents = new WorldEvents();
 
 	// Awake flags as the broadphase saw them when it last found pairs.
-	var pairAwake:NativeArray<Int>;
-	var overlapScratch:NativeArray<Int>;
+	var pairAwake:Int32Buffer;
+	var overlapScratch:Int32Buffer;
 	// Lane constants for SIMD body integration, owned per world so worlds can step on separate threads.
 	var integrationConstants:hl.Bytes = new hl.Bytes(80);
-	var correctionVelocities:hl.Bytes;
+	var correctionVelocities:Float32Buffer;
 
 	public var gravity:Vec3 = new Vec3(0.0, -9.81, 0.0);
 
@@ -271,105 +271,105 @@ class World {
 		query = new WorldQuery(this);
 		toi = new TimeOfImpact(this);
 
-		bodyType = new NativeArray<Int>(bCap);
-		kinematicPending = new NativeArray<Int>(bCap);
-		kinematicStartX = new FloatBuffer(bCap);
-		kinematicStartY = new FloatBuffer(bCap);
-		kinematicStartZ = new FloatBuffer(bCap);
-		kinematicStartQx = new FloatBuffer(bCap);
-		kinematicStartQy = new FloatBuffer(bCap);
-		kinematicStartQz = new FloatBuffer(bCap);
-		kinematicStartQw = new FloatBuffer(bCap);
-		kinematicVelX = new FloatBuffer(bCap);
-		kinematicVelY = new FloatBuffer(bCap);
-		kinematicVelZ = new FloatBuffer(bCap);
-		kinematicAngX = new FloatBuffer(bCap);
-		kinematicAngY = new FloatBuffer(bCap);
-		kinematicAngZ = new FloatBuffer(bCap);
-		kinematicMovedStep = new NativeArray<Int>(bCap);
-		targetX = new FloatBuffer(bCap);
-		targetY = new FloatBuffer(bCap);
-		targetZ = new FloatBuffer(bCap);
-		targetQx = new FloatBuffer(bCap);
-		targetQy = new FloatBuffer(bCap);
-		targetQz = new FloatBuffer(bCap);
-		targetQw = new FloatBuffer(bCap);
-		isBullet = new NativeArray<Int>(bCap);
-		bodyDoF = new NativeArray<Int>(bCap);
-		pairAwake = new NativeArray<Int>(bCap);
-		bodyGeneration = new NativeArray<Int>(bCap);
-		bodyActive = new NativeArray<Int>(bCap);
-		activeBodyIds = new NativeArray<Int>(bCap);
-		bodyActivePosition = new NativeArray<Int>(bCap);
-		bodyNextFree = new NativeArray<Int>(bCap);
-		posX = new FloatBuffer(bCap);
-		posY = new FloatBuffer(bCap);
-		posZ = new FloatBuffer(bCap);
-		rotX = new FloatBuffer(bCap);
-		rotY = new FloatBuffer(bCap);
-		rotZ = new FloatBuffer(bCap);
-		rotW = new FloatBuffer(bCap);
-		prevPosX = new FloatBuffer(bCap);
-		prevPosY = new FloatBuffer(bCap);
-		prevPosZ = new FloatBuffer(bCap);
-		prevRotX = new FloatBuffer(bCap);
-		prevRotY = new FloatBuffer(bCap);
-		prevRotZ = new FloatBuffer(bCap);
-		prevRotW = new FloatBuffer(bCap);
-		velX = new FloatBuffer(bCap);
-		velY = new FloatBuffer(bCap);
-		velZ = new FloatBuffer(bCap);
-		angVelX = new FloatBuffer(bCap);
-		angVelY = new FloatBuffer(bCap);
-		angVelZ = new FloatBuffer(bCap);
-		invMassX = new FloatBuffer(bCap);
-		invMassY = new FloatBuffer(bCap);
-		invMassZ = new FloatBuffer(bCap);
-		invInertiaX = new FloatBuffer(bCap);
-		invInertiaY = new FloatBuffer(bCap);
-		invInertiaZ = new FloatBuffer(bCap);
-		invInertiaXY = new FloatBuffer(bCap);
-		invInertiaXZ = new FloatBuffer(bCap);
-		invInertiaYZ = new FloatBuffer(bCap);
-		localCenterX = new FloatBuffer(bCap);
-		localCenterY = new FloatBuffer(bCap);
-		localCenterZ = new FloatBuffer(bCap);
-		worldCenterX = new FloatBuffer(bCap);
-		worldCenterY = new FloatBuffer(bCap);
-		worldCenterZ = new FloatBuffer(bCap);
-		invIxx = new FloatBuffer(bCap);
-		invIyy = new FloatBuffer(bCap);
-		invIzz = new FloatBuffer(bCap);
-		invIxy = new FloatBuffer(bCap);
-		invIxz = new FloatBuffer(bCap);
-		invIyz = new FloatBuffer(bCap);
-		firstShape = new NativeArray<Int>(bCap);
+		bodyType = new Int32Buffer(bCap);
+		kinematicPending = new Int32Buffer(bCap);
+		kinematicStartX = new Float32Buffer(bCap);
+		kinematicStartY = new Float32Buffer(bCap);
+		kinematicStartZ = new Float32Buffer(bCap);
+		kinematicStartQx = new Float32Buffer(bCap);
+		kinematicStartQy = new Float32Buffer(bCap);
+		kinematicStartQz = new Float32Buffer(bCap);
+		kinematicStartQw = new Float32Buffer(bCap);
+		kinematicVelX = new Float32Buffer(bCap);
+		kinematicVelY = new Float32Buffer(bCap);
+		kinematicVelZ = new Float32Buffer(bCap);
+		kinematicAngX = new Float32Buffer(bCap);
+		kinematicAngY = new Float32Buffer(bCap);
+		kinematicAngZ = new Float32Buffer(bCap);
+		kinematicMovedStep = new Int32Buffer(bCap);
+		targetX = new Float32Buffer(bCap);
+		targetY = new Float32Buffer(bCap);
+		targetZ = new Float32Buffer(bCap);
+		targetQx = new Float32Buffer(bCap);
+		targetQy = new Float32Buffer(bCap);
+		targetQz = new Float32Buffer(bCap);
+		targetQw = new Float32Buffer(bCap);
+		isBullet = new Int32Buffer(bCap);
+		bodyDoF = new Int32Buffer(bCap);
+		pairAwake = new Int32Buffer(bCap);
+		bodyGeneration = new Int32Buffer(bCap);
+		bodyActive = new Int32Buffer(bCap);
+		activeBodyIds = new Int32Buffer(bCap);
+		bodyActivePosition = new Int32Buffer(bCap);
+		bodyNextFree = new Int32Buffer(bCap);
+		posX = new Float32Buffer(bCap);
+		posY = new Float32Buffer(bCap);
+		posZ = new Float32Buffer(bCap);
+		rotX = new Float32Buffer(bCap);
+		rotY = new Float32Buffer(bCap);
+		rotZ = new Float32Buffer(bCap);
+		rotW = new Float32Buffer(bCap);
+		prevPosX = new Float32Buffer(bCap);
+		prevPosY = new Float32Buffer(bCap);
+		prevPosZ = new Float32Buffer(bCap);
+		prevRotX = new Float32Buffer(bCap);
+		prevRotY = new Float32Buffer(bCap);
+		prevRotZ = new Float32Buffer(bCap);
+		prevRotW = new Float32Buffer(bCap);
+		velX = new Float32Buffer(bCap);
+		velY = new Float32Buffer(bCap);
+		velZ = new Float32Buffer(bCap);
+		angVelX = new Float32Buffer(bCap);
+		angVelY = new Float32Buffer(bCap);
+		angVelZ = new Float32Buffer(bCap);
+		invMassX = new Float32Buffer(bCap);
+		invMassY = new Float32Buffer(bCap);
+		invMassZ = new Float32Buffer(bCap);
+		invInertiaX = new Float32Buffer(bCap);
+		invInertiaY = new Float32Buffer(bCap);
+		invInertiaZ = new Float32Buffer(bCap);
+		invInertiaXY = new Float32Buffer(bCap);
+		invInertiaXZ = new Float32Buffer(bCap);
+		invInertiaYZ = new Float32Buffer(bCap);
+		localCenterX = new Float32Buffer(bCap);
+		localCenterY = new Float32Buffer(bCap);
+		localCenterZ = new Float32Buffer(bCap);
+		worldCenterX = new Float32Buffer(bCap);
+		worldCenterY = new Float32Buffer(bCap);
+		worldCenterZ = new Float32Buffer(bCap);
+		invIxx = new Float32Buffer(bCap);
+		invIyy = new Float32Buffer(bCap);
+		invIzz = new Float32Buffer(bCap);
+		invIxy = new Float32Buffer(bCap);
+		invIxz = new Float32Buffer(bCap);
+		invIyz = new Float32Buffer(bCap);
+		firstShape = new Int32Buffer(bCap);
 
-		shapeBody = new NativeArray<Int>(sCap);
-		shapeVertexOwned = new NativeArray<Int>(sCap);
-		shapeSensor = new NativeArray<Int>(sCap);
-		shapeUserData = new NativeArray<Int>(sCap);
-		overlapScratch = new NativeArray<Int>(sCap);
-		shapeVertexPrivate = new NativeArray<Int>(sCap);
-		shapeGeneration = new NativeArray<Int>(sCap);
-		shapeActive = new NativeArray<Int>(sCap);
-		activeShapeIds = new NativeArray<Int>(sCap);
-		shapeActivePosition = new NativeArray<Int>(sCap);
-		shapeNextFree = new NativeArray<Int>(sCap);
-		shapeNext = new NativeArray<Int>(sCap);
-		shapeProxy = new NativeArray<Int>(sCap);
-		shapeKind = new NativeArray<Int>(sCap);
-		shapeVertOffset = new NativeArray<Int>(sCap);
-		shapeVertCount = new NativeArray<Int>(sCap);
-		shapeDepth = new NativeArray<Single>(sCap);
-		shapeRadius = new NativeArray<Single>(sCap);
-		shapeLocalZ = new NativeArray<Single>(sCap);
-		shapeDensity = new NativeArray<Single>(sCap);
-		shapeCategoryBits = new NativeArray<Int>(sCap);
-		shapeMaskBits = new NativeArray<Int>(sCap);
-		shapeGroupIndex = new NativeArray<Int>(sCap);
-		shapeFriction = new FloatBuffer(sCap);
-		shapeRestitution = new FloatBuffer(sCap);
+		shapeBody = new Int32Buffer(sCap);
+		shapeVertexOwned = new Int32Buffer(sCap);
+		shapeSensor = new Int32Buffer(sCap);
+		shapeUserData = new Int32Buffer(sCap);
+		overlapScratch = new Int32Buffer(sCap);
+		shapeVertexPrivate = new Int32Buffer(sCap);
+		shapeGeneration = new Int32Buffer(sCap);
+		shapeActive = new Int32Buffer(sCap);
+		activeShapeIds = new Int32Buffer(sCap);
+		shapeActivePosition = new Int32Buffer(sCap);
+		shapeNextFree = new Int32Buffer(sCap);
+		shapeNext = new Int32Buffer(sCap);
+		shapeProxy = new Int32Buffer(sCap);
+		shapeKind = new Int32Buffer(sCap);
+		shapeVertOffset = new Int32Buffer(sCap);
+		shapeVertCount = new Int32Buffer(sCap);
+		shapeDepth = new Float32Buffer(sCap);
+		shapeRadius = new Float32Buffer(sCap);
+		shapeLocalZ = new Float32Buffer(sCap);
+		shapeDensity = new Float32Buffer(sCap);
+		shapeCategoryBits = new Int32Buffer(sCap);
+		shapeMaskBits = new Int32Buffer(sCap);
+		shapeGroupIndex = new Int32Buffer(sCap);
+		shapeFriction = new Float32Buffer(sCap);
+		shapeRestitution = new Float32Buffer(sCap);
 		shapeTopology = [];
 		clipWorkspace = new ClipWorkspace();
 		narrowWorkspace = new NarrowPhaseWorkspace();
@@ -1606,30 +1606,30 @@ class World {
 	}
 
 	function saveCorrectionVelocities():Void {
-		var stride = bodyCapacity << 2, bytes = bodyCount << 2;
+		var stride = bodyCapacity, count = bodyCount;
 		if (correctionVelocities == null)
-			correctionVelocities = new hl.Bytes(stride * 6);
-		correctionVelocities.blit(0, velX, 0, bytes);
-		correctionVelocities.blit(stride, velY, 0, bytes);
-		correctionVelocities.blit(stride * 2, velZ, 0, bytes);
-		correctionVelocities.blit(stride * 3, angVelX, 0, bytes);
-		correctionVelocities.blit(stride * 4, angVelY, 0, bytes);
-		correctionVelocities.blit(stride * 5, angVelZ, 0, bytes);
+			correctionVelocities = new Float32Buffer(stride * 6);
+		correctionVelocities.blit(0, velX, 0, count);
+		correctionVelocities.blit(stride, velY, 0, count);
+		correctionVelocities.blit(stride * 2, velZ, 0, count);
+		correctionVelocities.blit(stride * 3, angVelX, 0, count);
+		correctionVelocities.blit(stride * 4, angVelY, 0, count);
+		correctionVelocities.blit(stride * 5, angVelZ, 0, count);
 	}
 
 	/** Position corrections move loop bodies without becoming their next-step velocity. */
 	function restoreCorrectionVelocities():Void {
-		var stride = bodyCapacity << 2, mask = joints.splitVelocity;
+		var stride = bodyCapacity, mask = joints.splitVelocity;
 		for (p in 0...activeBodyCount) {
-			var b = activeBodyIds[p], offset = b << 2;
+			var b = activeBodyIds[p];
 			if (mask[b] == 0)
 				continue;
-			velX[b] = correctionVelocities.getF32(offset);
-			velY[b] = correctionVelocities.getF32(stride + offset);
-			velZ[b] = correctionVelocities.getF32(stride * 2 + offset);
-			angVelX[b] = correctionVelocities.getF32(stride * 3 + offset);
-			angVelY[b] = correctionVelocities.getF32(stride * 4 + offset);
-			angVelZ[b] = correctionVelocities.getF32(stride * 5 + offset);
+			velX[b] = correctionVelocities[b];
+			velY[b] = correctionVelocities[stride + b];
+			velZ[b] = correctionVelocities[stride * 2 + b];
+			angVelX[b] = correctionVelocities[stride * 3 + b];
+			angVelY[b] = correctionVelocities[stride * 4 + b];
+			angVelZ[b] = correctionVelocities[stride * 5 + b];
 		}
 	}
 

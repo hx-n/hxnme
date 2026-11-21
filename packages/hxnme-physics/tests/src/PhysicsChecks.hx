@@ -13,7 +13,7 @@ import hxn.me.physics.collision.ManifoldClipper;
 import hxn.me.physics.collision.ManifoldClipper.ClipWorkspace;
 import hxn.me.physics.island.ConstraintGraph;
 import hxn.me.physics.island.IslandManager;
-import hxn.me.math.Simd.FloatBuffer;
+import hxn.Float32Buffer;
 
 class PhysicsChecks {
     static function near(actual:Float, expected:Float, label:String, tolerance:Float = 0.0001):Void {
@@ -533,12 +533,12 @@ class PhysicsChecks {
     static function checkBroadPhaseTree():Void {
         var count = 256;
         var tree = new BroadPhase(count * 2, 16);
-        var proxies = new hl.NativeArray<Int>(count);
-        var bodies = new hl.NativeArray<Int>(count);
-        var types = new hl.NativeArray<Int>(count);
-        var categories = new hl.NativeArray<Int>(count);
-        var masks = new hl.NativeArray<Int>(count);
-        var groups = new hl.NativeArray<Int>(count);
+        var proxies = new hxn.Int32Buffer(count);
+        var bodies = new hxn.Int32Buffer(count);
+        var types = new hxn.Int32Buffer(count);
+        var categories = new hxn.Int32Buffer(count);
+        var masks = new hxn.Int32Buffer(count);
+        var groups = new hxn.Int32Buffer(count);
         for (i in 0...count) {
             proxies[i] = tree.createProxy(i * 3.0, 0, 0, i * 3.0 + 1, 1, 1, i);
             bodies[i] = i;
@@ -1038,7 +1038,7 @@ class PhysicsChecks {
 
     static function checkConstraintGraph():Void {
         var contacts = new ContactManifoldPool(32);
-        var types = new hl.NativeArray<Int>(32);
+        var types = new hxn.Int32Buffer(32);
         for (body in 0...32) types[body] = BodyType.Dynamic;
         var normal = new Vec3(0, 1, 0), point = new Vec3();
         var graph = new ConstraintGraph(32, contacts.maxContacts);
@@ -1078,7 +1078,7 @@ class PhysicsChecks {
 
     static function checkIslandsAndSleep():Void {
         var contacts = new ContactManifoldPool(8);
-        var types = new hl.NativeArray<Int>(5);
+        var types = new hxn.Int32Buffer(5);
         var islands = new IslandManager(5);
         for (body in 0...4) {
             types[body] = BodyType.Dynamic;
@@ -1094,10 +1094,10 @@ class PhysicsChecks {
         near(islands.islandCount, 2, 'connected island count');
         if (islands.root(0) != islands.root(2) || islands.root(0) == islands.root(3)) throw 'island union';
 
-        var vx = new FloatBuffer(5), vy = new FloatBuffer(5), vz = new FloatBuffer(5);
-        var wx = new FloatBuffer(5), wy = new FloatBuffer(5), wz = new FloatBuffer(5);
-        var px = new FloatBuffer(5), py = new FloatBuffer(5), pz = new FloatBuffer(5);
-        var qx = new FloatBuffer(5), qy = new FloatBuffer(5), qz = new FloatBuffer(5), qw = new FloatBuffer(5);
+        var vx = new Float32Buffer(5), vy = new Float32Buffer(5), vz = new Float32Buffer(5);
+        var wx = new Float32Buffer(5), wy = new Float32Buffer(5), wz = new Float32Buffer(5);
+        var px = new Float32Buffer(5), py = new Float32Buffer(5), pz = new Float32Buffer(5);
+        var qx = new Float32Buffer(5), qy = new Float32Buffer(5), qz = new Float32Buffer(5), qw = new Float32Buffer(5);
         for (body in 0...5) qw[body] = 1.0;
         vz[2] = 0.05;
         for (step in 0...32) {

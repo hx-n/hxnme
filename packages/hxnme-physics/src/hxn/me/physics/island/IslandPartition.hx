@@ -2,20 +2,20 @@ package hxn.me.physics.island;
 
 import hxn.me.physics.core.World;
 import hxn.me.physics.core.Handles.BodyType;
-import hl.NativeArray;
+import hxn.Int32Buffer;
 
 class IslandTask {
 	public var root:Int = -1;
-	public var counts:NativeArray<Int>;
-	public var offsets:NativeArray<Int>;
-	public var cursors:NativeArray<Int>;
+	public var counts:Int32Buffer;
+	public var offsets:Int32Buffer;
+	public var cursors:Int32Buffer;
 	public var jointStart:Int = 0;
 	public var jointCount:Int = 0;
 
 	public function new() {
-		counts = new NativeArray<Int>(ConstraintGraph.COLOR_COUNT);
-		offsets = new NativeArray<Int>(ConstraintGraph.COLOR_COUNT);
-		cursors = new NativeArray<Int>(ConstraintGraph.COLOR_COUNT);
+		counts = new Int32Buffer(ConstraintGraph.COLOR_COUNT);
+		offsets = new Int32Buffer(ConstraintGraph.COLOR_COUNT);
+		cursors = new Int32Buffer(ConstraintGraph.COLOR_COUNT);
 	}
 
 	public function reset(root:Int):Void {
@@ -30,21 +30,21 @@ class IslandPartition {
 	public var tasks:Array<IslandTask> = [];
 	public var activeCount(default, null):Int = 0;
 	public var contactCount(default, null):Int = 0;
-	public var contactIndices:NativeArray<Int>;
-	public var jointIndices:NativeArray<Int>;
+	public var contactIndices:Int32Buffer;
+	public var jointIndices:Int32Buffer;
 
-	var rootToTask:NativeArray<Int>;
-	var contactTask:NativeArray<Int>;
-	var jointTask:NativeArray<Int>;
-	var jointCursor:NativeArray<Int>;
+	var rootToTask:Int32Buffer;
+	var contactTask:Int32Buffer;
+	var jointTask:Int32Buffer;
+	var jointCursor:Int32Buffer;
 
 	public function new(bodyCapacity:Int, contactCapacity:Int, jointCapacity:Int) {
-		rootToTask = new NativeArray<Int>(bodyCapacity);
-		contactTask = new NativeArray<Int>(contactCapacity);
-		jointTask = new NativeArray<Int>(jointCapacity);
-		contactIndices = new NativeArray<Int>(contactCapacity);
-		jointIndices = new NativeArray<Int>(jointCapacity);
-		jointCursor = new NativeArray<Int>(bodyCapacity);
+		rootToTask = new Int32Buffer(bodyCapacity);
+		contactTask = new Int32Buffer(contactCapacity);
+		jointTask = new Int32Buffer(jointCapacity);
+		contactIndices = new Int32Buffer(contactCapacity);
+		jointIndices = new Int32Buffer(jointCapacity);
+		jointCursor = new Int32Buffer(bodyCapacity);
 	}
 
 	function taskFor(world:World, a:Int, b:Int):Int {
@@ -69,8 +69,8 @@ class IslandPartition {
 			var cap = contactTask.length < 4 ? 4 : contactTask.length;
 			while (cap < needed)
 				cap *= 2;
-			contactTask = new NativeArray<Int>(cap);
-			contactIndices = new NativeArray<Int>(cap);
+			contactTask = new Int32Buffer(cap);
+			contactIndices = new Int32Buffer(cap);
 		}
 		activeCount = 0;
 		for (body in 0...world.bodyCount)

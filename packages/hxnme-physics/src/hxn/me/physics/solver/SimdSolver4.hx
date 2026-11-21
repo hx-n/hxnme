@@ -43,7 +43,7 @@ class SimdSolver4 {
 	 * masked: a masked lane may be another island's row, solved at the same
 	 * time by another worker, so it is never written.
 	 */
-	inline function put(value:Float32x4, rows:Bytes, at:Int, slot:Int, count:Int, skip:hl.NativeArray<Int>, whole:Bool):Void {
+	inline function put(value:Float32x4, rows:Bytes, at:Int, slot:Int, count:Int, skip:hxn.Int32Buffer, whole:Bool):Void {
 		if (whole)
 			value.store(rows, at);
 		else {
