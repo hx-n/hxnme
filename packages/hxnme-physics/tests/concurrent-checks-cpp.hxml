@@ -1,0 +1,8 @@
+-L hxn
+--class-path ../../hxnme/src
+--class-path ../src
+--class-path src
+-main ConcurrentWorldChecks
+-cpp bin/cpp-concurrent-checks
+-D HXCPP_QUIET
+-D HXCPP_TELEMETRY

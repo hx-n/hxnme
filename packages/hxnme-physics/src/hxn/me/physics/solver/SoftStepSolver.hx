@@ -294,7 +294,7 @@ class SoftStepSolver {
 	}
 
 	/** Stores Jacobians and inverse-inertia responses along one direction; returns its inverse effective mass. */
-	static inline function direction(rows:Float32Bytes, stride:Int, slot:Int, block:Int, x:Float, y:Float, z:Float, rax:Float, ray:Float, raz:Float, rbx:Float,
+	extern static inline function direction(rows:Float32Bytes, stride:Int, slot:Int, block:Int, x:Float, y:Float, z:Float, rax:Float, ray:Float, raz:Float, rbx:Float,
 			rby:Float, rbz:Float, max:Float, may:Float, maz:Float, mbx:Float, mby:Float, mbz:Float, axx:Float, ayy:Float, azz:Float, axy:Float, axz:Float,
 			ayz:Float, bxx:Float, byy:Float, bzz:Float, bxy:Float, bxz:Float, byz:Float):Float {
 		var jax = ray * z - raz * y,
