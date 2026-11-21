@@ -2,9 +2,7 @@ import hxn.me.physics.geom.ShapeBuilder;
 import hxn.me.physics.core.World;
 import hxn.me.physics.core.Handles.BodyId;
 import hxn.me.physics.core.Handles.BodyType;
-import sys.thread.FixedThreadPool;
-import sys.thread.Lock;
-import sys.thread.Mutex;
+import hxn.me.WorkerPool;
 
 class ConcurrentWorldChecks {
     static inline var WORLD_COUNT = 16;
@@ -30,27 +28,19 @@ class ConcurrentWorldChecks {
         var dt = 1.0 / 60.0;
         for (_ in 0...FRAMES) for (world in serial) world.step(dt);
 
-        var pool = new FixedThreadPool(4);
-        var done = new Lock();
-        var errorMutex = new Mutex();
-        var failure:Dynamic = null;
-        for (_ in 0...FRAMES) {
-            for (world in concurrent) {
-                var item = world;
-                pool.run(function() {
-                    try item.step(dt) catch (error:Dynamic) {
-                        errorMutex.acquire();
-                        failure = error;
-                        errorMutex.release();
-                    }
-                    done.release();
-                });
+        // Each of 4 workers steps every fourth world. The pool's shutdown waits
+        // for its threads, so none is still running when the program exits.
+        var pool = new WorkerPool(4);
+        var job = function(worker:Int) {
+            var i = worker;
+            while (i < WORLD_COUNT) {
+                concurrent[i].step(dt);
+                i += 4;
             }
-            for (_ in 0...WORLD_COUNT) done.wait();
-            if (failure != null) break;
-        }
+        };
+        for (_ in 0...FRAMES)
+            pool.run(4, job);
         pool.shutdown();
-        if (failure != null) throw failure;
 
         for (i in 0...WORLD_COUNT) {
             var expected = serial[i], actual = concurrent[i];
