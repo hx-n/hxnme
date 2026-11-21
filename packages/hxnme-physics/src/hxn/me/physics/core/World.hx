@@ -1,6 +1,7 @@
 package hxn.me.physics.core;
 
 import hxn.me.math.Grow;
+import hxn.me.math.Float32Bytes;
 import hxn.Float32Buffer;
 import hxn.Int32Buffer;
 import hxn.me.math.Vec3;
@@ -214,7 +215,7 @@ class World {
 	var pairAwake:Int32Buffer;
 	var overlapScratch:Int32Buffer;
 	// Lane constants for SIMD body integration, owned per world so worlds can step on separate threads.
-	var integrationConstants:hl.Bytes = new hl.Bytes(80);
+	var integrationConstants = new Float32Bytes(80);
 	var correctionVelocities:Float32Buffer;
 
 	public var gravity:Vec3 = new Vec3(0.0, -9.81, 0.0);

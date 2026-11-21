@@ -3,7 +3,7 @@ package hxn.me.physics.joints;
 import hxn.Float32Buffer;
 import hxn.me.physics.core.World;
 import hxn.me.physics.core.Handles.BodyType;
-import hl.Bytes;
+import hxn.me.math.Float32Bytes;
 import hxn.Int32Buffer;
 import hxn.me.math.BufferArray;
 #if (ash_simd && hl)
@@ -58,14 +58,14 @@ class JointRows {
 
 	static inline var FIELDS = 28;
 
-	/** Bytes of one packed level: every field for four lanes. */
+	/** Float32Bytes of one packed level: every field for four lanes. */
 	static inline var LEVEL_BYTES = FIELDS * 16;
 
 	static inline var COLORS = 24;
 	static inline var OVERFLOW_COLOR = 23;
 
 	var world:World;
-	var rows:Bytes;
+	var rows:Float32Bytes;
 	var capacity:Int = 0;
 
 	public var count(default, null):Int = 0;
@@ -106,7 +106,7 @@ class JointRows {
 	var batchJoint:Int32Buffer;
 	var batchLevelStart:Int32Buffer;
 	var batchLevels:Int32Buffer;
-	var packed:Bytes;
+	var packed:Float32Bytes;
 	var packedLevels:Int = 0;
 	// The island partition batches are formed within, or null for one group; each joint's group; each (color, group)'s batches.
 	var partition:Null<hxn.me.physics.island.IslandPartition>;
@@ -168,7 +168,7 @@ class JointRows {
 		batchJoint = new Int32Buffer(batches * 4);
 		batchLevelStart = new Int32Buffer(batches);
 		batchLevels = new Int32Buffer(batches);
-		packed = new Bytes(LEVEL_BYTES * 16);
+		packed = new Float32Bytes(LEVEL_BYTES * 16);
 		packedLevels = 16;
 		#if (ash_simd && hl)
 		simd = new JointSimd4();
@@ -182,8 +182,8 @@ class JointRows {
 		var next = capacity == 0 ? rowCapacity : capacity;
 		while (next < rowCapacity)
 			next <<= 1;
-		var grown = new Bytes(next * ROW_BYTES);
-		grown.fill(0, next * ROW_BYTES, 0);
+		var grown = new Float32Bytes(next * ROW_BYTES);
+		grown.clear(0, next * ROW_BYTES);
 		var bodyA = new Int32Buffer(next),
 			bodyB = new Int32Buffer(next);
 		var writeA = new Int32Buffer(next),
@@ -630,9 +630,9 @@ class JointRows {
 		if (levels > packedLevels) {
 			while (packedLevels < levels)
 				packedLevels <<= 1;
-			packed = new Bytes(LEVEL_BYTES * packedLevels);
+			packed = new Float32Bytes(LEVEL_BYTES * packedLevels);
 		}
-		packed.fill(0, LEVEL_BYTES * levels, 0);
+		packed.clear(0, LEVEL_BYTES * levels);
 		for (batch in 0...batchTotal) {
 			var start = batchLevelStart[batch];
 			for (lane in 0...4) {

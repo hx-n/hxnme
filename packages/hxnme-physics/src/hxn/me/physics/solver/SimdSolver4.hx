@@ -2,7 +2,7 @@ package hxn.me.physics.solver;
 
 import ash.simd.Float32x4;
 import ash.simd.Vec;
-import hl.Bytes;
+import hxn.me.math.Float32Bytes;
 
 /**
  * Solves four independent contact rows at once: body velocities are gathered
@@ -27,14 +27,14 @@ class SimdSolver4 {
 	static inline var MASK = 224;
 	static inline var OUT = 240;
 
-	var scratch:Bytes;
+	var scratch:Float32Bytes;
 
 	public function new() {
-		scratch = new Bytes(256);
-		scratch.fill(0, 256, 0);
+		scratch = new Float32Bytes(256);
+		scratch.clear(0, 256);
 	}
 
-	static inline function field(rows:Bytes, stride:Int, field:Int, base:Int):Float32x4 {
+	static inline function field(rows:Float32Bytes, stride:Int, field:Int, base:Int):Float32x4 {
 		return Float32x4.load(rows, field * stride + base);
 	}
 
@@ -43,7 +43,7 @@ class SimdSolver4 {
 	 * masked: a masked lane may be another island's row, solved at the same
 	 * time by another worker, so it is never written.
 	 */
-	inline function put(value:Float32x4, rows:Bytes, at:Int, slot:Int, count:Int, skip:hxn.Int32Buffer, whole:Bool):Void {
+	inline function put(value:Float32x4, rows:Float32Bytes, at:Int, slot:Int, count:Int, skip:hxn.Int32Buffer, whole:Bool):Void {
 		if (whole)
 			value.store(rows, at);
 		else {

@@ -1,6 +1,5 @@
 package hxn.me.math;
 
-import hl.Bytes;
 import hxn.Float32Buffer;
 #if (ash_simd && hl)
 import ash.simd.Float32x4;
@@ -12,13 +11,13 @@ class SimdBatch {
 	/** Adds gravity to the velocity of every active body with mass along that axis. */
 	public static inline function integrateVelocities(count:Int, velX:Float32Buffer, velY:Float32Buffer, velZ:Float32Buffer, invMassX:Float32Buffer,
 			invMassY:Float32Buffer, invMassZ:Float32Buffer, gx:Single, gy:Single, gz:Single, dt:Single, integrationMask:Float32Buffer = null,
-			constants:Bytes = null):Void {
+			constants:Float32Bytes = null):Void {
 		var i = 0;
 
 		#if (ash_simd && hl)
 		// Lane constants go through a caller-owned buffer: Float32x4.splat allocates a fresh vector per call.
 		if (constants == null)
-			constants = new Bytes(80);
+			constants = new Float32Bytes(80);
 		for (lane in 0...4) {
 			var o = lane << 2;
 			constants.setF32(o, dt);
@@ -69,12 +68,12 @@ class SimdBatch {
 
 	/** Moves every active body by its velocity over `dt`. */
 	public static inline function integratePositions(count:Int, posX:Float32Buffer, posY:Float32Buffer, posZ:Float32Buffer, velX:Float32Buffer, velY:Float32Buffer,
-			velZ:Float32Buffer, dt:Single, integrationMask:Float32Buffer = null, constants:Bytes = null):Void {
+			velZ:Float32Buffer, dt:Single, integrationMask:Float32Buffer = null, constants:Float32Bytes = null):Void {
 		var i = 0;
 
 		#if (ash_simd && hl)
 		if (constants == null)
-			constants = new Bytes(80);
+			constants = new Float32Bytes(80);
 		for (lane in 0...4) {
 			var o = lane << 2;
 			constants.setF32(o, dt);

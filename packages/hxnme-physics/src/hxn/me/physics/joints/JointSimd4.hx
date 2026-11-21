@@ -1,7 +1,7 @@
 package hxn.me.physics.joints;
 
 import ash.simd.Float32x4;
-import hl.Bytes;
+import hxn.me.math.Float32Bytes;
 
 /**
  * Solves a batch of four joints of one color. The joints share no dynamic
@@ -18,16 +18,16 @@ class JointSimd4 {
 	static inline var ANG_B = 144;
 	static inline var MINUS_ONE = 192;
 
-	var scratch:Bytes;
+	var scratch:Float32Bytes;
 
 	public function new() {
-		scratch = new Bytes(208);
-		scratch.fill(0, 208, 0);
+		scratch = new Float32Bytes(208);
+		scratch.clear(0, 208);
 		for (lane in 0...4)
 			scratch.setF32(MINUS_ONE + (lane << 2), -1.0);
 	}
 
-	static inline function field(packed:Bytes, base:Int, field:Int):Float32x4 {
+	static inline function field(packed:Float32Bytes, base:Int, field:Int):Float32x4 {
 		return Float32x4.load(packed, base + (field << 4));
 	}
 

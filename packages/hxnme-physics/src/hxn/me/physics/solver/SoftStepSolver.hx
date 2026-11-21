@@ -6,7 +6,7 @@ import hxn.me.physics.core.Handles.BodyType;
 import hxn.me.physics.island.ConstraintGraph;
 import hxn.me.physics.island.IslandPartition;
 import hxn.me.physics.island.IslandPartition.IslandTask;
-import hl.Bytes;
+import hxn.me.math.Float32Bytes;
 import hxn.Int32Buffer;
 #if (ash_simd && hl)
 import hxn.me.physics.solver.SimdSolver4;
@@ -56,7 +56,7 @@ class SoftStepSolver {
 	var simd:SimdSolver4;
 	var workerSimd:Array<SimdSolver4> = [];
 	#end
-	var rows:Bytes;
+	var rows:Float32Bytes;
 	var stride:Int;
 	var rowContact:Int32Buffer;
 	var rowBodyA:Int32Buffer;
@@ -66,7 +66,7 @@ class SoftStepSolver {
 	// Rows without normal effective mass take the scalar path, which leaves them untouched.
 	var rowSkip:Int32Buffer;
 	// Lane constants for the SIMD kernel: -1, 0, 1.
-	var lanes:Bytes;
+	var lanes:Float32Bytes;
 	var partition:IslandPartition;
 	var capacity:Int = 0;
 
@@ -78,7 +78,7 @@ class SoftStepSolver {
 		simd = new SimdSolver4();
 		#end
 		allocate(capacity < 4 ? 4 : capacity);
-		lanes = new Bytes(48);
+		lanes = new Float32Bytes(48);
 		for (lane in 0...4) {
 			lanes.setF32(lane << 2, -1.0);
 			lanes.setF32(16 + (lane << 2), 0.0);
@@ -89,8 +89,8 @@ class SoftStepSolver {
 	function allocate(cap:Int):Void {
 		capacity = cap;
 		var bytes = FIELDS * ((((cap + 7) & ~7) + 4) << 2);
-		rows = new Bytes(bytes);
-		rows.fill(0, bytes, 0);
+		rows = new Float32Bytes(bytes);
+		rows.clear(0, bytes);
 		rowContact = new Int32Buffer(cap);
 		rowBodyA = new Int32Buffer(cap);
 		rowBodyB = new Int32Buffer(cap);
@@ -289,12 +289,12 @@ class SoftStepSolver {
 		#end
 	}
 
-	static inline function put(rows:Bytes, stride:Int, field:Int, slot:Int, value:Float):Void {
+	static inline function put(rows:Float32Bytes, stride:Int, field:Int, slot:Int, value:Float):Void {
 		rows.setF32(field * stride + (slot << 2), value);
 	}
 
 	/** Stores Jacobians and inverse-inertia responses along one direction; returns its inverse effective mass. */
-	static inline function direction(rows:Bytes, stride:Int, slot:Int, block:Int, x:Float, y:Float, z:Float, rax:Float, ray:Float, raz:Float, rbx:Float,
+	static inline function direction(rows:Float32Bytes, stride:Int, slot:Int, block:Int, x:Float, y:Float, z:Float, rax:Float, ray:Float, raz:Float, rbx:Float,
 			rby:Float, rbz:Float, max:Float, may:Float, maz:Float, mbx:Float, mby:Float, mbz:Float, axx:Float, ayy:Float, azz:Float, axy:Float, axz:Float,
 			ayz:Float, bxx:Float, byy:Float, bzz:Float, bxy:Float, bxz:Float, byz:Float):Float {
 		var jax = ray * z - raz * y,
@@ -486,7 +486,7 @@ class SoftStepSolver {
 			apply(slot, T2X, TANGENT2_ROWS, nextT2 - oldT2);
 	}
 
-	static inline function get(rows:Bytes, stride:Int, field:Int, slot:Int):Single {
+	static inline function get(rows:Float32Bytes, stride:Int, field:Int, slot:Int):Single {
 		return rows.getF32(field * stride + (slot << 2));
 	}
 
