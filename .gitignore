@@ -1,0 +1,5 @@
+/packages/*/tests/bin/
+/packages/*/bench/bin/
+/.haxelib/
+__pycache__/
+*.pyc

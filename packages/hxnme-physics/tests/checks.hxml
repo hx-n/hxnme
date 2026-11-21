@@ -1,0 +1,8 @@
+-L hashlink
+-L ash-simd
+--class-path ../../hxnme/src
+--class-path ../src
+--class-path src
+-D ash_simd=1
+-main PhysicsChecks
+-hl bin/checks.hl

@@ -1,0 +1,21 @@
+{
+  "name": "hxnme-physics",
+  "version": "0.0.1",
+  "license": "Apache",
+  "url": "https://github.com/hx-n/hxnme",
+  "description": "Rigid-body physics for hxnme, with one API for 2D and 3D",
+  "contributors": [
+    "darmie"
+  ],
+  "releasenote": "The physics engine copied from Chimpmonk, with its checks and benchmarks.",
+  "classPath": "src",
+  "dependencies": {
+    "hxnme": "0.0.1",
+    "ash-simd": "0.1.1"
+  },
+  "tags": [
+    "hashlink",
+    "physics",
+    "engine"
+  ]
+}
