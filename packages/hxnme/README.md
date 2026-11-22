@@ -1,14 +1,13 @@
 # hxnme
 
-The kernel of hxnme. The package `hxn.me.math` contains:
-
-- `Vec3`, `Quat` and `Mat3`: vectors, quaternions and 3×3 matrices.
-- `FloatBuffer`, `IntBuffer` and `DoubleBuffer`: fixed-length arrays of 32-bit
-  floats, 32-bit integers and 64-bit floats.
-- `SimdBatch`: velocity and position integration for the physics, 4 bodies per
-  iteration with `-D ash_simd`, and a scalar loop without it.
-- `Grow`: static functions that copy an array or a buffer into one with a
-  larger capacity.
+The hxn media engine (hxnme) kernel. It is intentionally lightweight: it
+provides the app loop, the frame scheduler, the plugin registry, math, and
+the asset and file layer built on hxn-assets and hxn-file. Everything else,
+including rendering, audio, text, input, ECS, UI, physics and
+platform-specific features, ships as plugins. The plugin system keeps the
+architecture flexible without costing performance: plugins are composed at
+compile time, with no run-time discovery or lookup, and an app compiles only
+the plugins it needs.
 
 ## App metadata
 

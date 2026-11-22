@@ -1,16 +1,52 @@
 # hxnme
 
 hxnme is an engine for games and interactive apps, written in Haxe. It is part
-of the [hxn](https://github.com/hx-n/hxn) project. hxnme is a kernel and
-plugins, each published as a haxelib. Apps depend on the kernel and on the
-plugins that they use.
+of the [hxn](https://github.com/hx-n/hxn) project. The engine consists of a
+lightweight kernel and a set of plugins, each published as its own haxelib.
+Apps depend on the kernel and add the plugins they need.
 
-## Packages
+## Architecture
 
-| Haxelib | Contents |
-|---|---|
-| [hxnme](packages/hxnme/README.md) | Kernel: math types and numeric buffers. |
-| [hxnme-physics](packages/hxnme-physics/README.md) | Physics plugin: rigid bodies in 2D and 3D, deterministic stepping and snapshots. |
+```mermaid
+flowchart TB
+    app["App"]
+
+    subgraph plugins["Plugins"]
+        render["Rendering"]
+        audio["Audio"]
+        text["Text"]
+        input["Input"]
+        ecs["ECS"]
+        ui["UI"]
+        physics["Physics"]
+        platform["Platform-specific plugins"]
+        custom["Custom plugins"]
+    end
+
+    subgraph kernel["Kernel"]
+        loop["App loop"]
+        scheduler["Frame scheduler"]
+        registry["Plugin registry"]
+        math["Math"]
+        assets["Assets and files"]
+    end
+
+    subgraph libraries["hxn libraries"]
+        window["hxn-window"]
+        gpu["hxn-gpu, hxnsl"]
+        av["hxn-av, hxn-audio"]
+        textlib["hxn-text"]
+        assetlib["hxn-assets, hxn-file"]
+    end
+
+    subgraph runtimes["Runtimes"]
+        hxcpp["hxcpp"]
+        hashlink["HashLink"]
+        ash["Ash JIT and AOT"]
+    end
+
+    app --> plugins --> kernel --> libraries --> runtimes
+```
 
 ## Roadmap
 

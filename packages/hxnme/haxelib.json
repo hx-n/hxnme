@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "license": "Apache",
   "url": "https://github.com/hx-n/hxnme",
-  "description": "The kernel of hxnme, the hxn media engine",
+  "description": "The hxn media engine (hxnme) kernel: the app loop, frame scheduler, plugin registry, math and asset base that its plugins build on",
   "contributors": [
     "darmie"
   ],
