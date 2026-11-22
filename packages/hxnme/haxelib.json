@@ -14,5 +14,20 @@
     "hashlink",
     "hxcpp",
     "engine"
-  ]
+  ],
+  "hxn": {
+    "cli": {
+      "version": 1,
+      "command": [
+        "haxe",
+        "-cp",
+        "{root}/tools",
+        "--run",
+        "hxn.me.cli.Tool"
+      ],
+      "hooks": [
+        "before-build"
+      ]
+    }
+  }
 }

@@ -9,3 +9,23 @@ The kernel of hxnme. The package `hxn.me.math` contains:
   iteration with `-D ash_simd`, and a scalar loop without it.
 - `Grow`: static functions that copy an array or a buffer into one with a
   larger capacity.
+
+## App metadata
+
+An app declares its metadata as defines in its program file, the `.hxml`
+file that `hxn run` and `hxn check` compile:
+
+```
+-lib hxnme
+-main Main
+-D hxnme_preset=game
+```
+
+`hxnme_preset` selects the Ash preset for the kind of app: `game`, `server`,
+`application` or one of the others that `ash --help` lists. The preset sets
+when Ash's hybrid and JIT modes compile a function, as in
+`hxn run hl --vm ash`. hxn gives it to every Ash command that it runs for the
+app. A `--preset` in the `--ash` or `--vm` command overrides the app's.
+
+hxnme reads the defines in a build hook of the hxn command, and hxn passes
+the options to Ash.

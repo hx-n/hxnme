@@ -42,6 +42,8 @@ conventions first. They apply here too.
   runtime, and `<name>-simd.hxml` adds the SIMD paths, which run on Ash.
 - Run both files on Ash in hybrid, JIT and interpreter modes:
   `hxn run hl checks-simd.hxml --vm "ash --mode jit"`.
+- Build both files ahead of time, the build a game ships as, with
+  `hxn build hl checks-simd.hxml`, and run the executable it prints.
 - Run `<name>.hxml` on hxcpp, CPPIA, and wasm with Ash and with hxcpp, with
   and without threads: `hxn run cpp`, `hxn run cppia`,
   `hxn run hl --wasm --threads`, `hxn run cpp --wasm --threads`. Add
