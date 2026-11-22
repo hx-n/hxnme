@@ -1,6 +1,6 @@
 # hxnme
 
-hxnme is an engine for games and interactive apps, written in Haxe. It is part
+hxnme is an engine framework for developing games and rich interactive apps and experiences, written in Haxe. It is part
 of the [hxn](https://github.com/hx-n/hxn) project. The engine consists of a
 lightweight kernel and a set of plugins, each published as its own haxelib.
 Apps depend on the kernel and add the plugins they need.
