@@ -21,6 +21,10 @@ conventions first. They apply here too.
 - Do not write a compound assignment to a `Single` with a `Float` operand,
   such as `s /= f` or `s *= f`. HashLink computes it in single precision, and
   hxcpp computes it in double. Cast the `Single`: `s = (s : Float) / f`.
+- Record each third-party dependency in `third-party/NOTICES.md`, with its
+  license and notice texts copied unchanged under `third-party/licenses/`,
+  in the same commit that adds the dependency. Code written for hxnme needs
+  no entry.
 
 ## Physics
 
