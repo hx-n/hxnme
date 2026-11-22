@@ -51,9 +51,41 @@ A plugin is a haxelib with an `hxnme` section in `haxelib.json`
 `extraParams.hxml` with `--macro hxn.me.macro.Registry.add("<haxelib name>")`.
 The kernel generates `hxn.me.Plugins` at compile time: `Plugins.start()`
 creates and starts each plugin after the plugins it requires, and
-`Plugins.names` lists them in that order. `-D hxnme_dump` writes the
-generated class out. Missing requirements, cycles, unsupported targets and a
-wrong `@:plugin` are compile errors.
+`Plugins.names` lists them in that order. Missing requirements, cycles,
+unsupported targets and a wrong `@:plugin` are compile errors. Describe each
+plugin: `@:plugin("<haxelib name>", description = "...")`.
+
+## Systems
+
+A system is a static function with `@:system(Phase, after = ..., before = ...,
+description = "...")`. The phases run in the order `Start` (once), `Fixed`
+(once for each fixed step), `Update` and `Render`. `after` and `before` take
+one name or an array of names: a system (`move`, `Movement.move`) or a class
+of systems (`Movement`), which means its systems in the same phase. Give each
+system a `description` of what it does.
+
+Parameters are resources: `Res<T>` reads `T` and `ResMut<T>` writes it. `T`
+is a class whose constructor takes no arguments, and the app has one
+instance of it. The kernel derives each system's reads and writes from these
+types, so declare a resource as `ResMut<T>` if the system writes it.
+
+```haxe
+@:system(Update, after = Physics, description = "Moves each body by its velocity")
+static function move(time:Res<Time>, bodies:ResMut<Bodies>) {}
+```
+
+The app names its classes of systems one time, with
+`var schedule = hxn.me.App.schedule(Movement, Scoring);`. A plugin names
+its own with `@:systems(Broadphase, Solver)` on its plugin class, whose
+static functions can also be systems. The generated `hxn.me.Schedule` has
+`start()`, `fixed()`, `update()` and `render()`, and each calls its systems
+directly in the resolved order. Cycles, unknown names, constraints across
+phases, ambiguous names and parameters that are not resources are compile
+errors at the annotation.
+
+`-D hxnme_dump` writes the generated `Plugins` and `Schedule` classes to
+`hxnme-generated.hx`, with the order, reads, writes and description of each
+system. Read it to see the order the kernel chose.
 
 ## Kernel API
 
@@ -100,10 +132,12 @@ hxn build hl toml-checks.hxml
 hxn run hl --wasm toml-checks.hxml
 hxn run cpp --wasm toml-checks.hxml
 cd plugins && hxn check hl cpp cppia app.hxml --vm ash
+cd systems && hxn check hl cpp cppia app.hxml --vm ash
 haxe plugin-errors.hxml
+haxe system-errors.hxml
 ```
 
-The plugin check selects the kernel with `-lib hxnme`, which needs
+The plugin and system checks select the kernel with `-lib hxnme`, which needs
 `haxelib dev hxnme <hxnme checkout>/packages/hxnme` once.
 
 Report each runtime that was not run. Follow the

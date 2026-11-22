@@ -1,0 +1,2 @@
+# The clock plugin adds systems of its own, which run before the app's.
+plugins = ["./clock"]

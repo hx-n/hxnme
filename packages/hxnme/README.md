@@ -72,9 +72,78 @@ class TilemapPlugin implements hxn.me.Plugin {
 
 At compile time the kernel generates `hxn.me.Plugins`. Its `start()` creates
 each plugin of the app and starts it, after the plugins it requires, with a
-direct call to each. `-D hxnme_dump` writes the generated class to
-`hxnme-plugins.hx`, or to the path given as its value.
+direct call to each. `-D hxnme_dump` writes the classes that the kernel
+generates to `hxnme-generated.hx`, or to the path given as its value.
 
-A missing required plugin, a cycle of requirements, a plugin that does not
-support the build's target, and a plugin class without the matching
-`@:plugin` are compile errors that name the plugin.
+`@:plugin` can also describe the plugin:
+`@:plugin("hxnme-tilemap", description = "Draws tile maps")`.
+
+These are compile errors that name the plugin: a missing required plugin, a
+cycle of requirements, a plugin that does not support the target, and a
+plugin class without the matching `@:plugin`.
+
+## Systems
+
+A system is a static function with `@:system`. It names its phase, and it
+can name the systems that it runs after or before:
+
+```haxe
+import hxn.me.Res;
+import hxn.me.ResMut;
+
+class Movement {
+	@:system(Update, after = Physics, description = "Moves each body by its velocity")
+	static function move(time:Res<Time>, bodies:ResMut<Bodies>) {
+		for (i in 0...bodies.count)
+			bodies.x[i] += bodies.vx[i] * time.delta;
+	}
+}
+```
+
+The phases of a frame run in this order:
+
+| Phase | Runs |
+|---|---|
+| `Start` | Once, after the plugins start. |
+| `Fixed` | Once for each fixed time step. A frame can run it zero or more times. |
+| `Update` | Once a frame. |
+| `Render` | Once a frame, after `Update`. Its systems record the drawing. |
+
+| Key | Meaning |
+|---|---|
+| `after`, `before` | One name or an array of names. A name is a system (`move`, `Movement.move`) or a class of systems (`Movement`, `game.Movement`). A class means each of its systems in the same phase. |
+| `description` | What the system does. The kernel records it with the system. |
+
+A system gets its resources as parameters. A resource is the one instance
+of a class that the systems of an app share. The class must have a
+constructor that takes no arguments. `Res<T>` reads `T`, and `ResMut<T>`
+writes `T`. The kernel gets the reads and writes of each system from these
+parameter types.
+
+The app names the classes that hold its systems, and gets its schedule:
+
+```haxe
+var schedule = hxn.me.App.schedule(Movement, Scoring);
+```
+
+A plugin names its classes of systems on its plugin class, with
+`@:systems(Broadphase, Solver)`. The static functions of the plugin class
+can also be systems.
+
+At compile time the kernel generates `hxn.me.Schedule`. It creates the
+resources, and it has one method for each phase: `start()`, `fixed()`,
+`update()` and `render()`. Each method calls each system of its phase
+directly, once. The order obeys every `after` and `before`. Where no
+constraint applies, the systems of the plugins come first, in plugin order.
+The systems of the app follow, in the order that the app names their
+classes. `-D hxnme_dump` writes this class too, with the reads, the writes
+and the description of each system.
+
+These are compile errors that point at the annotation:
+
+- A cycle of constraints.
+- A constraint that names no system, or names a system in another phase.
+- A name that matches more than one class or system.
+- A phase that does not exist.
+- A parameter that is not a resource.
+- A resource class without a constructor that takes no arguments.

@@ -1,0 +1,7 @@
+{
+  "name": "check-clock",
+  "version": "0.0.1",
+  "license": "Apache",
+  "classPath": "src",
+  "hxnme": {"plugin": "steps.ClockPlugin"}
+}
