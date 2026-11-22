@@ -18,6 +18,9 @@ conventions first. They apply here too.
   Ash counts allocations only in whole 32 KiB regions, and a check can pass
   when the code allocates. The setting is safe for checks, and it makes programs that
   allocate a lot use more memory.
+- Do not write a compound assignment to a `Single` with a `Float` operand,
+  such as `s /= f` or `s *= f`. HashLink computes it in single precision, and
+  hxcpp computes it in double. Cast the `Single`: `s = (s : Float) / f`.
 
 ## Physics
 
@@ -45,8 +48,14 @@ conventions first. They apply here too.
   `--browser` to run it in a web page. hxcpp does not start Haxe threads
   under Emscripten, so `WorkerPool` runs its jobs on the calling thread
   there.
-- The runtimes print different last digits. Compare the output of each
-  runtime with its own output from before the change.
+- Compare Ash and hxcpp with
+  `hxn check hl cpp <name>.hxml --vm "ash --no-fma"`. It compares the full
+  output exactly. Ash fuses multiply-adds by default, and `--no-fma` makes it
+  round each operation as HashLink and hxcpp do. `island-parallel-checks`
+  prints timings, so it is not compared.
+- CPPIA keeps `Single` values in double precision, and the math library of
+  wasm differs from the native one. Compare the output of CPPIA and of wasm
+  with their own output from before the change.
 - Run every runtime that the changed code supports, under a timeout.
 - Report each runtime that you did not run.
 

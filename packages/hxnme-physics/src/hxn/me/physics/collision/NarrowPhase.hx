@@ -1089,8 +1089,9 @@ class NarrowPhase {
 					ny = 1.0;
 				} else {
 					var inv = 1.0 / Math.sqrt(planarSq);
-					nx *= inv;
-					ny *= inv;
+					// The casts keep the product in Float on HashLink, as on hxcpp.
+					nx = (nx : Float) * inv;
+					ny = (ny : Float) * inv;
 				}
 				nz = 0.0;
 			}

@@ -7,10 +7,13 @@ import hxn.Int32Buffer;
 // Haxe Int arithmetic wraps on overflow. -fwrapv gives the generated C++ the
 // same meaning on clang and gcc; without it, signed overflow is undefined and
 // the optimizer can drop masks and comparisons that depend on wrapping.
+// Haxe rounds the result of each Float and Single operation, as HashLink does.
+// -ffp-contract=off stops clang and gcc from fusing a multiply and an add into
+// one rounding, so hxcpp computes the same bits as HashLink.
 // Under Emscripten the heap has a fixed size unless it is allowed to grow,
 // and the storage grows here.
 #if cpp
-@:buildXml('<files id="haxe"><compilerflag value="-fwrapv" unless="isMsvc"/></files>
+@:buildXml('<files id="haxe"><compilerflag value="-fwrapv" unless="isMsvc"/><compilerflag value="-ffp-contract=off" unless="isMsvc"/></files>
 <linker id="exe" if="emscripten"><flag value="-sALLOW_MEMORY_GROWTH=1"/></linker>')
 #end
 class Grow {

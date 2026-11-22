@@ -368,9 +368,11 @@ class ManifoldClipper {
 					normal.y = 1;
 					normal.z = 0;
 				} else {
-					normal.x /= length;
-					normal.y /= length;
-					normal.z /= length;
+					// HashLink computes `s /= f` on a Single in single precision.
+					// The cast keeps the division in Float, as on hxcpp.
+					normal.x = (normal.x : Float) / length;
+					normal.y = (normal.y : Float) / length;
+					normal.z = (normal.z : Float) / length;
 				}
 			}
 			result.push(transformedFace);
