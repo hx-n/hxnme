@@ -1,0 +1,2 @@
+# Listed out of order: beta requires alpha, so alpha starts first.
+plugins = ["./beta", "./alpha"]

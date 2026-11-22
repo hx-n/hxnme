@@ -28,7 +28,7 @@ preset = "game"
 
 | Key | Effect |
 |---|---|
-| `plugins` | Haxelibs added to the build with their dependencies, as `-lib` adds them. `-lib` in the program file also selects a plugin. |
+| `plugins` | Haxelibs added to the build with their dependencies, as `-lib` adds them, or paths of in-project plugin directories (`"./plugins/tilemap"`). `-lib` in the program file also selects a plugin. |
 | `app.preset` | The Ash preset (`game`, `server`, `application`, ...), passed to every Ash command hxn runs for the app. A `--preset` in `--ash` or `--vm` overrides it. |
 
 ```
@@ -41,6 +41,19 @@ hxn package cpp app.hxml --target x86_64-apple-darwin --out dist-x86_64
 hxnme reads `hxnme.toml` in a build hook of the hxn command. The hook uses
 only hxn's existing hook replies (`haxe_args`, `ash_args`). Extend it through
 those, not with new protocol.
+
+## Plugins
+
+A plugin is a haxelib with an `hxnme` section in `haxelib.json`
+(`plugin`: the class; `requires`: plugin names; `platforms`: `hl`, `cpp`,
+`cppia`, `desktop`, `wasm`, `android`, `ios`), a class marked
+`@:plugin("<haxelib name>")` that implements `hxn.me.Plugin`, and an
+`extraParams.hxml` with `--macro hxn.me.macro.Registry.add("<haxelib name>")`.
+The kernel generates `hxn.me.Plugins` at compile time: `Plugins.start()`
+creates and starts each plugin after the plugins it requires, and
+`Plugins.names` lists them in that order. `-D hxnme_dump` writes the
+generated class out. Missing requirements, cycles, unsupported targets and a
+wrong `@:plugin` are compile errors.
 
 ## Kernel API
 
@@ -86,7 +99,12 @@ hxn check hl cpp cppia toml-checks.hxml --vm ash
 hxn build hl toml-checks.hxml
 hxn run hl --wasm toml-checks.hxml
 hxn run cpp --wasm toml-checks.hxml
+cd plugins && hxn check hl cpp cppia app.hxml --vm ash
+haxe plugin-errors.hxml
 ```
+
+The plugin check selects the kernel with `-lib hxnme`, which needs
+`haxelib dev hxnme <hxnme checkout>/packages/hxnme` once.
 
 Report each runtime that was not run. Follow the
 [hxnme agent rules](https://github.com/hx-n/hxnme/blob/main/AGENTS.md), the

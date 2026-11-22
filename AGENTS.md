@@ -48,7 +48,10 @@ conventions first. They apply here too.
 - Run the checks with `hxn run` in each package's `tests` directory. Install
   `hxn` from the hxn repository with `cargo install --path crates/hxn-cli`.
   The kernel's checks compare every runtime at once:
-  `hxn check hl cpp cppia toml-checks.hxml --vm ash`.
+  `hxn check hl cpp cppia toml-checks.hxml --vm ash`, and in
+  `tests/plugins`, `hxn check hl cpp cppia app.hxml --vm ash`. That check
+  uses `-lib hxnme`, so run `haxelib dev hxnme packages/hxnme` once.
+  `haxe plugin-errors.hxml` checks the registry's compile errors.
   Each check program has two program files: `<name>.hxml` runs on every
   runtime, and `<name>-simd.hxml` adds the SIMD paths, which run on Ash.
 - Run both files on Ash in hybrid, JIT and interpreter modes:

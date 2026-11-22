@@ -34,24 +34,33 @@ class Tool {
 			var selected = project.hxml == null ? [] : libraries(File.getContent(project.hxml));
 			var args = [];
 			for (plugin in plugins)
-				add(string(plugin, "plugins", file), selected, args);
+				add(string(plugin, "plugins", file), project.directory, selected, args);
 			if (args.length > 0)
 				reply.haxe_args = args;
 		}
 		Sys.println(Json.stringify(reply));
 	}
 
-	// Adds the haxe arguments that `-lib name` would give, after those of the
-	// haxelibs it depends on. Haxelibs in `seen` are already selected.
-	static function add(name:String, seen:Array<String>, args:Array<Array<String>>) {
+	// Adds the haxe arguments that `-lib` would give for `entry`, after those
+	// of the haxelibs it depends on. `entry` is a haxelib name, or the path of
+	// an in-project plugin's directory relative to `base`. Haxelibs in `seen`
+	// are already selected.
+	static function add(entry:String, base:String, seen:Array<String>, args:Array<Array<String>>) {
+		var local = StringTools.startsWith(entry, ".") || entry.indexOf("/") >= 0;
+		if (!local && seen.contains(entry))
+			return;
+		var root = local ? (Path.isAbsolute(entry) ? entry : Path.join([base, entry])) : libpath(entry);
+		var manifest = Path.join([root, "haxelib.json"]);
+		if (!FileSystem.exists(manifest))
+			fail('hxnme.toml lists the plugin `$entry`, and $manifest does not exist');
+		var info:Dynamic = Json.parse(File.getContent(manifest));
+		var name:String = info.name;
 		if (seen.contains(name))
 			return;
 		seen.push(name);
-		var root = libpath(name);
-		var info:Dynamic = Json.parse(File.getContent(Path.join([root, "haxelib.json"])));
 		var dependencies:Dynamic = info.dependencies == null ? {} : info.dependencies;
 		for (dependency in Reflect.fields(dependencies))
-			add(dependency, seen, args);
+			add(dependency, base, seen, args);
 		args.push(["-cp", Path.join([root, info.classPath == null ? "" : info.classPath])]);
 		args.push(["-D", '$name=${info.version}']);
 		var extra = Path.join([root, "extraParams.hxml"]);
