@@ -21,10 +21,15 @@ conventions first. They apply here too.
 - Do not write a compound assignment to a `Single` with a `Float` operand,
   such as `s /= f` or `s *= f`. HashLink computes it in single precision, and
   hxcpp computes it in double. Cast the `Single`: `s = (s : Float) / f`.
-- Record each third-party dependency in `third-party/NOTICES.md`, with its
-  license and notice texts copied unchanged under `third-party/licenses/`,
-  in the same commit that adds the dependency. Code written for hxnme needs
-  no entry.
+- Record each third-party dependency of a package in the package's
+  `third-party/NOTICES.md`, with its license and notice texts copied
+  unchanged under `third-party/licenses/`, in the same commit that adds the
+  dependency. The notices ship in the package's haxelib. Code written for
+  hxnme needs no entry.
+- Keep an agent skill for each package in `skills/<package>/SKILL.md`, and
+  update it in the same commit as an API or workflow change. Links in a
+  skill are absolute HTTPS URLs. A package's release copies its skill into
+  the haxelib's `skills/`.
 
 ## Physics
 

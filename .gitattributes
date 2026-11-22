@@ -1,1 +1,1 @@
-third-party/licenses/** -text -whitespace
+**/third-party/licenses/** -text -whitespace

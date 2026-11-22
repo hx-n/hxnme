@@ -59,6 +59,11 @@ flowchart TB
 6. 3D: frame graph, meshes, materials and post-processing.
 7. Delivery: packaging, signing, and deploys to app stores and the web.
 
+## Agent skills
+
+Each package has an agent skill for coding agents in
+[`skills/`](skills/), and the package's haxelib includes it.
+
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
