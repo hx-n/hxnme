@@ -1,47 +1,119 @@
 package hxn.me.cli;
 
 import haxe.Json;
+import haxe.io.Path;
+import hxn.me.project.Toml;
+import sys.FileSystem;
 import sys.io.File;
+import sys.io.Process;
 
 /**
-	The hxn CLI hook of hxnme. Before a build, it reads the app's metadata from
-	the defines of its program file and returns the Ash options they select:
-	`-D hxnme_preset=game` gives Ash `--preset game`.
+	The hxn CLI hook of hxnme. Before a build, it reads `hxnme.toml` beside
+	the program file and returns what the build needs from it: the Ash options
+	of the app's metadata, and the class paths, defines and macros of the
+	plugins it lists.
 **/
 class Tool {
 	static function main() {
 		var request:Dynamic = Json.parse(Sys.stdin().readAll().toString());
 		if (request.kind != "hook") {
-			Sys.stderr().writeString("hxn me has no commands. hxnme reads its app metadata from the program file's defines, such as -D hxnme_preset=game.\n");
+			Sys.stderr().writeString("hxn me has no commands yet. hxnme reads an app's plugins and metadata from hxnme.toml beside its program file.\n");
 			Sys.exit(2);
 		}
 		var reply:Dynamic = {version: 1};
-		var context:Dynamic = request.context;
-		var hxml:Null<String> = context.project.hxml;
-		var target:Dynamic = context.target;
-		if (request.phase == "before-build" && hxml != null && target != null && target.runtime == "hl") {
-			var preset = define(File.getContent(hxml), "hxnme_preset");
-			if (preset != null)
-				reply.ash_args = [["--preset", preset]];
+		var project:Dynamic = request.context.project;
+		var file = Path.join([project.directory, "hxnme.toml"]);
+		if (request.phase == "before-build" && FileSystem.exists(file)) {
+			var toml:Dynamic = try Toml.parse(File.getContent(file), file) catch (error:String) fail(error);
+			var app:Dynamic = toml.app;
+			if (app != null && app.preset != null)
+				reply.ash_args = [["--preset", string(app.preset, "app.preset", file)]];
+			var plugins:Array<Dynamic> = toml.plugins == null ? [] : toml.plugins;
+			if (!Std.isOfType(plugins, Array))
+				fail('$file: `plugins` must be an array of haxelib names');
+			var selected = project.hxml == null ? [] : libraries(File.getContent(project.hxml));
+			var args = [];
+			for (plugin in plugins)
+				add(string(plugin, "plugins", file), selected, args);
+			if (args.length > 0)
+				reply.haxe_args = args;
 		}
 		Sys.println(Json.stringify(reply));
 	}
 
-	// The value of `-D name=value` or `--define name=value` in the text of an
-	// .hxml file, or null when the file does not define `name` with a value.
-	static function define(text:String, name:String):Null<String> {
-		var found = null;
+	// Adds the haxe arguments that `-lib name` would give, after those of the
+	// haxelibs it depends on. Haxelibs in `seen` are already selected.
+	static function add(name:String, seen:Array<String>, args:Array<Array<String>>) {
+		if (seen.contains(name))
+			return;
+		seen.push(name);
+		var root = libpath(name);
+		var info:Dynamic = Json.parse(File.getContent(Path.join([root, "haxelib.json"])));
+		var dependencies:Dynamic = info.dependencies == null ? {} : info.dependencies;
+		for (dependency in Reflect.fields(dependencies))
+			add(dependency, seen, args);
+		args.push(["-cp", Path.join([root, info.classPath == null ? "" : info.classPath])]);
+		args.push(["-D", '$name=${info.version}']);
+		var extra = Path.join([root, "extraParams.hxml"]);
+		if (FileSystem.exists(extra))
+			for (pair in pairs(File.getContent(extra), extra))
+				args.push(pair);
+	}
+
+	// The flags of an extraParams.hxml, each with its value. hxn's hooks take
+	// -D, -cp and --macro.
+	static function pairs(text:String, source:String):Array<Array<String>> {
+		var out = [];
 		for (line in text.split("\n")) {
-			var words = [for (word in ~/\s+/g.split(StringTools.trim(line))) if (word != "") word];
-			if (words.length == 0 || StringTools.startsWith(words[0], "#"))
+			line = StringTools.trim(line);
+			if (line == "" || StringTools.startsWith(line, "#"))
 				continue;
-			var i = 0;
-			while (i < words.length - 1) {
-				if ((words[i] == "-D" || words[i] == "--define") && StringTools.startsWith(words[i + 1], '$name='))
-					found = words[i + 1].substr(name.length + 1);
-				i++;
+			var space = line.indexOf(" ");
+			var flag = space < 0 ? line : line.substr(0, space);
+			var value = space < 0 ? "" : StringTools.trim(line.substr(space + 1));
+			switch flag {
+				case "-D" | "--define":
+					out.push(["-D", value]);
+				case "-cp" | "-p" | "--class-path":
+					out.push(["-cp", Path.isAbsolute(value) ? value : Path.join([Path.directory(source), value])]);
+				case "--macro":
+					out.push(["--macro", value]);
+				case _:
+					fail('$source: hxnme passes -D, -cp and --macro from a plugin\'s extraParams.hxml, not `$flag`');
 			}
 		}
+		return out;
+	}
+
+	// The haxelibs a program file selects with -lib, -L or --library.
+	static function libraries(text:String):Array<String> {
+		var found = [];
+		var words = [for (word in ~/\s+/g.split(text)) if (word != "") word];
+		for (i in 0...words.length - 1)
+			if (words[i] == "-lib" || words[i] == "-L" || words[i] == "--library")
+				found.push(words[i + 1].split(":")[0]);
 		return found;
+	}
+
+	static function libpath(name:String):String {
+		var process = new Process("haxelib", ["libpath", name]);
+		var out = StringTools.trim(process.stdout.readAll().toString());
+		var code = process.exitCode();
+		process.close();
+		if (code != 0 || out == "" || !FileSystem.exists(Path.join([out, "haxelib.json"])))
+			fail('hxnme.toml lists the plugin `$name`, which haxelib does not have: install it with `haxelib install $name`');
+		return out;
+	}
+
+	static function string(value:Dynamic, key:String, file:String):String {
+		if (!Std.isOfType(value, String))
+			fail('$file: `$key` must be a string');
+		return value;
+	}
+
+	static function fail(message:String):Dynamic {
+		Sys.stderr().writeString(message + "\n");
+		Sys.exit(1);
+		return null;
 	}
 }

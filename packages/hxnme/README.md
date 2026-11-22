@@ -9,22 +9,27 @@ architecture flexible without costing performance: plugins are composed at
 compile time, with no run-time discovery or lookup, and an app compiles only
 the plugins it needs.
 
-## App metadata
+## Project file
 
-An app declares its metadata as defines in its program file, the `.hxml`
-file that `hxn run` and `hxn check` compile:
+An app keeps its plugins and metadata in `hxnme.toml`, beside the program
+file that `hxn run`, `hxn build` and `hxn package` compile. The program file
+selects the kernel with `-lib hxnme`:
 
 ```
 -lib hxnme
 -main Main
--D hxnme_preset=game
 ```
 
-`hxnme_preset` selects the Ash preset for the kind of app: `game`, `server`,
-`application` or one of the others that `ash --help` lists. The preset sets
-when Ash's hybrid and JIT modes compile a function, as in
-`hxn run hl --vm ash`. hxn gives it to every Ash command that it runs for the
-app. A `--preset` in the `--ash` or `--vm` command overrides the app's.
+```toml
+plugins = ["hxnme-physics"]
 
-hxnme reads the defines in a build hook of the hxn command, and hxn passes
-the options to Ash.
+[app]
+preset = "game"
+```
+
+| Key | Effect |
+|---|---|
+| `plugins` | Haxelibs added to the build, with the haxelibs they depend on, as `-lib` would add them. A plugin can also be selected with `-lib` in the program file. |
+| `app.preset` | The Ash preset for the kind of app: `game`, `server`, `application` or another that `ash --help` lists. It sets when Ash's hybrid and JIT modes compile a function, as in `hxn run hl --vm ash`. A `--preset` in the `--ash` or `--vm` command overrides it. |
+
+hxnme reads the file in a build hook of the hxn command.
