@@ -39,6 +39,17 @@ static function setup(gpu:ResMut<Gpu>) {
 }
 ```
 
+Cameras, shared by 2D and 3D: `Res<hxn.me.gpu.Cameras>` has `main` and
+`add(camera)`. The world has y up (as in physics); 2D lies in the XY plane.
+Each `Camera` has `x`, `y`, `z`, a quaternion `rx`, `ry`, `rz`, `rw` (or
+`roll(angle)`), looks along -z, and has `projection`:
+`Orthographic(height, near, far)` (height 0 is one unit per logical pixel;
+the default), `Perspective(fovY, near, far)` or `Screen` (logical pixels,
+top left, y down, for UI). It also has `viewport` (parts 0 to 1), `target`,
+`clear`, `order` and `layers` (bits of the content it shows).
+`camera.writeMatrix(width, height, out)` gives the world-to-clip matrix,
+column after column.
+
 Rules:
 
 - Passes run by `order`, then in the order added. The first frame pass

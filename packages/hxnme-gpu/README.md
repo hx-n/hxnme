@@ -51,6 +51,39 @@ suspended.
 |---|---|
 | `gpu.vsync` | Whether each frame waits for the display's refresh to show. The default is `true`. |
 
+## Cameras
+
+The resource `hxn.me.gpu.Cameras` holds the cameras that renderers draw
+through, the same cameras for 2D and 3D. The world has y up, as in
+`hxnme-physics`, and 2D content lies in its XY plane. Each `Camera` sits at
+`x`, `y`, `z`, turned by the quaternion `rx`, `ry`, `rz`, `rw`, and looks
+along its -z. `roll(angle)` turns it about the z axis, as a 2D camera turns.
+
+| Projection | View |
+|---|---|
+| `Orthographic(height, near, far)` | Things keep their size at any distance. The view is `height` world units high, or one unit for each logical pixel when `height` is 0. This is the default, for 2D. |
+| `Perspective(fovY, near, far)` | Things farther away look smaller, with the vertical field of view `fovY` in radians. |
+| `Screen` | Logical pixels, with the origin at the top-left corner and y down, for UI and HUDs. `x` and `y` move the view. |
+
+| Field | Effect |
+|---|---|
+| `viewport` | The part of the target that the view covers, each part from 0 to 1, for split screens. |
+| `target` | The render target to draw into, set before the first frame. Without it, the camera draws into the frame. |
+| `clear` | The color that the camera's render target is cleared to, or null to keep it. |
+| `order` | Cameras draw from the lowest `order` up. |
+| `layers` | The layer bits the camera shows. Renderers give their content layers, and each camera draws only the content it shows. |
+
+`Cameras.main` is the camera that the app starts with. `cameras.add(camera)`
+adds another, for example a screen camera for the UI on layer 2:
+
+```haxe
+var ui = new Camera();
+ui.projection = Screen;
+ui.layers = 2;
+ui.order = 1;
+cameras.add(ui);
+```
+
 ## Passes
 
 Add a pass to `gpu.graph` once, for example in a `Start` system. It runs in
