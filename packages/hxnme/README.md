@@ -3,7 +3,7 @@
 The hxn media engine (hxnme) kernel. It is intentionally lightweight: it
 provides the app loop, the frame scheduler, the plugin registry, math, and
 the asset and file layer built on hxn-assets and hxn-file. Everything else,
-including rendering, audio, text, input, ECS, UI, physics and
+including the window, rendering, audio, text, input, ECS, UI, physics and
 platform-specific features, ships as plugins. The plugin system keeps the
 architecture flexible without costing performance: plugins are composed at
 compile time, with no run-time discovery or lookup, and an app compiles only
@@ -11,9 +11,10 @@ the plugins it needs.
 
 ## Project file
 
-An app keeps its plugins and metadata in `hxnme.toml`, beside the program
-file that `hxn run`, `hxn build` and `hxn package` compile. The program file
-selects the kernel with `-lib hxnme`:
+Each app keeps its plugins and its metadata in `hxnme.toml`, colocated
+with its program file, the `.hxml` file that `hxn run`, `hxn build` and
+`hxn package` compile. The program file selects the kernel with
+`-lib hxnme`:
 
 ```
 -lib hxnme
@@ -27,17 +28,31 @@ plugins = ["hxnme-physics"]
 preset = "game"
 ```
 
+The kernel reads these keys:
+
 | Key | Effect |
 |---|---|
-| `plugins` | Haxelibs added to the build, with the haxelibs they depend on, as `-lib` would add them. A path such as `"./plugins/tilemap"` adds an in-project plugin from that directory. A plugin can also be selected with `-lib` in the program file. |
-| `app.preset` | The Ash preset for the kind of app: `game`, `server`, `application` or another that `ash --help` lists. It sets when Ash's hybrid and JIT modes compile a function, as in `hxn run hl --vm ash`. A `--preset` in the `--ash` or `--vm` command overrides it. |
+| `plugins` | The plugins of the app. Each name adds that haxelib and the haxelibs it depends on, the same way as `-lib`. Each path, such as `"./plugins/tilemap"`, adds the plugin in that directory, relative to `hxnme.toml`. The program file can also select a plugin with `-lib`. |
+| `app.preset` | The Ash preset for the kind of app: `game`, `server`, `application`, or another preset that `ash --help` lists. The preset sets when Ash compiles a function to machine code in its hybrid and JIT modes, for example in `hxn run hl --vm ash`. The `--preset` flag in the `--ash` or `--vm` option of the hxn command overrides it. |
+| `app.step` | The number of fixed steps in a second. The default is 60. |
+| `app.step_snap` | The tolerance for a whole number of fixed steps in a frame, as a part of one step. The default is 0.1, and 0 turns the correction off. |
+| `app.rate` | The number of frames in a second on `HeadlessHost`, the host of an app without a window. The default is 60. |
+| `display.width`, `display.height`, `display.scale` | The display on `HeadlessHost`. The defaults are 1280, 720 and 1. |
 
-hxnme reads the file in a build hook of the hxn command.
+Each plugin keeps its keys in its own table, such as `[window]`. Code reads
+a key at compile time with `hxn.me.Project.text`, `number`, `integer` or
+`flag`, and each call becomes a constant. For example,
+`Project.text("window.title", "App")` becomes the title from the file, or
+`"App"` if the file does not set one.
 
 ## Plugins
 
-A plugin is a haxelib with an `hxnme` section in its `haxelib.json`, a class
-that implements `hxn.me.Plugin`, and an `extraParams.hxml` that registers it:
+Each plugin is a haxelib with three parts:
+
+- The `hxnme` section of its `haxelib.json`, which specifies the plugin class.
+- The plugin class, which has `@:plugin` with the haxelib name, and the
+  methods of `hxn.me.Plugin`.
+- The `extraParams.hxml` file, which adds the plugin to the registry.
 
 ```json
 {
@@ -57,39 +72,72 @@ that implements `hxn.me.Plugin`, and an `extraParams.hxml` that registers it:
 
 ```haxe
 @:plugin("hxnme-tilemap")
-class TilemapPlugin implements hxn.me.Plugin {
+class TilemapPlugin {
 	public function new() {}
 
 	public function start():Void {}
 }
 ```
 
+The metadata declares the plugin, so the class does not need
+`implements hxn.me.Plugin`. The kernel checks that the class has a public
+constructor that takes no arguments, and each method of `hxn.me.Plugin`
+with the same type. Then the generated code calls the class directly. The
+class can also implement the interface, for example to let an IDE complete
+the methods, and the kernel checks it the same way:
+
+```haxe
+@:plugin("hxnme-tilemap")
+class TilemapPlugin implements hxn.me.Plugin { ... }
+```
+
+The kernel reads the manifest before it compiles any code, so that it can
+check the requirements and the platforms first. `@:plugin` ties the class
+back to its haxelib. The line in `extraParams.hxml` adds the plugin to the
+registry, whether the app lists it in `hxnme.toml` or selects it with
+`-lib`.
+
 | Field | Meaning |
 |---|---|
-| `plugin` | The plugin class. It must carry `@:plugin` with the haxelib name. |
-| `requires` | Plugins that must be in the app. They start first. |
-| `platforms` | Where the plugin runs: runtimes (`hl`, `cpp`, `cppia`) and platforms (`desktop`, `wasm`, `android`, `ios`). Omitted means everywhere. |
+| `plugin` | The plugin class. |
+| `requires` | The plugins that must be in the app. They start before this plugin. `requires` does not add a plugin to the app: list it in `plugins`, or in the `dependencies` of the haxelib. |
+| `platforms` | The runtimes (`hl`, `cpp`, `cppia`) and the platforms (`desktop`, `wasm`, `android`, `ios`) that the plugin supports. If the list has no runtime, the plugin supports every runtime. If it has no platform, the plugin supports every platform. |
 
-At compile time the kernel generates `hxn.me.Plugins`. Its `start()` creates
-each plugin of the app and starts it, after the plugins it requires, with a
-direct call to each. `-D hxnme_dump` writes the classes that the kernel
-generates to `hxnme-generated.hx`, or to the path given as its value.
+`hxn.me.Plugin` has one method, `start()`. At compile time, the kernel
+generates the class `hxn.me.Plugins`. Its `start()` creates each plugin of
+the app and calls its `start()`, with a direct call. Each plugin starts
+after the plugins that it requires. `App.run` calls `Plugins.start()`.
+`Plugins` also has a static field for each plugin. The field has the
+haxelib name, with an underscore for each character that Haxe does not
+permit in a name, for example `Plugins.hxnme_window`.
 
 `@:plugin` can also describe the plugin:
-`@:plugin("hxnme-tilemap", description = "Draws tile maps")`.
+`@:plugin("hxnme-tilemap", description = "Draws tile maps")`. The kernel
+records the description. With `-D hxnme_dump`, the compiler writes the
+generated classes to `hxnme-generated.hx` in its working directory, with
+each description. If the define has a value, the compiler writes them to
+that path.
 
-These are compile errors that name the plugin: a missing required plugin, a
-cycle of requirements, a plugin that does not support the target, and a
-plugin class without the matching `@:plugin`.
+These are compile errors, and each one reports the plugin:
+
+- The app lacks a required plugin.
+- Plugins require each other in a cycle.
+- The build is for a runtime or a platform that a plugin does not support.
+- The plugin class lacks the matching `@:plugin`.
+- The plugin class lacks a method of `hxn.me.Plugin`, or of a
+  service it provides, or the method has another type.
 
 ## Systems
 
-A system is a static function with `@:system`. It names its phase, and it
-can name the systems that it runs after or before:
+Systems are static functions with `@:system`. The annotation specifies
+the phase of the system, and it can specify the systems that run before or
+after it. In this example, `Physics` is a class of systems, and `Bodies` is a
+resource class of the app:
 
 ```haxe
 import hxn.me.Res;
 import hxn.me.ResMut;
+import hxn.me.Time;
 
 class Movement {
 	@:system(Update, after = Physics, description = "Moves each body by its velocity")
@@ -100,50 +148,127 @@ class Movement {
 }
 ```
 
-The phases of a frame run in this order:
+Each frame runs its phases in this order:
 
 | Phase | Runs |
 |---|---|
-| `Start` | Once, after the plugins start. |
-| `Fixed` | Once for each fixed time step. A frame can run it zero or more times. |
-| `Update` | Once a frame. |
-| `Render` | Once a frame, after `Update`. Its systems record the drawing. |
+| `Start` | One time, after the plugins start. |
+| `Fixed` | One time for each fixed step. Each fixed step is a constant interval of time, `app.step` times a second. One frame can run this phase zero or more times. |
+| `Update` | One time in each frame. |
+| `Render` | One time in each frame, after `Update`. Rendering plugins draw the frame in this phase. |
 
 | Key | Meaning |
 |---|---|
-| `after`, `before` | One name or an array of names. A name is a system (`move`, `Movement.move`) or a class of systems (`Movement`, `game.Movement`). A class means each of its systems in the same phase. |
+| `after`, `before` | One name, or an array of names. Each name is a system (`move`, `Movement.move`) or a class of systems (`Movement`, `game.Movement`). For a class, the constraint applies to each of its systems in the same phase. |
 | `description` | What the system does. The kernel records it with the system. |
 
-A system gets its resources as parameters. A resource is the one instance
-of a class that the systems of an app share. The class must have a
-constructor that takes no arguments. `Res<T>` reads `T`, and `ResMut<T>`
-writes `T`. The kernel gets the reads and writes of each system from these
-parameter types.
+Systems get their resources as parameters. Each resource is the one instance of a class that all systems of an app share. The class must have a
+constructor that takes no arguments. `Res<T>` reads `T`. `ResMut<T>` reads
+and writes `T`. The kernel records the reads and the writes of each system
+from these parameter types, and the dump shows them.
 
-The app names the classes that hold its systems, and gets its schedule:
-
-```haxe
-var schedule = hxn.me.App.schedule(Movement, Scoring);
-```
-
-A plugin names its classes of systems on its plugin class, with
+The app passes the classes that hold its systems to `App.run`. Each plugin lists its classes of systems on its plugin class, with
 `@:systems(Broadphase, Solver)`. The static functions of the plugin class
 can also be systems.
 
-At compile time the kernel generates `hxn.me.Schedule`. It creates the
-resources, and it has one method for each phase: `start()`, `fixed()`,
-`update()` and `render()`. Each method calls each system of its phase
-directly, once. The order obeys every `after` and `before`. Where no
-constraint applies, the systems of the plugins come first, in plugin order.
-The systems of the app follow, in the order that the app names their
-classes. `-D hxnme_dump` writes this class too, with the reads, the writes
-and the description of each system.
+At compile time, the kernel generates the class `hxn.me.Schedule`. Its
+constructor creates the resources, and its fields `time`, `lifecycle` and
+`display` hold the kernel resources. It has one method for each phase:
+`start()`, `fixed()`, `update()` and `render()`. Each method calls every
+system of its phase one time, with a direct call. The order obeys every
+`after` and `before`. Where no constraint applies, the systems of the
+plugins come first, in the order that the plugins start. The systems of the
+app come next, in the order that the app passes their classes. The dump also
+shows this class, with the reads, the writes and the description of each
+system.
 
-These are compile errors that point at the annotation:
+These are compile errors, and each one points at the annotation:
 
-- A cycle of constraints.
-- A constraint that names no system, or names a system in another phase.
-- A name that matches more than one class or system.
-- A phase that does not exist.
-- A parameter that is not a resource.
-- A resource class without a constructor that takes no arguments.
+- The constraints make a cycle.
+- The constraint refers to no system, or to a system in another phase.
+- The name matches more than one class or system.
+- The phase does not exist.
+- The parameter is not a resource.
+- The resource class lacks a constructor that takes no arguments.
+
+## Running an app
+
+`hxn.me.App.run` starts the plugins, makes the schedule and gives it to the
+host. The host is the part of the app that paces the frames. The frames
+stop when a system calls `quit` on `Lifecycle`, or when the platform closes
+the app:
+
+```haxe
+class Main {
+	static function main()
+		hxn.me.App.run(Movement, Scoring);
+}
+```
+
+The host calls `frame(seconds)` on an `hxn.me.AppLoop` for each frame, with
+the seconds since the previous frame. The first frame runs `Start`. Then
+each frame does these steps:
+
+1. It advances the clock.
+2. It runs `Fixed` one time for each fixed step that the frame completes.
+3. It runs `Update` and `Render`.
+
+Vsync paces frames at the refresh rate of the display, and their timing
+varies a little from frame to frame. If the refresh rate is close to the
+step rate, frames can alternate between zero and two fixed steps. To
+prevent that, the loop rounds the steps that a frame owes to a whole
+number, if they are within `app.step_snap` of it. It carries the difference
+to the next frame.
+
+While `Lifecycle.suspended` is true, a frame runs no phase, and the clock
+does not advance. At the start of each frame, the loop calls
+`hxn.Loop.sync`, which delivers the results of native libraries. On
+HashLink, in `hxn run` and `hxn check`, each frame also calls
+`hl.Api.checkReload()` for hot reload.
+
+Make `App.run` the last statement of `main`. Under Emscripten, the host
+returns from `App.run` before the frames run, and the browser runs the
+frames from callbacks. Code after `App.run` then runs before the frames.
+
+To run the phases from its own loop, the app calls `App.schedule` instead
+of `App.run`, and gives the schedule to an `AppLoop`:
+
+```haxe
+hxn.me.Plugins.start();
+var schedule = hxn.me.App.schedule(Movement, Scoring);
+var loop = new hxn.me.AppLoop(schedule, schedule.time, schedule.lifecycle, schedule.display);
+while (loop.frame(1 / 60)) {}
+```
+
+The schedule has three kernel resources. Systems take them in the same way
+as other resources:
+
+| Resource | Fields |
+|---|---|
+| `hxn.me.Time` | `delta`, the seconds of the last frame. `elapsed`, the seconds of all frames. `frame`, the number of frames. `step`, the seconds of a fixed step. `steps`, the fixed steps of this frame. `fixedElapsed`, the seconds of all fixed steps. `alpha`, the fraction of a fixed step, from 0 to 1, that the clock counted and did not run yet. |
+| `hxn.me.Lifecycle` | `running`, `suspended`, `visible` and `focused`. `quit()` stops the app after the current frame. |
+| `hxn.me.Display` | `width` and `height` in physical pixels, and `scale`, the physical pixels for each logical pixel. |
+
+The host reads the events of the platform, and it sets `Lifecycle` and
+`Display`. `hxn.me.Host` is a service, which is an interface with `@:service`. Plugins provide a service with `@:provides` on the plugin class, and the class has the methods of the interface. As with
+`hxn.me.Plugin`, `implements` is optional, and the kernel checks the
+methods either way. `App.run` calls the host's `run` with the loop:
+
+```haxe
+@:plugin("hxnme-window")
+@:provides(hxn.me.Host)
+class WindowPlugin {
+	public function new() {}
+
+	public function start():Void {}
+
+	public function run(loop:hxn.me.AppLoop):Void {
+		// Wait for the next frame, then call loop.frame(seconds).
+	}
+}
+```
+
+Each service has one provider in an app at most. Two providers of one
+service are a compile error. If no plugin provides `Host`, the app runs on
+`hxn.me.HeadlessHost`. That host runs `app.rate` frames a second without a
+window, with the display that the `display` keys set.

@@ -11,8 +11,8 @@ plugins, each a haxelib, composed at compile time.
 
 ## Setup
 
-An app is an hxn program file that selects the kernel, with `hxnme.toml`
-beside it:
+Each app is an hxn program file that selects the kernel, with `hxnme.toml`
+colocated with it:
 
 ```
 -lib hxnme
@@ -29,7 +29,15 @@ preset = "game"
 | Key | Effect |
 |---|---|
 | `plugins` | Haxelibs added to the build with their dependencies, as `-lib` adds them, or paths of in-project plugin directories (`"./plugins/tilemap"`). `-lib` in the program file also selects a plugin. |
-| `app.preset` | The Ash preset (`game`, `server`, `application`, ...), passed to every Ash command hxn runs for the app. A `--preset` in `--ash` or `--vm` overrides it. |
+| `app.preset` | The Ash preset (`game`, `server`, `application`, ...), passed to every Ash command hxn runs for the app. The `--preset` flag in `--ash` or `--vm` overrides it. |
+| `app.step` | Fixed steps in a second, 60 by default. |
+| `app.step_snap` | Tolerance, as a part of a step, within which a frame runs a whole number of steps, so vsync timing does not alternate frames between zero and two steps. 0.1 by default, 0 turns it off. |
+| `app.rate` | Frames in a second without a window, 60 by default. |
+| `display.width`, `display.height`, `display.scale` | The display without a window: 1280, 720 and 1 by default. |
+
+Read a key at compile time with `hxn.me.Project.text`, `number`, `integer`
+or `flag`, as in `Project.text("window.title", "App")`. Each call becomes a
+constant. Each plugin keeps its keys in a table of its own.
 
 ```
 hxn run hl app.hxml --vm ash     # Ash hybrid: starts at once, for development
@@ -44,20 +52,24 @@ those, not with new protocol.
 
 ## Plugins
 
-A plugin is a haxelib with an `hxnme` section in `haxelib.json`
+Each plugin is a haxelib with an `hxnme` section in `haxelib.json`
 (`plugin`: the class; `requires`: plugin names; `platforms`: `hl`, `cpp`,
 `cppia`, `desktop`, `wasm`, `android`, `ios`), a class marked
-`@:plugin("<haxelib name>")` that implements `hxn.me.Plugin`, and an
+`@:plugin("<haxelib name>")` with the methods of `hxn.me.Plugin`, and an
 `extraParams.hxml` with `--macro hxn.me.macro.Registry.add("<haxelib name>")`.
+The class can add `implements hxn.me.Plugin` or leave it out. Either way
+the kernel checks the constructor and each method by type, and calls the
+class directly.
 The kernel generates `hxn.me.Plugins` at compile time: `Plugins.start()`
 creates and starts each plugin after the plugins it requires, and
 `Plugins.names` lists them in that order. Missing requirements, cycles,
-unsupported targets and a wrong `@:plugin` are compile errors. Describe each
+unsupported targets, a wrong `@:plugin` and a missing or mistyped method
+are compile errors. Describe each
 plugin: `@:plugin("<haxelib name>", description = "...")`.
 
 ## Systems
 
-A system is a static function with `@:system(Phase, after = ..., before = ...,
+Systems are static functions with `@:system(Phase, after = ..., before = ...,
 description = "...")`. The phases run in the order `Start` (once), `Fixed`
 (once for each fixed step), `Update` and `Render`. `after` and `before` take
 one name or an array of names: a system (`move`, `Movement.move`) or a class
@@ -74,14 +86,35 @@ types, so declare a resource as `ResMut<T>` if the system writes it.
 static function move(time:Res<Time>, bodies:ResMut<Bodies>) {}
 ```
 
-The app names its classes of systems one time, with
-`var schedule = hxn.me.App.schedule(Movement, Scoring);`. A plugin names
-its own with `@:systems(Broadphase, Solver)` on its plugin class, whose
+The app passes its classes of systems one time, with
+`var schedule = hxn.me.App.schedule(Movement, Scoring);`. Each plugin lists its own with `@:systems(Broadphase, Solver)` on its plugin class, whose
 static functions can also be systems. The generated `hxn.me.Schedule` has
 `start()`, `fixed()`, `update()` and `render()`, and each calls its systems
 directly in the resolved order. Cycles, unknown names, constraints across
 phases, ambiguous names and parameters that are not resources are compile
 errors at the annotation.
+
+## App loop
+
+`hxn.me.App.run(Movement, Scoring)` in `main` starts the plugins, makes the
+schedule and runs its frames. The first frame runs `Start`. Each frame runs
+`Fixed` once for each completed fixed step, then `Update` and `Render`.
+While the app is suspended, a frame runs no phase. Systems stop the app with `lifecycle.quit()`. `App.schedule` returns the schedule instead, for a
+loop of your own. Make `App.run` the last statement of `main`: under
+Emscripten it returns before the frames run, which then run from browser
+callbacks.
+
+Every schedule has the kernel resources `hxn.me.Time` (`delta`, `elapsed`,
+`frame`, `step`, `steps`, `fixedElapsed`, `alpha`), `hxn.me.Lifecycle`
+(`running`, `suspended`, `visible`, `focused`, `quit()`) and
+`hxn.me.Display` (`width`, `height`, `scale`). Take them as `Res<T>` or
+`ResMut<T>`.
+
+The host paces the frames and calls `loop.frame(seconds)` on the
+`hxn.me.AppLoop`. It is the service `hxn.me.Host`. Plugins provide it with `@:provides(hxn.me.Host)` on a plugin class with the method
+`run(loop:hxn.me.AppLoop):Void`, with or without `implements hxn.me.Host`. Each service has one provider in an app at most. Without a host plugin, the app runs
+on `hxn.me.HeadlessHost` at `app.rate` frames a second. `hxn.me.Plugins`
+has a field for each plugin instance, named after its haxelib.
 
 `-D hxnme_dump` writes the generated `Plugins` and `Schedule` classes to
 `hxnme-generated.hx`, with the order, reads, writes and description of each
@@ -99,7 +132,7 @@ system. Read it to see the order the kernel chose.
   each worker without allocating. Without threads, and under Emscripten, it
   runs the job for each index on the calling thread.
 - `hxn.me.project.Toml`: the reader for `hxnme.toml`. It refuses dates,
-  arrays of tables and multi-line strings, naming the file and line.
+  arrays of tables and multi-line strings, with the file and line in the error.
 
 ## Rules for engine and plugin code
 
@@ -133,11 +166,13 @@ hxn run hl --wasm toml-checks.hxml
 hxn run cpp --wasm toml-checks.hxml
 cd plugins && hxn check hl cpp cppia app.hxml --vm ash
 cd systems && hxn check hl cpp cppia app.hxml --vm ash
+cd loop && hxn check hl cpp cppia app.hxml --vm ash
+cd headless && hxn check hl cpp cppia app.hxml --vm ash
 haxe plugin-errors.hxml
 haxe system-errors.hxml
 ```
 
-The plugin and system checks select the kernel with `-lib hxnme`, which needs
+The checks in `plugins`, `systems`, `loop` and `headless` select the kernel with `-lib hxnme`, which needs
 `haxelib dev hxnme <hxnme checkout>/packages/hxnme` once.
 
 Report each runtime that was not run. Follow the

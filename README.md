@@ -12,6 +12,7 @@ flowchart TB
     app["App"]
 
     subgraph plugins["Plugins"]
+        windowing["Window"]
         render["Rendering"]
         audio["Audio"]
         text["Text"]

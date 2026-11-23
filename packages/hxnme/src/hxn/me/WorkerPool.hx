@@ -1,7 +1,7 @@
 package hxn.me;
 
 /**
-	A fixed set of worker threads. `run` calls a job once on each of the first
+	Runs jobs on a fixed set of worker threads. `run` calls a job once on each of the first
 	`count` workers, with the worker's index, and returns when every call has
 	finished. Starting a job allocates nothing, because each worker waits on a
 	lock of its own. Store the job in a field: a closure made for each call

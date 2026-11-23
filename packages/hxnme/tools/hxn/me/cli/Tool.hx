@@ -8,22 +8,29 @@ import sys.io.File;
 import sys.io.Process;
 
 /**
-	The hxn CLI hook of hxnme. Before a build, it reads `hxnme.toml` beside
-	the program file and returns what the build needs from it: the Ash options
-	of the app's metadata, and the class paths, defines and macros of the
-	plugins it lists.
+	The hxn CLI hook of hxnme. Before a build, it reads the `hxnme.toml` that
+	is colocated with the program file, and returns what the build needs from it: the Ash options
+	of the app's metadata, the class paths, defines and macros of the plugins
+	it lists, and the path of the file as `-D hxnme_project`. `hxn run` and
+	`hxn check` also get `-D hxnme_reload`, which makes the app loop check
+	for a hot reload on HashLink each frame.
 **/
 class Tool {
 	static function main() {
 		var request:Dynamic = Json.parse(Sys.stdin().readAll().toString());
 		if (request.kind != "hook") {
-			Sys.stderr().writeString("hxn me has no commands yet. hxnme reads an app's plugins and metadata from hxnme.toml beside its program file.\n");
+			Sys.stderr().writeString("hxn me has no commands yet. hxnme reads an app's plugins and metadata from the hxnme.toml colocated with its program file.\n");
 			Sys.exit(2);
 		}
 		var reply:Dynamic = {version: 1};
 		var project:Dynamic = request.context.project;
 		var file = Path.join([project.directory, "hxnme.toml"]);
+		var args = [];
+		var command = request.context.command;
+		if (request.phase == "before-build" && (command == "run" || command == "check"))
+			args.push(["-D", "hxnme_reload"]);
 		if (request.phase == "before-build" && FileSystem.exists(file)) {
+			args.push(["-D", 'hxnme_project=${Path.normalize(FileSystem.absolutePath(file))}']);
 			var toml:Dynamic = try Toml.parse(File.getContent(file), file) catch (error:String) fail(error);
 			var app:Dynamic = toml.app;
 			if (app != null && app.preset != null)
@@ -32,12 +39,11 @@ class Tool {
 			if (!Std.isOfType(plugins, Array))
 				fail('$file: `plugins` must be an array of haxelib names');
 			var selected = project.hxml == null ? [] : libraries(File.getContent(project.hxml));
-			var args = [];
 			for (plugin in plugins)
 				add(string(plugin, "plugins", file), project.directory, selected, args);
-			if (args.length > 0)
-				reply.haxe_args = args;
 		}
+		if (args.length > 0)
+			reply.haxe_args = args;
 		Sys.println(Json.stringify(reply));
 	}
 

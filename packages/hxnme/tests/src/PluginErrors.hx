@@ -11,7 +11,7 @@ private typedef Fixture = {
 
 /**
 	Compiles apps whose plugins are wrong, and checks that each compile fails
-	with the error that names the problem. Run it in `tests` with
+	with the error that describes the problem. Run it in `tests` with
 	`haxe plugin-errors.hxml`.
 **/
 class PluginErrors {
@@ -31,24 +31,56 @@ class PluginErrors {
 				manifest: '"plugin": "bare.BarePlugin"',
 				source: "package bare;\nclass BarePlugin implements hxn.me.Plugin {\n\tpublic function new() {}\n\tpublic function start() {}\n}\n"
 			}
-		], 'bare.BarePlugin implements hxn.me.Plugin: mark it with @:plugin("<haxelib name>")');
-		expect("@:plugin names another haxelib", [
+		], 'specifies bare.BarePlugin as the plugin class of `check-bare`: mark the class with @:plugin("check-bare")');
+		expect("@:plugin refers to another haxelib", [
 			{
 				name: "renamed",
 				manifest: '"plugin": "renamed.RenamedPlugin"',
 				source: '@:plugin("check-other") class RenamedPlugin implements hxn.me.Plugin {\n\tpublic function new() {}\n\tpublic function start() {}\n}\n'
 			}
 		], "the app does not list the plugin `check-other`");
-		expect("the manifest names a class that is not a plugin", [
+		expect("a class implements Plugin without @:plugin", [
 			{
-				name: "moved",
-				manifest: '"plugin": "moved.Elsewhere"',
-				source: "class Elsewhere {\n\tpublic function new() {}\n}\n"
+				name: "stray",
+				manifest: '"plugin": "stray.StrayPlugin"',
+				source: '@:plugin("check-stray") class StrayPlugin {\n\tpublic function new() {}\n\tpublic function start() {}\n}\n\nclass Extra implements hxn.me.Plugin {\n\tpublic function new() {}\n\tpublic function start() {}\n}\n'
 			}
-		], "moved.Elsewhere should be hxn.me.Plugin");
+		], 'stray.Extra implements hxn.me.Plugin: mark it with @:plugin("<haxelib name>")');
 		expect("the haxelib has no hxnme section", [{name: "plain", manifest: null, source: "package plain;\nclass Plain {}\n"}],
-			"has no `hxnme.plugin` naming the plugin class of `check-plain`");
+			"has no `hxnme.plugin` that specifies the plugin class of `check-plain`");
+		expect("two plugins provide the host", [host("one", "run(loop:hxn.me.AppLoop)"), host("two", "run(loop:hxn.me.AppLoop)")],
+			"both provide `hxn.me.Host`: an app has one provider for each service");
+		expect("the plugin provides an interface that is not a service", [
+			{
+				name: "plain",
+				manifest: '"plugin": "plain.PlainPlugin"',
+				source: '@:plugin("check-plain") @:provides(hxn.me.Plugin) class PlainPlugin implements hxn.me.Plugin {\n\tpublic function new() {}\n\tpublic function start() {}\n}\n'
+			}
+		], "`hxn.me.Plugin` is not a service: mark the interface with @:service");
+		expect("the plugin class lacks a method of the service", [host("partial", null)],
+			"partial.PartialPlugin is the plugin class of `check-partial`, and hxn.me.Host needs the public method `run`, of type (loop : hxn.me.AppLoop) -> Void");
+		expect("a method of the plugin class has the wrong type", [host("wrong", "run(steps:Int)")],
+			"wrong.WrongPlugin.run has the type (steps : Int) -> Void, and hxn.me.Host needs (loop : hxn.me.AppLoop) -> Void");
+		expect("the plugin class lacks start", [
+			{
+				name: "idle",
+				manifest: '"plugin": "idle.IdlePlugin"',
+				source: '@:plugin("check-idle") class IdlePlugin {\n\tpublic function new() {}\n}\n'
+			}
+		], "idle.IdlePlugin is the plugin class of `check-idle`, and hxn.me.Plugin needs the public method `start`, of type () -> Void");
 		Sys.println("Plugin error checks passed");
+	}
+
+	// Returns a plugin that provides `hxn.me.Host` without `implements`. `run` is the
+	// signature of its run method, or null for none.
+	static function host(name:String, run:Null<String>):Fixture {
+		var type = name.charAt(0).toUpperCase() + name.substr(1) + "Plugin";
+		var method = run == null ? "" : '\tpublic function $run {}\n';
+		return {
+			name: name,
+			manifest: '"plugin": "$name.$type"',
+			source: '@:plugin("check-$name") @:provides(hxn.me.Host) class $type {\n\tpublic function new() {}\n\tpublic function start() {}\n$method}\n'
+		};
 	}
 
 	static function plugin(name:String, extra:String):Fixture {

@@ -1,11 +1,11 @@
 package hxn.me;
 
 /**
-	A resource that a system writes. A resource is the one instance of a class
-	that the systems of an app share. `T` must be a class whose constructor
-	takes no arguments, and the schedule creates the instance. A system uses
-	the fields of `T` directly through `ResMut<T>`. The schedule records that
-	the system writes `T`.
+	Gives a system read and write access to a resource. Each resource is the one
+	instance of a class that the systems of an app share. `T` must be a class
+	whose constructor takes no arguments, and the schedule creates the
+	instance. Systems use the fields of `T` directly through `ResMut<T>`. The
+	schedule records that the system writes `T`.
 **/
 @:forward
 abstract ResMut<T>(T) from T {

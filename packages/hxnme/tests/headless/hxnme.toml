@@ -1,0 +1,6 @@
+[app]
+rate = 120
+
+[display]
+width = 320
+height = 200

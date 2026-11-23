@@ -3,8 +3,11 @@ package hxn.me.macro;
 #if macro
 import haxe.Json;
 import haxe.io.Path;
+import haxe.macro.Compiler;
 import haxe.macro.Context;
 import haxe.macro.Expr;
+import haxe.macro.Type;
+import haxe.macro.TypeTools;
 import sys.FileSystem;
 import sys.io.File;
 
@@ -24,6 +27,11 @@ private typedef Manifest = {
 	target, orders the plugins after the ones they require, and defines a
 	class that creates and starts each plugin directly. `-D hxnme_dump` writes
 	that class to a file.
+
+	Plugin classes do not have to implement `hxn.me.Plugin` or the services
+	they provide. The registry checks each plugin class against those
+	interfaces by method name and type, and the generated code calls the
+	class directly. Classes that implement them get the same checks.
 **/
 class Registry {
 	static final RUNTIMES = ["hl", "cpp", "cppia"];
@@ -34,6 +42,9 @@ class Registry {
 	static var order:Array<String> = [];
 	static var systems:Map<String, Array<String>> = [];
 	static var descriptions:Map<String, String> = [];
+	static var fields:Map<String, String> = [];
+	static var providers:Map<String, String> = [];
+	static var checked:Array<String> = [];
 	static var installed = false;
 
 	/** Generates `hxn.me.Plugins` once the init macros have run. **/
@@ -51,13 +62,24 @@ class Registry {
 			names.push(name);
 	}
 
-	/** Checks a class that implements `hxn.me.Plugin` against its manifest. **/
+	/**
+		Checks a plugin class against its manifest, and records what its
+		metadata declares. It runs on the plugin class of each manifest, and on
+		each class that implements `hxn.me.Plugin`.
+	**/
 	public static function check():Array<Field> {
 		var local = Context.getLocalClass().get();
 		var path = local.pack.concat([local.name]).join(".");
+		if (checked.contains(path))
+			return null;
+		checked.push(path);
 		var meta = local.meta.extract(":plugin");
-		if (meta.length != 1 || meta[0].params.length == 0)
+		if (meta.length != 1 || meta[0].params.length == 0) {
+			for (manifest in manifests)
+				if (manifest.plugin == path)
+					Context.error('${manifest.file} specifies $path as the plugin class of `${manifest.name}`: mark the class with @:plugin("${manifest.name}")', local.pos);
 			Context.error('$path implements hxn.me.Plugin: mark it with @:plugin("<haxelib name>")', local.pos);
+		}
 		var name = switch meta[0].params[0].expr {
 			case EConst(CString(value)): value;
 			case _: Context.error('@:plugin takes the haxelib name as a string', meta[0].pos);
@@ -66,7 +88,7 @@ class Registry {
 		if (manifest == null)
 			Context.error('the app does not list the plugin `$name`: add it to `plugins` in hxnme.toml, or select it with -lib', meta[0].pos);
 		if (manifest.plugin != path)
-			Context.error('${manifest.file} names ${manifest.plugin} as the plugin of `$name`, not $path', meta[0].pos);
+			Context.error('${manifest.file} specifies ${manifest.plugin} as the plugin of `$name`, not $path', meta[0].pos);
 		for (param in meta[0].params.slice(1))
 			switch param.expr {
 				case EBinop(OpAssign, {expr: EConst(CIdent("description"))}, value):
@@ -74,12 +96,92 @@ class Registry {
 				case _:
 					Context.error('@:plugin takes the haxelib name, then `description = "..."`', param.pos);
 			}
+		for (entry in local.meta.extract(":provides"))
+			for (param in entry.params)
+				provide(param, name, local);
 		var classes = [];
 		for (entry in local.meta.extract(":systems"))
 			for (param in entry.params)
 				classes.push(Scheduler.classOf(param, "@:systems takes the classes that hold the plugin's systems"));
 		systems.set(path, classes);
 		return null;
+	}
+
+	// Records that the plugin `name`, whose class is `local`, provides the
+	// service that `expr` refers to. Each service has one provider at most.
+	static function provide(expr:Expr, name:String, local:ClassType) {
+		var service = switch Context.typeExpr(expr).expr {
+			case TTypeExpr(TClassDecl(c)) if (c.get().isInterface): c.get();
+			case _: Context.error("@:provides takes the interfaces of the services that the plugin provides", expr.pos);
+		}
+		var path = service.pack.concat([service.name]).join(".");
+		if (!service.meta.has(":service"))
+			Context.error('`$path` is not a service: mark the interface with @:service', expr.pos);
+		var other = providers.get(path);
+		if (other != null && other != name)
+			Context.error('`$name` and `$other` both provide `$path`: an app has one provider for each service', expr.pos);
+		providers.set(path, name);
+	}
+
+	/**
+		Checks each plugin class against `hxn.me.Plugin`, and each provider
+		against its service. `Plugins.start` calls it first, so it runs when
+		the compiler types that body. By then the compiler has built every
+		plugin class, and the calls after it are not typed yet.
+	**/
+	public static function contracts():Expr {
+		for (name in order) {
+			var manifest = manifests.get(name);
+			var c = switch Context.getType(manifest.plugin) {
+				case TInst(c, _): c.get();
+				case _: Context.error('${manifest.file} specifies ${manifest.plugin} as the plugin class of `$name`, and it is not a class', at(manifest));
+			}
+			var constructor = c.constructor == null ? null : c.constructor.get();
+			var takesNothing = constructor != null && constructor.isPublic && switch Context.follow(constructor.type) {
+				case TFun(args, _): Lambda.foreach(args, arg -> arg.opt);
+				case _: false;
+			};
+			if (!takesNothing)
+				Context.error('${manifest.plugin} is the plugin class of `$name`: it needs a public constructor that takes no arguments', c.pos);
+			conform(c, manifest.plugin, "hxn.me.Plugin", name);
+		}
+		for (service => name in providers) {
+			var path = manifests.get(name).plugin;
+			switch Context.getType(path) {
+				case TInst(c, _): conform(c.get(), path, service, name);
+				case _:
+			}
+		}
+		return macro {};
+	}
+
+	// Checks that the class `c` has each method of the interface `service`,
+	// with a type that the interface's method accepts.
+	static function conform(c:ClassType, path:String, service:String, name:String) {
+		var contract = switch Context.getType(service) {
+			case TInst(i, _): i.get();
+			case _: return;
+		}
+		for (field in contract.fields.get()) {
+			var wanted = TypeTools.toString(field.type);
+			var own = TypeTools.findField(c, field.name, false);
+			if (own == null || !own.isPublic || !own.kind.match(FMethod(_)))
+				Context.error('$path is the plugin class of `$name`, and $service needs the public method `${field.name}`, of type $wanted', c.pos);
+			if (!Context.unify(own.type, field.type))
+				Context.error('$path.${field.name} has the type ${TypeTools.toString(own.type)}, and $service needs $wanted', own.pos);
+		}
+	}
+
+	/**
+		The expression for the plugin that provides the service `path`, or
+		null if no plugin of the app provides it.
+	**/
+	public static function provider(path:String):Null<Expr> {
+		var name = providers.get(path);
+		if (name == null)
+			return null;
+		var field = fields.get(name);
+		return macro hxn.me.Plugins.$field;
 	}
 
 	/** The description that `@:plugin` gives the plugin `name`, or null. **/
@@ -90,7 +192,7 @@ class Registry {
 	public static function pluginClasses():Array<String>
 		return [for (name in order) manifests.get(name).plugin];
 
-	/** The classes that the plugin class `path` names with `@:systems`. **/
+	/** The classes that the plugin class `path` lists with `@:systems`. **/
 	public static function systemClasses(path:String):Array<String>
 		return systems.exists(path) ? systems.get(path) : [];
 
@@ -110,13 +212,28 @@ class Registry {
 				Context.error('`$name` supports ${manifest.platforms.join(", ")}, and this build is $runtime for $kind', at(manifest));
 		}
 		order = sorted();
-		var starts:Array<Expr> = [];
-		for (i in 0...order.length) {
-			var parts = manifests.get(order[i]).plugin.split(".");
-			var create:Expr = {expr: ENew({pack: parts.slice(0, -1), name: parts[parts.length - 1]}, []), pos: at(manifests.get(order[i]))};
-			var local = 'plugin$i';
-			starts.push(macro var $local:hxn.me.Plugin = $create);
-			starts.push(macro $i{local}.start());
+		for (name in order)
+			Compiler.addMetadata("@:build(hxn.me.macro.Registry.check())", manifests.get(name).plugin);
+		var starts:Array<Expr> = [macro hxn.me.App.checkPlugins()];
+		var instances:Array<Field> = [];
+		for (name in order) {
+			var manifest = manifests.get(name);
+			var parts = manifest.plugin.split(".");
+			var type:TypePath = {pack: parts.slice(0, -1), name: parts[parts.length - 1]};
+			var field = ~/[^A-Za-z0-9_]/g.replace(name, "_");
+			if (~/^[0-9]/.match(field) || field == "names" || field == "start" || Lambda.exists(instances, f -> f.name == field))
+				field = 'plugin_$field';
+			fields.set(name, field);
+			instances.push({
+				name: field,
+				doc: 'The plugin `$name`, after `start` creates it.',
+				access: [APublic, AStatic],
+				kind: FProp("default", "null", TPath(type)),
+				pos: at(manifest),
+			});
+			var create:Expr = {expr: ENew(type, []), pos: at(manifest)};
+			starts.push(macro $i{field} = $create);
+			starts.push(macro $i{field}.start());
 		}
 		var listed = [for (name in order) macro $v{name}];
 		var definition = macro class Plugins {
@@ -129,12 +246,13 @@ class Registry {
 		};
 		definition.pack = ["hxn", "me"];
 		definition.doc = "The plugins of the app, generated by hxnme at compile time.";
+		definition.fields = definition.fields.concat(instances);
 		Context.defineType(definition);
 		Dump.add(definition);
 	}
 
 	// The registered plugins, each after the plugins it requires, and in name
-	// order where the requirements allow either. A cycle is an error.
+	// order where the requirements allow either. Cycles are errors.
 	static function sorted():Array<String> {
 		var order = [];
 		var visiting = [];
@@ -173,7 +291,8 @@ class Registry {
 		return "desktop";
 	}
 
-	// The manifest of the haxelib `name`, found beside one of its class paths.
+	// The manifest of the haxelib `name`, found in one of its class path
+	// directories or in the directory above it.
 	static function read(name:String):Manifest {
 		for (classPath in Context.getClassPath()) {
 			var dir = Path.removeTrailingSlashes(classPath == "" ? "." : classPath);
@@ -187,7 +306,7 @@ class Registry {
 				var section:Dynamic = info.hxnme;
 				var position = Context.makePosition({file: file, min: 0, max: 0});
 				if (section == null || !Std.isOfType(section.plugin, String))
-					Context.error('$file has no `hxnme.plugin` naming the plugin class of `$name`', position);
+					Context.error('$file has no `hxnme.plugin` that specifies the plugin class of `$name`', position);
 				return {
 					name: name,
 					plugin: section.plugin,
@@ -197,7 +316,7 @@ class Registry {
 				};
 			}
 		}
-		return Context.error('the plugin `$name` was registered, but no haxelib.json beside its class path names it', Context.currentPos());
+		return Context.error('the plugin `$name` was registered, but no haxelib.json with that name is in its class path, or in the directory above it', Context.currentPos());
 	}
 
 	static function strings(value:Dynamic, key:String, position:Position):Array<String> {

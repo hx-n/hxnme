@@ -1,0 +1,6 @@
+# The host plugin gives the first frames a thirtieth of a second, so each
+# runs two fixed steps, and the last ones about a sixtieth, so each runs one.
+plugins = ["./host"]
+
+[app]
+step = 60

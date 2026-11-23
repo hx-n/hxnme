@@ -31,25 +31,44 @@ private typedef System = {
 }
 
 /**
-	Generates `hxn.me.Schedule` from the systems of an app. A system is a
-	static function with `@:system`. The systems come from the classes that
-	the app names, from each plugin class, and from the classes that a plugin
-	class names with `@:systems`. Each phase gets one method that calls its
+	Generates `hxn.me.Schedule` from the systems of an app. Systems are static functions with `@:system`. The systems come from the classes that
+	the app passes, from each plugin class, and from the classes that a plugin
+	class lists with `@:systems`. Each phase gets one method that calls its
 	systems directly, in an order that obeys every `before` and `after`.
 	Where no constraint applies, the systems of the plugins come first, in
 	plugin order. The systems of the app follow, in the order that the app
-	names their classes. The systems of one class keep their declaration order.
+	passes their classes. The systems of one class keep their declaration order.
 **/
 class Scheduler {
 	// The phases of hxn.me.Phase, in the order they run.
 	static final PHASES = ["Start", "Fixed", "Update", "Render"];
 
+	// The resources that every schedule has, and the public fields that hold them.
+	static final KERNEL = [
+		{key: "hxn.me.Time", field: "time"},
+		{key: "hxn.me.Lifecycle", field: "lifecycle"},
+		{key: "hxn.me.Display", field: "display"}
+	];
+
 	static var generated = false;
 
-	/** The expression `hxn.me.App.schedule(classes)` becomes. **/
+	/** The expression that `hxn.me.App.run(classes)` becomes. **/
+	public static function run(classes:Array<Expr>):Expr {
+		var schedule = schedule(classes);
+		var host = Registry.provider("hxn.me.Host");
+		if (host == null)
+			host = macro new hxn.me.HeadlessHost();
+		return macro {
+			hxn.me.Plugins.start();
+			var schedule = $schedule;
+			$host.run(new hxn.me.AppLoop(schedule, schedule.time, schedule.lifecycle, schedule.display));
+		};
+	}
+
+	/** The expression that `hxn.me.App.schedule(classes)` becomes. **/
 	public static function schedule(classes:Array<Expr>):Expr {
 		if (generated)
-			Context.error("the app calls hxn.me.App.schedule once", Context.currentPos());
+			Context.error("the app calls hxn.me.App.run or hxn.me.App.schedule once", Context.currentPos());
 		generated = true;
 		var owners:Array<String> = [];
 		function own(path:String)
@@ -70,7 +89,7 @@ class Scheduler {
 		return macro new hxn.me.Schedule();
 	}
 
-	/** The path of the class that `expr` names, typed where `expr` appears. **/
+	/** The path of the class that `expr` refers to, typed where `expr` appears. **/
 	public static function classOf(expr:Expr, message:String):String {
 		return switch Context.typeExpr(expr).expr {
 			case TTypeExpr(TClassDecl(c)): path(c.get());
@@ -158,7 +177,7 @@ class Scheduler {
 		}
 	}
 
-	/** The string that `expr` holds. `key` names it in the error. **/
+	/** The string that `expr` holds. `key` identifies it in the error. **/
 	public static function text(expr:Expr, key:String):String {
 		return switch expr.expr {
 			case EConst(CString(value)): value;
@@ -166,7 +185,7 @@ class Scheduler {
 		}
 	}
 
-	// A dotted name: `move`, `Movement`, `game.Movement.move`.
+	// Returns a dotted name: `move`, `Movement`, `game.Movement.move`.
 	static function dotted(expr:Expr):String {
 		return switch expr.expr {
 			case EConst(CIdent(name)): name;
@@ -206,7 +225,7 @@ class Scheduler {
 		}
 	}
 
-	// Returns the systems that `ref` names in the phase of `system`. `ref` is a
+	// Returns the systems that `ref` refers to in the phase of `system`. `ref` is a
 	// constraint of `system`.
 	static function resolve(ref:Ref, system:System, systems:Array<System>):Array<System> {
 		var text = ref.text;
@@ -223,10 +242,10 @@ class Scheduler {
 				owners.push(other.owner);
 		var count = named.length + owners.length;
 		if (count == 0)
-			Context.error('${system.id} names `$text`, which is no system of the app and no class of its systems', ref.pos);
+			Context.error('${system.id} refers to `$text`, which is no system of the app and no class of its systems', ref.pos);
 		if (count > 1) {
 			var all = named.map(s -> s.id).concat(owners);
-			Context.error('${system.id} names `$text`, which could be ${all.join(" or ")}: write the full path', ref.pos);
+			Context.error('${system.id} refers to `$text`, which could be ${all.join(" or ")}: write the full path', ref.pos);
 		}
 		if (named.length == 1)
 			return checkPhase(named[0], ref, system);
@@ -235,9 +254,9 @@ class Scheduler {
 
 	static function checkPhase(other:System, ref:Ref, system:System):Array<System> {
 		if (other == system)
-			Context.error('${system.id} names itself in a constraint', ref.pos);
+			Context.error('${system.id} refers to itself in a constraint', ref.pos);
 		if (other.phase != system.phase)
-			Context.error('${system.id} runs in ${system.phase}, and `${ref.text}` names ${other.id}, which runs in ${other.phase}', ref.pos);
+			Context.error('${system.id} runs in ${system.phase}, and `${ref.text}` refers to ${other.id}, which runs in ${other.phase}', ref.pos);
 		return [other];
 	}
 
@@ -298,6 +317,10 @@ class Scheduler {
 		var pos = Context.currentPos();
 		var resources:Array<Param> = [];
 		var users = new Map<String, {reads:Array<String>, writes:Array<String>}>();
+		for (kernel in KERNEL) {
+			resources.push({write: false, type: Context.getType(kernel.key), key: kernel.key});
+			users.set(kernel.key, {reads: [], writes: []});
+		}
 		for (s in systems)
 			for (p in s.params) {
 				if (!users.exists(p.key)) {
@@ -308,14 +331,18 @@ class Scheduler {
 			}
 		var fields:Array<Field> = [];
 		var creates:Array<Expr> = [];
+		var names = [];
 		for (i in 0...resources.length) {
 			var r = resources[i];
 			var type = Context.toComplexType(r.type);
 			var use = users.get(r.key);
+			var kernel = Lambda.find(KERNEL, k -> k.key == r.key);
+			var name = kernel == null ? 'resource$i' : kernel.field;
+			names.push(name);
 			fields.push({
-				name: 'resource$i',
+				name: name,
 				doc: '`${r.key}`. Read by: ${list(use.reads)}. Written by: ${list(use.writes)}.',
-				access: [APrivate, AFinal],
+				access: [kernel == null ? APrivate : APublic, AFinal],
 				kind: FVar(type, null),
 				pos: pos,
 			});
@@ -323,7 +350,7 @@ class Scheduler {
 				case TPath(p): {expr: ENew(p, []), pos: pos};
 				case _: throw "unreachable";
 			}
-			creates.push(macro $i{'resource$i'} = $create);
+			creates.push(macro $i{name} = $create);
 		}
 		fields.push({
 			name: "new",
@@ -337,7 +364,7 @@ class Scheduler {
 			var calls:Array<Expr> = [];
 			var lines = [];
 			for (s in order(phase, systems)) {
-				var args = [for (p in s.params) macro $i{'resource${keys.indexOf(p.key)}'}];
+				var args = [for (p in s.params) macro $i{names[keys.indexOf(p.key)]}];
 				calls.push(macro $p{s.owner.split(".").concat([s.name])}($a{args}));
 				var reads = [for (p in s.params) if (!p.write) p.key];
 				var writes = [for (p in s.params) if (p.write) p.key];
@@ -361,7 +388,7 @@ class Scheduler {
 			name: "Schedule",
 			doc: "The systems of the app in frame order, generated by hxnme at compile time.",
 			meta: [for (owner in owners) {name: ":access", params: [macro $p{owner.split(".")}], pos: pos}],
-			kind: TDClass(),
+			kind: TDClass(null, [{pack: ["hxn", "me"], name: "Phases"}]),
 			fields: fields,
 			pos: pos,
 		};

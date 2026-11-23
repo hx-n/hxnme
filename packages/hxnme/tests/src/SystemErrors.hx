@@ -5,7 +5,7 @@ import sys.io.Process;
 
 /**
 	Compiles apps whose systems are wrong, and makes sure that each compile
-	fails with the error that names the problem. Run it in `tests` with
+	fails with the error that describes the problem. Run it in `tests` with
 	`haxe system-errors.hxml`.
 **/
 class SystemErrors {
@@ -20,13 +20,13 @@ class SystemErrors {
 		expect("a parameter is not a resource", systems("
 			@:system(Update) static function a(count:Int) {}
 		"), once, "Systems.a takes `count:Int`: a system takes Res<T> or ResMut<T>");
-		expect("a constraint names nothing", systems("
+		expect("a constraint refers to nothing", systems("
 			@:system(Update, after = missing) static function a() {}
-		"), once, "Systems.a names `missing`, which is no system of the app and no class of its systems");
-		expect("a constraint names another phase", systems("
+		"), once, "Systems.a refers to `missing`, which is no system of the app and no class of its systems");
+		expect("a constraint refers to another phase", systems("
 			@:system(Update, after = b) static function a() {}
 			@:system(Render) static function b() {}
-		"), once, "Systems.a runs in Update, and `b` names Systems.b, which runs in Render");
+		"), once, "Systems.a runs in Update, and `b` refers to Systems.b, which runs in Render");
 		expect("the phase does not exist", systems("
 			@:system(Draw) static function a() {}
 		"), once, "`Draw` is not a phase: use Start, Fixed, Update or Render");
@@ -43,18 +43,18 @@ class SystemErrors {
 			@:system(Update) static function a(shape:hxn.me.Res<Shape>) {}
 		", ["Shape" => "interface Shape {}\n"]), once,
 			"`Shape` cannot be a resource: a resource is a class whose constructor takes no arguments");
-		expect("a constraint names two classes", systems("
+		expect("a constraint matches two classes", systems("
 			@:system(Update, after = Moves) static function a() {}
 		", [
 			"one/Moves" => "package one;\n\nclass Moves {\n\t@:system(Update) static function step() {}\n}\n",
 			"two/Moves" => "package two;\n\nclass Moves {\n\t@:system(Update) static function step() {}\n}\n"
 		]), "hxn.me.App.schedule(Systems, one.Moves, two.Moves);",
-			"Systems.a names `Moves`, which could be one.Moves or two.Moves: write the full path");
+			"Systems.a refers to `Moves`, which could be one.Moves or two.Moves: write the full path");
 		expect("a description is not a string", systems("
 			@:system(Update, description = 42) static function a() {}
 		"), once, "`description` takes a string");
-		expect("the app names a value", systems(""), "hxn.me.App.schedule(42);", "hxn.me.App.schedule takes the classes that hold the app's systems");
-		expect("the app makes two schedules", systems(""), once + " " + once, "the app calls hxn.me.App.schedule once");
+		expect("the app passes a value", systems(""), "hxn.me.App.schedule(42);", "hxn.me.App.schedule takes the classes that hold the app's systems");
+		expect("the app makes two schedules", systems(""), once + " " + once, "the app calls hxn.me.App.run or hxn.me.App.schedule once");
 		Sys.println("System error checks passed");
 	}
 

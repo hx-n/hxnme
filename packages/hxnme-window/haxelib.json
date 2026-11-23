@@ -1,0 +1,23 @@
+{
+  "name": "hxnme-window",
+  "version": "0.0.1",
+  "license": "Apache",
+  "url": "https://github.com/hx-n/hxnme",
+  "description": "The window of an hxnme app: it opens the window, paces the frames and reports the window's state to the kernel",
+  "contributors": [
+    "darmie"
+  ],
+  "releasenote": "Opens the app's window and paces its frames.",
+  "classPath": "src",
+  "dependencies": {
+    "hxnme": "0.0.1",
+    "hxn-window": "0.2.0"
+  },
+  "tags": [
+    "hashlink",
+    "hxcpp",
+    "window",
+    "engine"
+  ],
+  "hxnme": {"plugin": "hxn.me.window.WindowPlugin"}
+}

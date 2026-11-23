@@ -3,7 +3,7 @@ package hxn.me.project;
 /**
 	Reads the TOML that hxnme's project files use: tables, dotted keys,
 	strings, integers, floats, booleans, and arrays and inline tables of
-	those. Dates and arrays of tables are rejected with an error that names
+	those. Dates and arrays of tables are rejected with an error that reports
 	the line. The result is an anonymous structure of `String`, `Int`,
 	`Float`, `Bool`, `Array<Dynamic>` and nested structures.
 **/
@@ -18,7 +18,7 @@ class Toml {
 		this.source = source;
 	}
 
-	/** Parses `text`. `source` names the file in error messages. **/
+	/** Parses `text`. `source` identifies the file in error messages. **/
 	public static function parse(text:String, source = "TOML"):Dynamic {
 		return new Toml(text, source).document();
 	}

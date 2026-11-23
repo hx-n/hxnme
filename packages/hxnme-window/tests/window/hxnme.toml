@@ -1,0 +1,8 @@
+# The window plugin of this checkout, with a hidden window.
+plugins = ["../.."]
+
+[window]
+title = "hxnme window check"
+width = 320
+height = 200
+visible = false
