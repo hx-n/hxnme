@@ -1,0 +1,8 @@
+# The check uses the window, GPU and 2D plugins of this checkout, with a hidden window.
+plugins = ["../../../hxnme-window", "../../../hxnme-gpu", "../.."]
+
+[window]
+title = "hxnme 2d check"
+width = 64
+height = 64
+visible = false

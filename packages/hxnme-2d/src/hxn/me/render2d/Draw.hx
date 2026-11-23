@@ -1,0 +1,128 @@
+package hxn.me.render2d;
+
+/**
+	`Draw` is the resource for drawing that the app repeats every frame,
+	such as shapes and debug lines. Systems call its methods in each frame,
+	and the renderer draws what they added in that frame, in the order they
+	added it, through each camera that shows its layer. Positions are in the
+	world's XY plane, and `x`, `y` is the corner of a shape with the smaller
+	coordinates: the bottom-left corner in a world with y up, and the top-left
+	corner through a screen camera. Colors are 0xRRGGBB with a separate
+	`alpha` from 0 to 1.
+
+	Shapes have edges from signed distance functions, so they stay smooth at
+	any size, zoom and angle. Each change of texture between sprites starts a
+	new batch, and shapes never start one.
+**/
+class Draw {
+	@:allow(hxn.me.render2d) final instances = new Instances();
+	@:allow(hxn.me.render2d) final runs:Array<Run> = [];
+
+	/** The layer bits of what is added next. Cameras show the layers in their `layers`. **/
+	public var layer = 1;
+
+	/** The plane that what is added next lies on, or null for the world's XY plane. **/
+	public var plane:Null<Plane>;
+
+	public function new() {}
+
+	/**
+		Adds a rectangle. `radius` rounds its corners. With `border` above 0,
+		the rectangle has a border of that width in `borderColor`.
+	**/
+	public function rect(x:Float, y:Float, width:Float, height:Float, color = 0xFFFFFF, alpha = 1.0, radius = 0.0, border = 0.0, borderColor = 0x000000,
+			borderAlpha = 1.0):Void {
+		var i = shape(2, x, y, width, height, color, alpha, border, borderColor, borderAlpha);
+		instances.set(Instances.RADIUS, i, radius, radius, radius, radius);
+	}
+
+	/** Adds a circle around `x`, `y`. With `border` above 0, it has a border of that width in `borderColor`. **/
+	public function circle(x:Float, y:Float, radius:Float, color = 0xFFFFFF, alpha = 1.0, border = 0.0, borderColor = 0x000000, borderAlpha = 1.0):Void
+		shape(3, x - radius, y - radius, radius * 2, radius * 2, color, alpha, border, borderColor, borderAlpha);
+
+	/** Adds an ellipse that fills the rectangle at `x`, `y`. **/
+	public function ellipse(x:Float, y:Float, width:Float, height:Float, color = 0xFFFFFF, alpha = 1.0):Void
+		shape(3, x, y, width, height, color, alpha, 0, 0, 1);
+
+	/**
+		Adds a line from `x0`, `y0` to `x1`, `y1` with round ends. It is `width`
+		wide at its start and `endWidth` wide at its end, by default `width`.
+	**/
+	public function line(x0:Float, y0:Float, x1:Float, y1:Float, width:Float, color = 0xFFFFFF, alpha = 1.0, ?endWidth:Float):Void {
+		var ra = width / 2;
+		var rb = (endWidth != null ? endWidth : width) / 2;
+		var left = Math.min(x0 - ra, x1 - rb), bottom = Math.min(y0 - ra, y1 - rb);
+		var right = Math.max(x0 + ra, x1 + rb), top = Math.max(y0 + ra, y1 + rb);
+		var i = shape(4, left, bottom, right - left, top - bottom, color, alpha, 0, 0, 1);
+		instances.set(Instances.SHAPE, i, 4, 0, ra, rb);
+		instances.set(Instances.RADIUS, i, x0 - left, y0 - bottom, x1 - left, y1 - bottom);
+	}
+
+	/**
+		Adds a stroke through the points of `points`, given as x, y pairs, as
+		lines with round ends. `widths` gives the width at each point, such as
+		from a pen's pressure; without it, the stroke is `width` wide.
+	**/
+	public function stroke(points:Array<Float>, width:Float, color = 0xFFFFFF, alpha = 1.0, ?widths:Array<Float>):Void {
+		var n = points.length >> 1;
+		for (k in 0...n - 1) {
+			var a = widths != null ? widths[k] : width;
+			var b = widths != null ? widths[k + 1] : width;
+			line(points[k * 2], points[k * 2 + 1], points[k * 2 + 2], points[k * 2 + 3], a, color, alpha, b);
+		}
+	}
+
+	/**
+		Adds `texture` stretched over the rectangle at `x`, `y`, multiplied by
+		`color` and `alpha`. `angle` turns it in radians about its center.
+		`u0`, `v0`, `u1`, `v1` select part of the texture, from 0 to 1.
+	**/
+	public function sprite(texture:Texture, x:Float, y:Float, width:Float, height:Float, color = 0xFFFFFF, alpha = 1.0, angle = 0.0, u0 = 0.0, v0 = 0.0,
+			u1 = 1.0, v1 = 1.0):Void {
+		var i = instances.add();
+		instances.set(Instances.RECT, i, x, y, width, height);
+		instances.set(Instances.UV, i, u0, v0, u1, v1);
+		tint(Instances.COLOR, i, color, alpha);
+		instances.set(Instances.XFORM, i, Math.cos(angle), Math.sin(angle), 0.5, 0.5);
+		var last = runs.length > 0 ? runs[runs.length - 1] : null;
+		if (last == null || last.layer != layer || last.plane != plane || (last.texture != null && last.texture != texture))
+			runs.push({texture: texture, layer: layer, plane: plane, start: i, count: 1});
+		else {
+			last.texture = texture;
+			last.count++;
+		}
+	}
+
+	@:allow(hxn.me.render2d) function clear():Void {
+		instances.clear();
+		runs.resize(0);
+	}
+
+	function shape(kind:Int, x:Float, y:Float, width:Float, height:Float, color:Int, alpha:Float, border:Float, borderColor:Int, borderAlpha:Float):Int {
+		var i = instances.add();
+		instances.set(Instances.RECT, i, x, y, width, height);
+		tint(Instances.COLOR, i, color, alpha);
+		instances.set(Instances.XFORM, i, 1, 0, 0.5, 0.5);
+		instances.set(Instances.SHAPE, i, kind, border, 0, 0);
+		tint(Instances.BORDER, i, borderColor, borderAlpha);
+		// Shapes sample no texture, so each shape joins the run before it.
+		var last = runs.length > 0 ? runs[runs.length - 1] : null;
+		if (last == null || last.layer != layer || last.plane != plane)
+			runs.push({texture: null, layer: layer, plane: plane, start: i, count: 1});
+		else
+			last.count++;
+		return i;
+	}
+
+	inline function tint(field:Int, i:Int, color:Int, alpha:Float):Void
+		instances.set(field, i, ((color >> 16) & 0xFF) / 255, ((color >> 8) & 0xFF) / 255, (color & 0xFF) / 255, alpha);
+}
+
+/** Each run is a range of instances that draw with one texture, or with none. **/
+typedef Run = {
+	var texture:Null<Texture>;
+	var layer:Int;
+	var plane:Null<Plane>;
+	var start:Int;
+	var count:Int;
+}
