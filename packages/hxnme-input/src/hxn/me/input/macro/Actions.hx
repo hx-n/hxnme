@@ -69,7 +69,12 @@ class Actions {
 						}
 					case ":buttons":
 						for (param in entry.params)
-							codes.push(BUTTON << 16 | code(param, buttons, "a button of hxn.window.GamepadButton"));
+							codes.push(BUTTON << 16 | switch name(param) {
+								// Confirm and Cancel stand for a different button on each family.
+								case "Confirm": 100;
+								case "Cancel": 101;
+								case _: code(param, buttons, "a button of hxn.window.GamepadButton, or Confirm or Cancel: bind buttons by position, such as North, and show labels with Gamepads.label");
+							});
 					case ":axis":
 						for (param in entry.params)
 							codes.push(AXIS << 16 | code(param, axes, "an axis of hxn.window.GamepadAxis"));

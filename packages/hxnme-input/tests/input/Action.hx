@@ -15,4 +15,7 @@ enum abstract Action(Int) {
 
 	@:shortcut(Control, KeyZ)
 	var Undo;
+
+	@:keys(Enter) @:buttons(Confirm)
+	var Accept;
 }

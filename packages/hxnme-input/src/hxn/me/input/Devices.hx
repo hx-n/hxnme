@@ -31,6 +31,13 @@ class Devices {
 	final pad = haxe.io.Bytes.alloc(176);
 	var connected = false;
 	var sequence = -1;
+	// The gamepad buttons that went down or came up in this frame, from the
+	// events that `drain` reads.
+	final padPressed:Array<Bool> = [for (_ in 0...17) false];
+	final padReleased:Array<Bool> = [for (_ in 0...17) false];
+
+	/** The family of the connected gamepad, or `Generic` while none is connected. **/
+	public var gamepadFamily(default, null):GamepadFamily = Generic;
 	var changed = false;
 	var stream:Null<hxn.Signal<Devices>>;
 
@@ -63,6 +70,10 @@ class Devices {
 		for (i in 0...pressedButtons.length) {
 			pressedButtons[i] = false;
 			releasedButtons[i] = false;
+		}
+		for (i in 0...padPressed.length) {
+			padPressed[i] = false;
+			padReleased[i] = false;
 		}
 	}
 
@@ -190,16 +201,30 @@ class Devices {
 	// Records that the first gamepad connected or disconnected. A
 	// disconnected pad reads as zero.
 	@:allow(hxn.me.input)
-	function connect(on:Bool):Void {
+	function connect(on:Bool, family:GamepadFamily):Void {
 		if (on == connected)
 			return;
 		connected = on;
+		gamepadFamily = on ? family : Generic;
 		changed = true;
 		if (!on) {
 			pad.fill(0, pad.length, 0);
 			sequence = -1;
 		}
 	}
+
+	@:allow(hxn.me.input)
+	function padEdge(button:Int, pressed:Bool):Void
+		if (button >= 0 && button < padPressed.length)
+			(pressed ? padPressed : padReleased)[button] = true;
+
+	/** True if the gamepad's `button` went down in this frame, even if it came up again. **/
+	public inline function gamepadPressed(button:GamepadButton):Bool
+		return padPressed[(button : Int)];
+
+	/** True if the gamepad's `button` came up in this frame. **/
+	public inline function gamepadReleased(button:GamepadButton):Bool
+		return padReleased[(button : Int)];
 
 	// Records the change sequence of the snapshot that `pad` now holds.
 	@:allow(hxn.me.input)

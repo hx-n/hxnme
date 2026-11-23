@@ -3,6 +3,8 @@ import hxn.me.Res;
 import hxn.me.ResMut;
 import hxn.me.Time;
 import hxn.me.input.Devices;
+import hxn.me.input.GamepadFamily;
+import hxn.me.input.Gamepads;
 import hxn.me.input.Input;
 import hxn.me.input.Pointer;
 import hxn.me.window.WindowPlugin;
@@ -21,6 +23,17 @@ import hxn.window.MouseElementState;
 **/
 class Script {
 	static var frame = 0;
+
+	@:system(Start, description = "Prints the gamepad families, labels and confirm buttons")
+	static function families(input:Res<Input<Action>>) {
+		for (vendor in [0x045E, 0x054C, 0x057E, 0x28DE, 0x2DC8, -1]) {
+			var family = GamepadFamily.ofVendor(vendor);
+			Sys.println('gamepad 0x${StringTools.hex(vendor & 0xFFFF, 4)}: ${Gamepads.label(family, South)} ${Gamepads.label(family, East)} '
+				+ '${Gamepads.label(family, North)} ${Gamepads.label(family, LeftTrigger)}, confirm ${Gamepads.label(family, Gamepads.confirm(family))}, '
+				+ 'cancel ${Gamepads.label(family, Gamepads.cancel(family))}');
+		}
+		Sys.println('without a gamepad: jump ${input.gamepadLabel(Jump)}, accept ${input.gamepadLabel(Accept)}, undo "${input.gamepadLabel(Undo)}"');
+	}
 
 	@:system(Start, description = "Prints the changes that the signals carry")
 	static function watch(input:Res<Input<Action>>, pointer:Res<Pointer>, devices:Res<Devices>) {

@@ -17,6 +17,11 @@ class InputState {
 	public static inline final KEY_POSITIVE = 6;
 	public static inline final SHORTCUT = 7;
 
+	// The button codes of `@:buttons(Confirm)` and `@:buttons(Cancel)`, which
+	// stand for a different button on each gamepad family.
+	public static inline final CONFIRM = 100;
+	public static inline final CANCEL = 101;
+
 	// Each state of the app, so that the input plugin can update them.
 	@:allow(hxn.me.input)
 	static final all:Array<InputState> = [];
@@ -39,6 +44,7 @@ class InputState {
 	final down:Array<Bool>;
 	final before:Array<Bool>;
 	final pressedNow:Array<Bool>;
+	var family:GamepadFamily = Generic;
 	final releasedNow:Array<Bool>;
 	var signals:Null<Array<Null<hxn.Signal<Bool>>>>;
 
@@ -88,6 +94,27 @@ class InputState {
 		}
 	}
 
+	// The positional button that `code` stands for on a gamepad of `family`.
+	static inline function button(code:Int, family:GamepadFamily):Int {
+		return switch code {
+			case CONFIRM: Gamepads.confirm(family);
+			case CANCEL: Gamepads.cancel(family);
+			case _: code;
+		}
+	}
+
+	/**
+		The label of the first gamepad button bound to `action`, on the
+		connected pad's family, or an empty string for an action that has
+		no gamepad button. Prompts use it, such as "Press A to jump".
+	**/
+	public function labelOf(action:Int):String {
+		for (binding in bindings[action])
+			if (binding >> 16 == BUTTON)
+				return Gamepads.label(family, button(binding & 0xFFFF, family));
+		return "";
+	}
+
 	// True while every part of the shortcut is down.
 	static function held(parts:Array<Int>, devices:Devices):Bool {
 		for (part in parts) {
@@ -107,6 +134,7 @@ class InputState {
 	// both keys down give 0. Then the contribution with the largest size wins.
 	@:allow(hxn.me.input)
 	function update(devices:Devices):Void {
+		family = devices.gamepadFamily;
 		for (action in 0...bindings.length) {
 			var keyAxis = 0.0;
 			var best = 0.0;
@@ -123,6 +151,10 @@ class InputState {
 					case MOUSE:
 						pressEvent = pressEvent || @:privateAccess devices.pressedButtons[code];
 						releaseEvent = releaseEvent || @:privateAccess devices.releasedButtons[code];
+					case BUTTON:
+						code = button(code, devices.gamepadFamily);
+						pressEvent = pressEvent || devices.gamepadPressed(code);
+						releaseEvent = releaseEvent || devices.gamepadReleased(code);
 					case _:
 				}
 				var value = switch binding >> 16 {

@@ -53,6 +53,14 @@ abstract Input<A>(InputState) {
 		return this.valueOf(cast action);
 
 	/**
+		The label of the first gamepad button bound to `action`, on the family
+		of the connected gamepad: "A" on Xbox, "Cross" on PlayStation, "B" on
+		Nintendo for `South`. It is empty for an action with no gamepad button.
+	**/
+	public inline function gamepadLabel(action:A):String
+		return this.labelOf(cast action);
+
+	/**
 		Returns a signal of whether `action` is down, for code that reacts to changes,
 		such as a UI. The plugin creates it the first time it is asked for,
 		and sets it once a frame, in `Begin`, when the value changes. Systems

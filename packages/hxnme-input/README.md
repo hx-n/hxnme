@@ -37,7 +37,7 @@ enum abstract Action(Int) {
 |---|---|
 | `@:keys(...)` | Keys, by the names of `hxn.window.KeyCode`, such as `Space` and `KeyW`. |
 | `@:mouse(...)` | Mouse buttons: `Left`, `Right`, `Middle`, `Back` or `Forward`. |
-| `@:buttons(...)` | Buttons of the first gamepad, by the names of `hxn.window.GamepadButton`, such as `South`. |
+| `@:buttons(...)` | Buttons of the first gamepad, by position, with the names of `hxn.window.GamepadButton` such as `South`, or `Confirm` and `Cancel`. |
 | `@:axis(...)` | Axes of the first gamepad, by the names of `hxn.window.GamepadAxis`, such as `LeftX`. |
 | `@:keyAxis(negative, positive)` | Two keys that give -1 and 1. |
 | `@:shortcut(...)` | Two or more keys held together. `Control`, `Shift`, `Alt` and `Super` are modifiers, which the window reports for either side. Each `@:shortcut` is one alternative. |
@@ -83,11 +83,43 @@ The bindings become a table at compile time, so the actions need no lookup
 at run time. Names that are not a key, a button or an axis are compile errors at the
 metadata, and so is a set without `@:actions`.
 
+## Gamepads
+
+hxn-window reports every supported gamepad with the same positional
+buttons, the W3C standard layout that gilrs and the SDL controller database
+map each pad to. So `@:buttons(South)` is the bottom face button on Xbox,
+PlayStation, Nintendo and Steam pads alike, and an app writes no mapping of
+its own.
+
+| Family | Vendor | `South` | `East` | `West` | `North` |
+|---|---|---|---|---|---|
+| `Xbox` | 0x045E | A | B | X | Y |
+| `PlayStation` | 0x054C | Cross | Circle | Square | Triangle |
+| `Nintendo` | 0x057E | B | A | Y | X |
+| `Steam` | 0x28DE | A | B | X | Y |
+| `Generic` | other | South | East | West | North |
+
+`devices.gamepadFamily` is the family of the connected pad, from the USB
+vendor id that hxn-window reports. `Gamepads.label(family, button)` is the
+label that a button carries on that family, for button prompts, and
+`input.gamepadLabel(action)` is the label of the action's first gamepad
+button on the connected pad:
+
+```haxe
+hint.text = 'Press ${input.gamepadLabel(Jump)} to jump'; // "A", "Cross" or "B"
+```
+
+`@:buttons(Confirm)` and `@:buttons(Cancel)` follow each family's
+convention: `Confirm` is `East` on Nintendo pads, where A sits, and `South`
+on the others, and `Cancel` is the other of the two. Menus bind these, and
+gameplay binds positions.
+
 ## Devices and the pointer
 
 The resource `Devices` holds the state of each key, each mouse button and
 the first connected gamepad, for systems that read a key without an action:
-`devices.key(KeyW)`, `devices.mouse(Right)`, `devices.gamepadAxis(LeftY)`.
+`devices.key(KeyW)`, `devices.mouse(Right)`, `devices.gamepadAxis(LeftY)`,
+`devices.gamepadPressed(South)`.
 `keyPressed`, `keyReleased`, `mousePressed` and `mouseReleased` report what
 went down or came up in the frame. `shift`, `control`, `alt` and `superKey`
 are the modifiers that the window reports. When the window loses the focus,

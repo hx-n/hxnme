@@ -91,6 +91,8 @@ class InputSystems {
 				if (kind == CONNECTED && pad == null) {
 					pad = Gamepad.fromId(id);
 					padId = id;
+				} else if (kind == BUTTON && id == padId) {
+					devices.padEdge(records.getInt32(i * 32 + 8), records.getInt32(i * 32 + 12) != 0);
 				} else if (kind == DISCONNECTED && id == padId) {
 					pad.close();
 					pad = null;
@@ -104,7 +106,7 @@ class InputSystems {
 			pad = Gamepad.at(0);
 			padId = pad.deviceId();
 		}
-		devices.connect(pad != null);
+		devices.connect(pad != null, pad == null ? Generic : GamepadFamily.ofVendor(pad.vendorId()));
 		if (pad != null && pad.snapshot(devices.pad))
 			devices.snapshotted();
 	}
@@ -112,4 +114,5 @@ class InputSystems {
 	// The kinds of `Gamepad.drain` records, in the order of `GamepadEvent`.
 	static inline final CONNECTED = 1;
 	static inline final DISCONNECTED = 2;
+	static inline final BUTTON = 3;
 }

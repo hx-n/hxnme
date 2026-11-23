@@ -62,6 +62,20 @@ frame reports both. Each action is down while its value is at least 0.5 from 0. 
 wins, and `@:keyAxis` keys add up. The bindings are a compile-time table:
 wrong names and a set without `@:actions` are compile errors.
 
+## Gamepads
+
+Bind gamepad buttons by position (`South`, `East`, `West`, `North`, ...):
+hxn-window maps every supported pad to the W3C standard layout through gilrs
+and the SDL controller database, so one binding covers Xbox, PlayStation,
+Nintendo and Steam pads. Never bind a console label such as `Triangle`.
+
+- `devices.gamepadFamily`: `Xbox`, `PlayStation`, `Nintendo`, `Steam` or
+  `Generic`, from the USB vendor id (`GamepadFamily.ofVendor`).
+- `Gamepads.label(family, button)` and `input.gamepadLabel(action)`: the
+  printed label for prompts, such as "A", "Cross" or "B" for `South`.
+- `@:buttons(Confirm)` and `@:buttons(Cancel)`: `East` and `South` on
+  Nintendo pads, `South` and `East` on the others. Use them for menus.
+
 ## Devices and the pointer
 
 - `Res<hxn.me.input.Devices>`: `key(code)`, `keyPressed`, `keyReleased`,

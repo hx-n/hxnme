@@ -16,6 +16,8 @@ class ActionErrors {
 			"`Spacebar` is not a key of hxn.window.KeyCode");
 		expect("a mouse button does not exist", "@:actions enum abstract Action(Int) {\n\t@:mouse(Wheel) var Fire;\n}",
 			"`Wheel` is not a mouse button: use Left, Right, Middle, Back, Forward");
+		expect("a gamepad button is a label", "@:actions enum abstract Action(Int) {\n\t@:buttons(Triangle) var Look;\n}",
+			"`Triangle` is not a button of hxn.window.GamepadButton, or Confirm or Cancel: bind buttons by position, such as North, and show labels with Gamepads.label");
 		expect("a key axis has one key", "@:actions enum abstract Action(Int) {\n\t@:keyAxis(KeyA) var MoveX;\n}",
 			"@:keyAxis takes two keys: the key for -1, then the key for 1");
 		expect("a shortcut has one key", "@:actions enum abstract Action(Int) {\n\t@:shortcut(KeyS) var Save;\n}",
