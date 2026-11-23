@@ -1,0 +1,34 @@
+{
+  "name": "hxnme-gpu",
+  "version": "0.0.1",
+  "license": "Apache",
+  "url": "https://github.com/hx-n/hxnme",
+  "description": "The GPU of an hxnme app: it opens hxn-gpu on the app's window, and draws a frame graph of passes into each frame",
+  "contributors": [
+    "darmie"
+  ],
+  "releasenote": "Opens the GPU on the app's window, and draws a frame graph of passes into each frame.",
+  "classPath": "src",
+  "dependencies": {
+    "hxnme": "0.0.1",
+    "hxnme-window": "0.0.1",
+    "hxn-gpu": "0.2.5"
+  },
+  "tags": [
+    "hashlink",
+    "hxcpp",
+    "gpu",
+    "engine"
+  ],
+  "hxnme": {
+    "plugin": "hxn.me.gpu.GpuPlugin",
+    "requires": ["hxnme-window"],
+    "libraries": [
+      {"triple": "wasm32", "use": ["hxn-gpu-webgpu", "hxn-gpu-webgl2"]},
+      {"triple": "apple", "use": ["hxn-gpu-metal"]},
+      {"triple": "windows", "use": ["hxn-gpu-d3d12"]},
+      {"triple": "android", "use": ["hxn-gpu-vulkan", "hxn-gpu-gles"]},
+      {"triple": "linux", "use": ["hxn-gpu-vulkan", "hxn-gpu-gles"]}
+    ]
+  }
+}
