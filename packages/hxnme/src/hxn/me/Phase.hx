@@ -9,6 +9,9 @@ enum abstract Phase(Int) {
 	/** Runs once, after the plugins start. **/
 	var Start;
 
+	/** Runs once a frame, before `Fixed`. Plugins turn platform events into state here. **/
+	var Begin;
+
 	/** Runs once for each fixed time step. One frame can run it zero or more times. **/
 	var Fixed;
 

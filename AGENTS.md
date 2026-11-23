@@ -54,7 +54,10 @@ conventions first. They apply here too.
   once. `haxe plugin-errors.hxml` and `haxe system-errors.hxml` check the
   compile errors of the registry and the scheduler. The window plugin's
   check, in `packages/hxnme-window/tests/window`, needs
-  `haxelib install hxn-window` once, and a display.
+  `haxelib install hxn-window` once, and a display. So does the input
+  plugin's check, in `packages/hxnme-input/tests/input`, and
+  `haxe action-errors.hxml` in `packages/hxnme-input/tests` checks the
+  compile errors of action sets.
   Each check program has two program files: `<name>.hxml` runs on every
   runtime, and `<name>-simd.hxml` adds the SIMD paths, which run on Ash.
 - Run both files on Ash in hybrid, JIT and interpreter modes:

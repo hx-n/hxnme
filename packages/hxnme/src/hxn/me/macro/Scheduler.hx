@@ -41,7 +41,7 @@ private typedef System = {
 **/
 class Scheduler {
 	// The phases of hxn.me.Phase, in the order they run.
-	static final PHASES = ["Start", "Fixed", "Update", "Render"];
+	static final PHASES = ["Start", "Begin", "Fixed", "Update", "Render"];
 
 	// The resources that every schedule has, and the public fields that hold them.
 	static final KERNEL = [
@@ -208,8 +208,9 @@ class Scheduler {
 				var key = TypeTools.toString(resource);
 				switch Context.follow(resource) {
 					case TInst(_.get() => c, _) if (!c.isInterface && c.kind.match(KNormal) && constructible(c)):
+					case TAbstract(_.get() => a, _) if (a.impl != null && TypeTools.findField(a.impl.get(), "create", true) != null):
 					case _:
-						Context.error('`$key` cannot be a resource: a resource is a class whose constructor takes no arguments', at);
+						Context.error('`$key` cannot be a resource: a resource is a class whose constructor takes no arguments, or an abstract with a static `create()`', at);
 				}
 				{write: name == "ResMut", type: resource, key: key};
 			case _: null;
@@ -331,6 +332,7 @@ class Scheduler {
 			}
 		var fields:Array<Field> = [];
 		var creates:Array<Expr> = [];
+		var clears:Array<Expr> = [];
 		var names = [];
 		for (i in 0...resources.length) {
 			var r = resources[i];
@@ -346,11 +348,18 @@ class Scheduler {
 				kind: FVar(type, null),
 				pos: pos,
 			});
-			var create = switch type {
-				case TPath(p): {expr: ENew(p, []), pos: pos};
+			var create = switch [Context.follow(r.type), type] {
+				case [TAbstract(_.get() => a, _), _]:
+					// Abstracts make their instance with `create()`, which can read
+					// the type parameters from the expected type.
+					var path = a.pack.concat([a.name]);
+					macro($p{path}.create() : $type);
+				case [_, TPath(p)]: {expr: ENew(p, []), pos: pos};
 				case _: throw "unreachable";
 			}
 			creates.push(macro $i{name} = $create);
+			if (isEvents(r.type))
+				clears.push(macro $i{name}.clear());
 		}
 		fields.push({
 			name: "new",
@@ -379,6 +388,13 @@ class Scheduler {
 				pos: pos,
 			});
 		}
+		fields.push({
+			name: "end",
+			doc: "Ends the frame: clears each event queue, after `Render`.",
+			access: [APublic],
+			kind: FFun({args: [], ret: macro :Void, expr: macro $b{clears}}),
+			pos: pos,
+		});
 		var owners = [];
 		for (s in systems)
 			if (!owners.contains(s.owner))
@@ -394,6 +410,13 @@ class Scheduler {
 		};
 		Context.defineType(definition);
 		Dump.add(definition);
+	}
+
+	static function isEvents(type:Type):Bool {
+		return switch Context.follow(type) {
+			case TInst(_.get() => {pack: ["hxn", "me"], name: "Events"}, _): true;
+			case _: false;
+		}
 	}
 
 	static function list(names:Array<String>):String

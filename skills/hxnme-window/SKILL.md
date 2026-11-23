@@ -42,6 +42,10 @@ window's monitor. Between frames it reads the window's events:
 - Closing the window stops the app after the current frame.
 
 Systems read these as `Res<hxn.me.Display>` and `Res<hxn.me.Lifecycle>`.
+Every window event is also in `Res<hxn.me.Events<hxn.window.Event>>`, which
+the plugin's `publish` system fills in `Begin`. Readers in `Begin` add
+`after = hxn.me.window.WindowPlugin`. `WindowPlugin.post(event)` queues a
+synthetic event, for checks and input replay.
 Other plugins reach the window as `hxn.me.Plugins.hxnme_window.window`, a
 `hxn.window.Window`.
 

@@ -70,16 +70,25 @@ plugin: `@:plugin("<haxelib name>", description = "...")`.
 ## Systems
 
 Systems are static functions with `@:system(Phase, after = ..., before = ...,
-description = "...")`. The phases run in the order `Start` (once), `Fixed`
+description = "...")`. The phases run in the order `Start` (once), `Begin`
+(once a frame, where plugins turn platform events into state), `Fixed`
 (once for each fixed step), `Update` and `Render`. `after` and `before` take
 one name or an array of names: a system (`move`, `Movement.move`) or a class
 of systems (`Movement`), which means its systems in the same phase. Give each
 system a `description` of what it does.
 
-Parameters are resources: `Res<T>` reads `T` and `ResMut<T>` writes it. `T`
-is a class whose constructor takes no arguments, and the app has one
-instance of it. The kernel derives each system's reads and writes from these
-types, so declare a resource as `ResMut<T>` if the system writes it.
+Parameters are resources: `Res<T>` reads `T` and `ResMut<T>` writes it.
+Both forward the fields of `T` and convert to `T`. `T` is a class whose
+constructor takes no arguments, or an abstract with a static macro
+`create()` that reads its type parameters from the expected type, and the
+app has one instance of it. The kernel derives each system's reads and
+writes from these types, so declare a resource as `ResMut<T>` if the system
+writes it.
+
+`hxn.me.Events<T>` is a queue resource: writers take `ResMut<Events<T>>` and
+`push`, readers take `Res<Events<T>>` and loop over it. The schedule clears
+every queue after `Render`, so order readers after writers in the same
+frame.
 
 ```haxe
 @:system(Update, after = Physics, description = "Moves each body by its velocity")

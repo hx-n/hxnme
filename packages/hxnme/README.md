@@ -153,6 +153,7 @@ Each frame runs its phases in this order:
 | Phase | Runs |
 |---|---|
 | `Start` | One time, after the plugins start. |
+| `Begin` | One time in each frame, before `Fixed`. Plugins turn the events of the platform into state here, such as the state of the keys. |
 | `Fixed` | One time for each fixed step. Each fixed step is a constant interval of time, `app.step` times a second. One frame can run this phase zero or more times. |
 | `Update` | One time in each frame. |
 | `Render` | One time in each frame, after `Update`. Rendering plugins draw the frame in this phase. |
@@ -162,10 +163,21 @@ Each frame runs its phases in this order:
 | `after`, `before` | One name, or an array of names. Each name is a system (`move`, `Movement.move`) or a class of systems (`Movement`, `game.Movement`). For a class, the constraint applies to each of its systems in the same phase. |
 | `description` | What the system does. The kernel records it with the system. |
 
-Systems get their resources as parameters. Each resource is the one instance of a class that all systems of an app share. The class must have a
-constructor that takes no arguments. `Res<T>` reads `T`. `ResMut<T>` reads
-and writes `T`. The kernel records the reads and the writes of each system
-from these parameter types, and the dump shows them.
+Systems get their resources as parameters. Each resource is the one
+instance of a type that all systems of an app share. The type is a class
+with a constructor that takes no arguments, or an abstract with a static
+`create()`. The schedule calls `create()` with the resource type as the
+expected type, so the abstract can read its type parameters at compile time.
+`Res<T>` reads `T`. `ResMut<T>` reads and writes `T`. Both forward the
+fields of `T`, and convert to `T`. The kernel records the reads and the
+writes of each system from these parameter types, and the dump shows them.
+
+`hxn.me.Events<T>` is a resource that holds a queue of events of type `T`.
+Systems with `ResMut<Events<T>>` push events, and systems with
+`Res<Events<T>>` read them, for example with a `for` loop. The schedule
+clears each queue at the end of the frame, after `Render`. So an event is
+readable for the rest of the frame in which it is pushed. Order the readers
+after the writers with `after` or `before`.
 
 The app passes the classes that hold its systems to `App.run`. Each plugin lists its classes of systems on its plugin class, with
 `@:systems(Broadphase, Solver)`. The static functions of the plugin class
@@ -189,7 +201,8 @@ These are compile errors, and each one points at the annotation:
 - The name matches more than one class or system.
 - The phase does not exist.
 - The parameter is not a resource.
-- The resource class lacks a constructor that takes no arguments.
+- The resource type is not a class with a constructor that takes no
+  arguments, and not an abstract with a static `create()`.
 
 ## Running an app
 
@@ -209,9 +222,11 @@ The host calls `frame(seconds)` on an `hxn.me.AppLoop` for each frame, with
 the seconds since the previous frame. The first frame runs `Start`. Then
 each frame does these steps:
 
-1. It advances the clock.
-2. It runs `Fixed` one time for each fixed step that the frame completes.
-3. It runs `Update` and `Render`.
+1. It runs `Begin`.
+2. It advances the clock.
+3. It runs `Fixed` one time for each fixed step that the frame completes.
+4. It runs `Update` and `Render`.
+5. It clears the event queues.
 
 Vsync paces frames at the refresh rate of the display, and their timing
 varies a little from frame to frame. If the refresh rate is close to the

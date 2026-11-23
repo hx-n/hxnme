@@ -29,7 +29,7 @@ class SystemErrors {
 		"), once, "Systems.a runs in Update, and `b` refers to Systems.b, which runs in Render");
 		expect("the phase does not exist", systems("
 			@:system(Draw) static function a() {}
-		"), once, "`Draw` is not a phase: use Start, Fixed, Update or Render");
+		"), once, "`Draw` is not a phase: use Start, Begin, Fixed, Update or Render");
 		expect("the system is not static", systems("
 			@:system(Update) function a() {}
 		"), once, "Systems.a is not static: a system is a static function");
@@ -42,7 +42,7 @@ class SystemErrors {
 		expect("a resource has no constructor", systems("
 			@:system(Update) static function a(shape:hxn.me.Res<Shape>) {}
 		", ["Shape" => "interface Shape {}\n"]), once,
-			"`Shape` cannot be a resource: a resource is a class whose constructor takes no arguments");
+			"`Shape` cannot be a resource: a resource is a class whose constructor takes no arguments, or an abstract with a static `create()`");
 		expect("a constraint matches two classes", systems("
 			@:system(Update, after = Moves) static function a() {}
 		", [

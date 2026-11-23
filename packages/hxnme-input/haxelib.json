@@ -1,0 +1,24 @@
+{
+  "name": "hxnme-input",
+  "version": "0.0.1",
+  "license": "Apache",
+  "url": "https://github.com/hx-n/hxnme",
+  "description": "Input for hxnme: actions bound to keys, mouse buttons and gamepads, and the pointer",
+  "contributors": [
+    "darmie"
+  ],
+  "releasenote": "Typed actions over keyboard, mouse, touch and gamepad, and the pointer.",
+  "classPath": "src",
+  "dependencies": {
+    "hxnme": "0.0.1",
+    "hxnme-window": "0.0.1",
+    "hxn-window": "0.2.0"
+  },
+  "tags": [
+    "hashlink",
+    "hxcpp",
+    "input",
+    "engine"
+  ],
+  "hxnme": {"plugin": "hxn.me.input.InputPlugin", "requires": ["hxnme-window"]}
+}

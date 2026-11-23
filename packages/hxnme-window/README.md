@@ -36,6 +36,13 @@ It sets the kernel resources from the window:
 | The platform suspends or resumes the app | `Lifecycle.suspended` changes. The app runs no frame while it is suspended. |
 | The user closes the window | The app stops after the current frame. |
 
+Each event of the window is also in the resource
+`hxn.me.Events<hxn.window.Event>`. The plugin's system `publish` fills the
+queue in `Begin`, with the events since the last frame. Systems that read
+the queue in `Begin` run after it with `after = hxn.me.window.WindowPlugin`.
+The input plugin reads it this way. `WindowPlugin.post(event)` queues an
+event as if the window had sent it, for checks and for input replay.
+
 Other plugins reach the window through `hxn.me.Plugins.hxnme_window.window`,
 for example to make a GPU surface from its native handles.
 

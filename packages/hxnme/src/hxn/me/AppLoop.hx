@@ -2,9 +2,10 @@ package hxn.me;
 
 /**
 	Runs the phases of a schedule, one frame at a time. The host calls `frame`
-	once for each frame. The first frame runs `Start`. Each frame then
-	advances `Time`, runs `Fixed` once for each fixed step that the frame
-	completes, and runs `Update` and `Render`. `SNAP` rounds the number of
+	once for each frame. The first frame runs `Start`. Each frame then runs
+	`Begin`, advances `Time`, runs `Fixed` once for each fixed step that the
+	frame completes, and runs `Update` and `Render`. Then it clears the event
+	queues. `SNAP` rounds the number of
 	steps to a whole number when the frame is close to one. While the app is suspended, a
 	frame runs no phase and does not advance `Time`. `hxn.Loop.sync` delivers
 	the results of native libraries at the start of each frame.
@@ -59,6 +60,7 @@ class AppLoop {
 		}
 		if (!lifecycle.running || lifecycle.suspended)
 			return lifecycle.running;
+		phases.begin();
 		@:privateAccess {
 			var delta = seconds < 0 ? 0 : seconds > Time.MAX_DELTA ? Time.MAX_DELTA : seconds;
 			time.delta = delta;
@@ -86,6 +88,7 @@ class AppLoop {
 		}
 		phases.update();
 		phases.render();
+		phases.end();
 		return lifecycle.running;
 	}
 }
