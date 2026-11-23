@@ -65,7 +65,10 @@ it back on the world's XY plane. Each `Plane` moves, turns and scales its
 own XY plane into the world: `x`, `y`, `z`, a quaternion `rx`, `ry`, `rz`,
 `rw` (or `rotate(angle, ax, ay, az)`), and `scale`. Drawing tools can keep
 strokes on planes anywhere in 3D, and a perspective camera that turns
-around them shows them in perspective:
+around them shows them in perspective. With `camera.depth`, nearer content
+hides farther content whatever order it is drawn in, so planes that
+intersect cover each other correctly. Content on one plane still draws in
+order:
 
 ```haxe
 var wall = new Plane();

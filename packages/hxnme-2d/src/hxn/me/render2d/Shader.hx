@@ -91,6 +91,9 @@ class Shader implements hxn.gpu.Shader {
 				result = sampled * tint;
 			else if (kind.x < 1.5)
 				result = vec4(tint.rgb, tint.a * sampled.r);
+			// Fully transparent fragments write no depth, so the empty corners of a quad hide nothing.
+			if (result.a < 0.004)
+				discard;
 			output.color = result;
 		}
 	};

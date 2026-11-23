@@ -82,6 +82,7 @@ class Renderer {
 			view.pass = new Pass("2d", camera.target, (pass, into) -> record(view, pass, into), camera.order);
 			if (camera.target != null)
 				view.pass.clear = camera.clear;
+			view.pass.depth = camera.depth;
 			gpu.graph.add(view.pass);
 			views.set(camera, view);
 		}
@@ -128,7 +129,7 @@ class Renderer {
 			pass.setViewport(x, y, w, h);
 			pass.setScissorRect(x, y, w, h);
 		}
-		var pipeline = pipelineFor(into.format);
+		var pipeline = pipelineFor(into.format, camera.depth);
 		pass.setPipeline(pipeline);
 		var shared = Shader.PARAMS_GROUP == Shader.TEXTURE_image_GROUP;
 		for (run in draw.runs) {
@@ -167,8 +168,8 @@ class Renderer {
 		return group;
 	}
 
-	function pipelineFor(format:TextureFormat):RenderPipeline {
-		var key = '$format';
+	function pipelineFor(format:TextureFormat, depth:Bool):RenderPipeline {
+		var key = '$format $depth';
 		var found = pipelines.get(key);
 		if (found != null)
 			return found;
@@ -182,6 +183,8 @@ class Renderer {
 			format: format,
 			topology: TriangleStrip,
 			blend: hxn.gpu.Blend.alpha,
+			// Later content at the same depth draws over earlier content, as without depth.
+			depth: depth ? {format: Depth32Float, compare: LessEqual} : null,
 			vertexBuffers: [
 				field(Shader.INPUT_rect),
 				field(Shader.INPUT_uv),

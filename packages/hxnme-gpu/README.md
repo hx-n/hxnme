@@ -72,6 +72,7 @@ along its -z. `roll(angle)` turns it about the z axis, as a 2D camera turns.
 | `clear` | The color that the camera's render target is cleared to, or null to keep it. |
 | `order` | Cameras draw from the lowest `order` up. |
 | `layers` | The layer bits the camera shows. Renderers give their content layers, and each camera draws only the content it shows. |
+| `depth` | Whether renderers test and write depth for what the camera shows, so nearer content hides farther content in any drawing order, such as planes that intersect. Off by default, so later content draws over earlier content. |
 
 `Cameras.main` is the camera that the app starts with. `cameras.add(camera)`
 adds another, for example a screen camera for the UI on layer 2:
@@ -111,6 +112,9 @@ submission.
   `pass.clear`. Later passes into the frame draw over it.
 - Each pass into a render target clears it to `pass.clear`, transparent
   black by default, or draws over it with `pass.keep`.
+- With `pass.depth`, a pass tests and writes depth in a `Depth32Float`
+  texture of its target's size, which the graph keeps for the frame and for
+  each render target. The first pass of a frame that uses it clears it to 1.
 - `RenderTarget(width, height)` has a fixed size. `RenderTarget.ofFrame(scale)`
   follows the frame's size. The graph makes its texture when the device is
   open, and makes it again when the size changes.

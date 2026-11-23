@@ -12,6 +12,10 @@ import hxn.gpu.Texture;
 **/
 class FrameGraph {
 	final passes:Array<Pass> = [];
+	// The frame's depth texture, made when a pass with depth draws into the frame.
+	var frameDepth:Null<Texture>;
+	// The depth textures cleared in this frame.
+	final cleared:Array<Texture> = [];
 
 	public function new() {}
 
@@ -25,6 +29,17 @@ class FrameGraph {
 	public function remove(pass:Pass):Void
 		passes.remove(pass);
 
+	// Returns the frame's depth texture, made again when the frame's size changes.
+	function frameDepthFor(device:GpuDevice, frame:Texture):Texture {
+		if (frameDepth != null && (frameDepth.width != frame.width || frameDepth.height != frame.height)) {
+			frameDepth.close();
+			frameDepth = null;
+		}
+		if (frameDepth == null)
+			frameDepth = device.createTexture({width: frame.width, height: frame.height, format: Depth32Float, usage: RenderTarget});
+		return frameDepth;
+	}
+
 	/** Returns the passes in the order that they run. **/
 	public function iterator():Iterator<Pass>
 		return passes.iterator();
@@ -32,22 +47,32 @@ class FrameGraph {
 	// Records each enabled pass into `frame` or into its render target, then submits all of them.
 	@:allow(hxn.me.gpu.GpuPlugin) function run(device:GpuDevice, frame:Texture, gpu:Gpu):Void {
 		var encoder = device.createCommandEncoder();
-		var cleared = false;
+		var frameCleared = false;
+		cleared.resize(0);
 		for (pass in passes) {
 			if (!pass.enabled)
 				continue;
 			var into = pass.target == null ? frame : pass.target.resolve(device, frame);
-			var recording = if (pass.target == null) {
-				var clear = pass.clear != null ? pass.clear : cleared ? null : gpu.clear;
-				cleared = true;
-				clear != null ? encoder.beginRenderPass(into, clear) : encoder.beginRenderPass(into, null, true);
+			var color:hxn.gpu.Descriptors.ColorAttachment = if (pass.target == null) {
+				var clear = pass.clear != null ? pass.clear : frameCleared ? null : gpu.clear;
+				frameCleared = true;
+				clear != null ? {target: into, clear: clear} : {target: into, keep: true};
 			} else {
-				pass.keep ? encoder.beginRenderPass(into, null, true) : encoder.beginRenderPass(into, pass.clear);
+				pass.keep ? {target: into, keep: true} : {target: into, clear: pass.clear};
 			}
+			var depth:Null<hxn.gpu.Descriptors.DepthAttachment> = null;
+			if (pass.depth) {
+				var texture = pass.target == null ? frameDepthFor(device, frame) : pass.target.resolveDepth(device);
+				var first = cleared.indexOf(texture) < 0;
+				if (first)
+					cleared.push(texture);
+				depth = first ? {target: texture, clear: 1.0} : {target: texture, keep: true};
+			}
+			var recording = encoder.beginRenderPassWith({colors: [color], depth: depth});
 			pass.draw(recording, into);
 			recording.end();
 		}
-		if (!cleared)
+		if (!frameCleared)
 			encoder.beginRenderPass(frame, gpu.clear).end();
 		device.submit(encoder);
 	}

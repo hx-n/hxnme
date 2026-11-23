@@ -22,7 +22,10 @@ import hxn.me.render2d.Texture;
 	the z = 0 plane, so it sees the same 64 by 64 units as the second and its
 	target matches the second's. The fourth is a perspective camera tilted
 	back 45 degrees about x, which sees a white square in the XY plane with its
-	far side narrower than its near side. After the plugin
+	far side narrower than its near side. The fifth is an orthographic camera
+	with depth: it sees a red square on a plane 10 units nearer, drawn first,
+	and a blue square on the world's plane, drawn after over the same area, and
+	the red square stays in front. After the plugin
 	presents three frames, the check reads both targets back, compares one
 	pixel of each shape with the color it expects, and stops the app.
 **/
@@ -31,6 +34,8 @@ class Scene {
 	static final world = new RenderTarget(64, 64);
 	static final perspective = new RenderTarget(64, 64);
 	static final tilted = new RenderTarget(128, 128);
+	static final deep = new RenderTarget(64, 64);
+	static final near = new Plane();
 	static var image:Texture;
 	static var halves:Texture;
 	static var reading = false;
@@ -61,7 +66,8 @@ class Scene {
 		{target: perspective, name: "square through the perspective camera", x: 8, y: 56, rgb: [255, 255, 0]},
 		{target: perspective, name: "above the square through the perspective camera", x: 8, y: 8, rgb: [0, 0, 0]},
 		{target: perspective, name: "top of the image through the perspective camera", x: 44, y: 17, rgb: [255, 0, 0]},
-		{target: perspective, name: "bottom of the image through the perspective camera", x: 44, y: 22, rgb: [0, 0, 255]}
+		{target: perspective, name: "bottom of the image through the perspective camera", x: 44, y: 22, rgb: [0, 0, 255]},
+		{target: deep, name: "nearer square drawn first, through the camera with depth", x: 32, y: 32, rgb: [255, 0, 0]}
 	];
 
 	@:system(Start)
@@ -101,6 +107,17 @@ class Scene {
 		fourth.target = tilted;
 		fourth.clear = {r: 0, g: 0, b: 0, a: 1};
 		cameras.add(fourth);
+		var fifth = new Camera();
+		fifth.projection = Orthographic(64, -1000, 1000);
+		fifth.x = 32;
+		fifth.y = 32;
+		fifth.layers = 8;
+		fifth.order = 4;
+		fifth.depth = true;
+		fifth.target = deep;
+		fifth.clear = {r: 0, g: 0, b: 0, a: 1};
+		cameras.add(fifth);
+		near.z = 10;
 		turned.rotate(Math.PI / 2, 0, 0, 1);
 		turned.x = 20;
 		turned.y = 40;
@@ -139,6 +156,11 @@ class Scene {
 		draw.plane = null;
 		draw.layer = 4;
 		draw.rect(-30, -30, 60, 60, 0xFFFFFF);
+		draw.layer = 8;
+		draw.plane = near;
+		draw.rect(16, 16, 32, 32, 0xFF0000);
+		draw.plane = null;
+		draw.rect(16, 16, 32, 32, 0x0000FF);
 	}
 
 	// Returns how many pixels of row `y` in a `size`-wide readback are white.
@@ -162,7 +184,7 @@ class Scene {
 		reading = true;
 		var state:Lifecycle = lifecycle;
 		var device = gpu.device;
-		device.readTexture(screen.texture).then(onScreen -> device.readTexture(world.texture).then(inWorld -> device.readTexture(perspective.texture).then(seen -> device.readTexture(tilted.texture).then(tilt -> {
+		device.readTexture(screen.texture).then(onScreen -> device.readTexture(world.texture).then(inWorld -> device.readTexture(perspective.texture).then(seen -> device.readTexture(tilted.texture).then(tilt -> device.readTexture(deep.texture).then(depthPixels -> {
 			var failed = 0;
 			var rows = [for (y in 0...128) width(tilt, 128, y)];
 			var first = 0;
@@ -177,7 +199,7 @@ class Scene {
 				failed++;
 			Sys.println('tilted square: ${foreshortened ? "its far side is narrower than its near side" : 'far side $far pixels, near side $near'}');
 			for (e in expected) {
-				var pixels = e.target == screen ? onScreen : e.target == world ? inWorld : seen;
+				var pixels = e.target == screen ? onScreen : e.target == world ? inWorld : e.target == perspective ? seen : depthPixels;
 				var at = (e.y * 64 + e.x) * 4;
 				var got = [for (c in 0...3) pixels.get(at + c)];
 				var close = [for (c in 0...3) Math.abs(got[c] - e.rgb[c]) <= 2].indexOf(false) < 0;
@@ -190,7 +212,7 @@ class Scene {
 				Sys.exit(1);
 			}
 			state.quit();
-		}, failure), failure), failure), failure);
+		}, failure), failure), failure), failure), failure);
 	}
 
 	static function failure(e:haxe.Exception) {

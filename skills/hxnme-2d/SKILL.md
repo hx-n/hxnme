@@ -30,6 +30,7 @@ draw.ellipse(x, y, w, h, color);
 draw.line(x0, y0, x1, y1, width, color, alpha, endWidth);
 draw.stroke(points /* x, y pairs */, width, color, alpha, widths);
 draw.plane = plane;   // hxn.me.render2d.Plane: x, y, z, rx..rw or rotate(), scale; null is the XY plane
+// camera.depth = true: nearer planes hide farther ones in any order; one plane still draws in order
 draw.sprite(texture, x, y, w, h, tint, alpha, angle, u0, v0, u1, v1);
 ```
 

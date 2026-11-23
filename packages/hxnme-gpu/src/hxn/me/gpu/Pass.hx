@@ -37,6 +37,14 @@ class Pass {
 	/** When true, the pass draws over what its render target holds, and does not clear it. **/
 	public var keep = false;
 
+	/**
+		When true, the pass tests and writes depth in the depth texture of its
+		target, a `Depth32Float` texture of the target's size that the graph
+		keeps. The first pass of a frame that uses it clears it to 1, and later
+		passes test against it.
+	**/
+	public var depth = false;
+
 	public function new(name:String, target:Null<RenderTarget>, draw:(pass:RenderPass, into:Texture) -> Void, order = 0) {
 		this.name = name;
 		this.target = target;

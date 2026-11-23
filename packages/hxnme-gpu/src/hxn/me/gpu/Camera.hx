@@ -42,6 +42,14 @@ class Camera {
 	/** The layers that the camera shows, as bits. The default shows layer 1. **/
 	public var layers = 1;
 
+	/**
+		When true, renderers test and write depth for what the camera shows, so
+		nearer content hides farther content whatever order it is drawn in, such
+		as planes that intersect. When false, later content draws over earlier
+		content.
+	**/
+	public var depth = false;
+
 	public var enabled = true;
 
 	public function new() {}

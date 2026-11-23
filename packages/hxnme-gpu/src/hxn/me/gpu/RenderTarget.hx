@@ -22,6 +22,9 @@ class RenderTarget {
 	/** The texture, or null until the frame graph makes it. **/
 	public var texture(default, null):Null<Texture>;
 
+	/** The depth texture of the target's size, or null until a pass with depth draws into the target. **/
+	public var depthTexture(default, null):Null<Texture>;
+
 	public function new(width:Int, height:Int, ?format:TextureFormat, scale = 0.0) {
 		this.width = width;
 		this.height = height;
@@ -43,5 +46,15 @@ class RenderTarget {
 		if (texture == null)
 			texture = device.createTexture({width: w, height: h, format: format, usage: RenderTarget | Sampled});
 		return texture;
+	}
+
+	@:allow(hxn.me.gpu.FrameGraph) function resolveDepth(device:GpuDevice):Texture {
+		if (depthTexture != null && (depthTexture.width != texture.width || depthTexture.height != texture.height)) {
+			depthTexture.close();
+			depthTexture = null;
+		}
+		if (depthTexture == null)
+			depthTexture = device.createTexture({width: texture.width, height: texture.height, format: Depth32Float, usage: RenderTarget});
+		return depthTexture;
 	}
 }

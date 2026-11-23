@@ -46,7 +46,9 @@ Each `Camera` has `x`, `y`, `z`, a quaternion `rx`, `ry`, `rz`, `rw` (or
 `Orthographic(height, near, far)` (height 0 is one unit per logical pixel;
 the default), `Perspective(fovY, near, far)` or `Screen` (logical pixels,
 top left, y down, for UI). It also has `viewport` (parts 0 to 1), `target`,
-`clear`, `order` and `layers` (bits of the content it shows).
+`clear`, `order`, `layers` (bits of the content it shows) and `depth` (renderers
+test and write depth for it; off by default). `pass.depth` gives a pass a depth
+texture of its target's size, cleared by the frame's first pass that uses it.
 `camera.writeMatrix(width, height, out)` gives the world-to-clip matrix,
 column after column.
 
