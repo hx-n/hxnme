@@ -1,0 +1,6 @@
+{
+  "name": "check-picked-linux",
+  "version": "0.0.1",
+  "license": "Apache",
+  "classPath": "src"
+}

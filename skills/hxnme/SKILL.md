@@ -54,7 +54,10 @@ those, not with new protocol.
 
 Each plugin is a haxelib with an `hxnme` section in `haxelib.json`
 (`plugin`: the class; `requires`: plugin names; `platforms`: `hl`, `cpp`,
-`cppia`, `desktop`, `wasm`, `android`, `ios`), a class marked
+`cppia`, `desktop`, `wasm`, `android`, `ios`; `libraries`: an array of
+`{triple, use}`, where the first entry whose `triple` is part of the target
+triple adds the haxelibs in `use`, and `[libraries.<plugin>]` in hxnme.toml
+replaces a list by fragment of a triple), a class marked
 `@:plugin("<haxelib name>")` with the methods of `hxn.me.Plugin`, and an
 `extraParams.hxml` with `--macro hxn.me.macro.Registry.add("<haxelib name>")`.
 The class can add `implements hxn.me.Plugin` or leave it out. Either way

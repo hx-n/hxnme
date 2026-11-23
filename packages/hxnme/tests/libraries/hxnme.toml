@@ -1,0 +1,2 @@
+# The manifest of check-picker lists one library for each kind of target triple.
+plugins = ["./picker"]

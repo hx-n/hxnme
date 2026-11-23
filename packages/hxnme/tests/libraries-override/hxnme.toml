@@ -1,0 +1,8 @@
+# This file replaces the target libraries of check-picker on every kind of target.
+plugins = ["../libraries/picker"]
+
+[libraries.check-picker]
+wasm32 = ["../libraries/libs/override"]
+apple = ["../libraries/libs/override"]
+windows = ["../libraries/libs/override"]
+linux = ["../libraries/libs/override"]

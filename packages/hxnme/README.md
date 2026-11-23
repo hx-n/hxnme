@@ -38,6 +38,7 @@ The kernel reads these keys:
 | `app.step_snap` | The tolerance for a whole number of fixed steps in a frame, as a part of one step. The default is 0.1, and 0 turns the correction off. |
 | `app.rate` | The number of frames in a second on `HeadlessHost`, the host of an app without a window. The default is 60. |
 | `display.width`, `display.height`, `display.scale` | The display on `HeadlessHost`. The defaults are 1280, 720 and 1. |
+| `libraries.<plugin>` | Replaces the haxelibs that the plugin's manifest lists for some targets. Each key is part of a target triple, such as `linux`, and its value is the list for every target whose triple contains it. The longest key that matches applies. Paths are relative to `hxnme.toml`. |
 
 Each plugin keeps its keys in its own table, such as `[window]`. Code reads
 a key at compile time with `hxn.me.Project.text`, `number`, `integer` or
@@ -102,6 +103,34 @@ registry, whether the app lists it in `hxnme.toml` or selects it with
 | `plugin` | The plugin class. |
 | `requires` | The plugins that must be in the app. They start before this plugin. `requires` does not add a plugin to the app: list it in `plugins`, or in the `dependencies` of the haxelib. |
 | `platforms` | The runtimes (`hl`, `cpp`, `cppia`) and the platforms (`desktop`, `wasm`, `android`, `ios`) that the plugin supports. If the list has no runtime, the plugin supports every runtime. If it has no platform, the plugin supports every platform. |
+| `libraries` | The haxelibs that the plugin brings for each target, as an array of `{triple, use}`. The first entry whose `triple` is part of the build's target triple applies, and the kernel adds each haxelib in its `use` the same way as `-lib`. Paths are relative to the plugin's directory. |
+
+`libraries` lets a plugin bring the native libraries that suit each
+target. For a native build, the target triple is the host's, such as
+`aarch64-apple-darwin`. hxn gives it for a cross or wasm build, such as
+`wasm32-unknown-emscripten`. Order the entries from the most specific
+fragment to the least, for example `android` before `linux`:
+
+```json
+"hxnme": {
+  "plugin": "hxn.me.gpu.GpuPlugin",
+  "libraries": [
+    {"triple": "wasm32", "use": ["hxn-gpu-webgpu", "hxn-gpu-webgl2"]},
+    {"triple": "apple", "use": ["hxn-gpu-metal"]},
+    {"triple": "windows", "use": ["hxn-gpu-d3d12"]},
+    {"triple": "android", "use": ["hxn-gpu-vulkan", "hxn-gpu-gles"]},
+    {"triple": "linux", "use": ["hxn-gpu-vulkan", "hxn-gpu-gles"]}
+  ]
+}
+```
+
+The app replaces a plugin's list for the targets where it does not fit, in
+`hxnme.toml`:
+
+```toml
+[libraries.hxnme-gpu]
+windows = ["hxn-gpu-d3d12", "hxn-gpu-gles"]
+```
 
 `hxn.me.Plugin` has one method, `start()`. At compile time, the kernel
 generates the class `hxn.me.Plugins`. Its `start()` creates each plugin of

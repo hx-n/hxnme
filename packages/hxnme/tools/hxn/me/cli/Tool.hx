@@ -14,8 +14,23 @@ import sys.io.Process;
 	it lists, and the path of the file as `-D hxnme_project`. `hxn run` and
 	`hxn check` also get `-D hxnme_reload`, which makes the app loop check
 	for a hot reload on HashLink each frame.
+
+	Each plugin can also add haxelibs for the build's target. The plugin's
+	manifest lists them under `hxnme.libraries`, and `[libraries.<plugin>]`
+	in hxnme.toml replaces that list. This applies to the plugins that
+	hxnme.toml lists and to the plugins that the program file selects with
+	`-lib`.
 **/
 class Tool {
+	// The target triple of the build, such as `aarch64-apple-darwin`, or "" when
+	// the request has no target.
+	static var triple = "";
+	// The `[libraries]` table of hxnme.toml. For each plugin, it maps fragments of
+	// a triple to lists of haxelibs.
+	static var overrides:Dynamic = {};
+	// The path of hxnme.toml, for error messages.
+	static var file = "";
+
 	static function main() {
 		var request:Dynamic = Json.parse(Sys.stdin().readAll().toString());
 		if (request.kind != "hook") {
@@ -24,7 +39,10 @@ class Tool {
 		}
 		var reply:Dynamic = {version: 1};
 		var project:Dynamic = request.context.project;
-		var file = Path.join([project.directory, "hxnme.toml"]);
+		file = Path.join([project.directory, "hxnme.toml"]);
+		var target:Dynamic = request.context.target;
+		if (target != null)
+			triple = target.triple != null ? target.triple : host();
 		var args = [];
 		var command = request.context.command;
 		if (request.phase == "before-build" && (command == "run" || command == "check"))
@@ -38,9 +56,19 @@ class Tool {
 			var plugins:Array<Dynamic> = toml.plugins == null ? [] : toml.plugins;
 			if (!Std.isOfType(plugins, Array))
 				fail('$file: `plugins` must be an array of haxelib names');
+			if (toml.libraries != null)
+				overrides = toml.libraries;
 			var selected = project.hxml == null ? [] : libraries(File.getContent(project.hxml));
+			// The program file already selects these plugins, but the build does not
+			// have their target libraries yet.
+			var seen = selected.copy();
+			for (name in selected) {
+				var root = find(name);
+				if (root != null)
+					targetLibraries(Json.parse(File.getContent(Path.join([root, "haxelib.json"]))), root, project.directory, seen, args);
+			}
 			for (plugin in plugins)
-				add(string(plugin, "plugins", file), project.directory, selected, args);
+				add(string(plugin, "plugins", file), project.directory, seen, args);
 		}
 		if (args.length > 0)
 			reply.haxe_args = args;
@@ -58,7 +86,7 @@ class Tool {
 		var root = local ? (Path.isAbsolute(entry) ? entry : Path.join([base, entry])) : libpath(entry);
 		var manifest = Path.join([root, "haxelib.json"]);
 		if (!FileSystem.exists(manifest))
-			fail('hxnme.toml lists the plugin `$entry`, and $manifest does not exist');
+			fail('hxnme.toml lists `$entry`, and $manifest does not exist');
 		var info:Dynamic = Json.parse(File.getContent(manifest));
 		var name:String = info.name;
 		if (seen.contains(name))
@@ -73,6 +101,72 @@ class Tool {
 		if (FileSystem.exists(extra))
 			for (pair in pairs(File.getContent(extra), extra))
 				args.push(pair);
+		targetLibraries(info, root, base, seen, args);
+	}
+
+	// Adds the haxelibs that a plugin's manifest lists for the target triple.
+	// `hxnme.libraries` is an array of `{triple, use}`, and the first entry whose
+	// `triple` is part of the target triple applies. `[libraries.<plugin>]` in
+	// hxnme.toml maps fragments of a triple to lists instead, and the longest
+	// fragment that matches applies. Paths in the manifest are relative to the
+	// plugin's directory `root`. Paths in hxnme.toml are relative to the project
+	// directory `base`.
+	static function targetLibraries(info:Dynamic, root:String, base:String, seen:Array<String>, args:Array<Array<String>>) {
+		var section:Dynamic = info.hxnme;
+		if (section == null || triple == "")
+			return;
+		var name:String = info.name;
+		var chosen:Null<Array<Dynamic>> = null;
+		var from = base;
+		var replaced:Dynamic = Reflect.field(overrides, name);
+		if (replaced != null) {
+			var best = -1;
+			for (fragment in Reflect.fields(replaced))
+				if (triple.indexOf(fragment) >= 0 && fragment.length > best) {
+					best = fragment.length;
+					chosen = list(Reflect.field(replaced, fragment), 'libraries.$name.$fragment', file);
+				}
+		}
+		if (chosen == null && section.libraries != null) {
+			from = root;
+			var manifest = '${name}\'s haxelib.json';
+			if (!Std.isOfType(section.libraries, Array))
+				fail('$manifest: `hxnme.libraries` must be an array of {triple, use}');
+			for (entry in (section.libraries : Array<Dynamic>)) {
+				var fragment = string(entry.triple, "hxnme.libraries[].triple", manifest);
+				if (triple.indexOf(fragment) >= 0) {
+					chosen = list(entry.use, "hxnme.libraries[].use", manifest);
+					break;
+				}
+			}
+		}
+		if (chosen != null)
+			for (library in chosen)
+				add(library, from, seen, args);
+	}
+
+	// Returns the target triple of the host. hxn gives a triple only for a cross
+	// build or a wasm build, and a native build is for the machine that runs the hook.
+	static function host():String {
+		var system = Sys.systemName();
+		if (system == "Windows")
+			return (Sys.getEnv("PROCESSOR_ARCHITECTURE") == "ARM64" ? "aarch64" : "x86_64") + "-pc-windows-msvc";
+		var machine = try {
+			var process = new Process("uname", ["-m"]);
+			var out = StringTools.trim(process.stdout.readAll().toString());
+			process.close();
+			out;
+		} catch (_:Dynamic) "";
+		var arch = machine == "arm64" || machine == "aarch64" ? "aarch64" : "x86_64";
+		return system == "Mac" ? '$arch-apple-darwin' : '$arch-unknown-linux-gnu';
+	}
+
+	static function list(value:Dynamic, key:String, source:String):Array<Dynamic> {
+		if (!Std.isOfType(value, Array))
+			fail('$source: `$key` must be an array of haxelib names');
+		for (item in (value : Array<Dynamic>))
+			string(item, key, source);
+		return value;
 	}
 
 	// The flags of an extraParams.hxml, each with its value. hxn's hooks take
@@ -111,13 +205,19 @@ class Tool {
 	}
 
 	static function libpath(name:String):String {
+		var out = find(name);
+		if (out == null)
+			fail('the build needs the haxelib `$name`, which haxelib does not have: install it with `haxelib install $name`');
+		return out;
+	}
+
+	// Returns the directory of the haxelib `name`, or null when haxelib does not have it.
+	static function find(name:String):Null<String> {
 		var process = new Process("haxelib", ["libpath", name]);
 		var out = StringTools.trim(process.stdout.readAll().toString());
 		var code = process.exitCode();
 		process.close();
-		if (code != 0 || out == "" || !FileSystem.exists(Path.join([out, "haxelib.json"])))
-			fail('hxnme.toml lists the plugin `$name`, which haxelib does not have: install it with `haxelib install $name`');
-		return out;
+		return code != 0 || out == "" || !FileSystem.exists(Path.join([out, "haxelib.json"])) ? null : out;
 	}
 
 	static function string(value:Dynamic, key:String, file:String):String {

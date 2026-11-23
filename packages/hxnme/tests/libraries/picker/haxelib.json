@@ -1,0 +1,15 @@
+{
+  "name": "check-picker",
+  "version": "0.0.1",
+  "license": "Apache",
+  "classPath": "src",
+  "hxnme": {
+    "plugin": "picker.PickerPlugin",
+    "libraries": [
+      {"triple": "wasm32", "use": ["../libs/web"]},
+      {"triple": "apple", "use": ["../libs/apple"]},
+      {"triple": "windows", "use": ["../libs/windows"]},
+      {"triple": "linux", "use": ["../libs/linux"]}
+    ]
+  }
+}
