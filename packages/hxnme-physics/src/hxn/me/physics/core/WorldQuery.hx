@@ -375,7 +375,7 @@ class WorldQuery {
 		var best = -1;
 		var bestFraction = 1.0, bestX = 0.0, bestY = 0.0, bestZ = 0.0, bestNX = 0.0, bestNY = 0.0, bestNZ = 0.0;
 		for (i in 0...kept) {
-			// A shape whose box is entered after the nearest hit cannot be hit sooner.
+			// Any shape whose box is entered after the nearest hit cannot be hit sooner.
 			if (best >= 0 && order[i] > bestFraction)
 				break;
 			var slot = found[i];

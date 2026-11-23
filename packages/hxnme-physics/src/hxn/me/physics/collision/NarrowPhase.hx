@@ -662,7 +662,7 @@ class NarrowPhase {
 		return (jy * kz - jz * ky) * mx + (jz * kx - jx * kz) * my + (jx * ky - jy * kx) * mz;
 	}
 
-	// Closest point to the origin on tetrahedron W[0..3]. A face is searched when the
+	// Closest point to the origin on tetrahedron W[0..3]. Each face is searched when the
 	// origin lies on the far side of it from the opposite vertex; if none, the origin is inside.
 	static function tetrahedron(s:GjkSimplex, l:Float64Buffer):Void {
 		var vol = det(s, 0, 1, 2, 3);
@@ -875,7 +875,7 @@ class NarrowPhase {
 			if (vv - (vx * wkx + vy * wky + vz * wkz) <= 1e-6 * vv)
 				break;
 
-			// A repeated vertex means the simplex cannot improve further.
+			// Any repeated vertex means the simplex cannot improve further.
 			var repeated = false;
 			for (i in 0...s.n) {
 				var ex = s.wx[i] - wkx, ey = s.wy[i] - wky, ez = s.wz[i] - wkz;
@@ -920,7 +920,7 @@ class NarrowPhase {
 			}
 			var nvv = vx * vx + vy * vy + vz * vz;
 
-			// A full tetrahedron survives reduction only when it encloses the origin.
+			// The full tetrahedron survives reduction only when it encloses the origin.
 			if (s.n == 4) {
 				vv = 0.0;
 				break;

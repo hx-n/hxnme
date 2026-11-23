@@ -5,7 +5,7 @@ import hxn.me.physics.core.Handles.BodyType;
 import hxn.me.physics.core.World;
 import hxn.me.physics.core.WorldSnapshot;
 
-/** A world given more room as it runs goes on exactly as one made that large would: every body, contact and joint, bit for bit. */
+/** Each world given more room as it runs goes on exactly as one made that large would: every body, contact and joint, bit for bit. */
 class WorldGrowthChecks {
 	static function check(ok:Bool, what:String):Void
 		if (!ok)
@@ -63,7 +63,7 @@ class WorldGrowthChecks {
 		}
 	}
 
-	/** A saved state restores into a world of other room: more room is kept and made as new, less is given. */
+	/** Each saved state restores into a world of other room: more room is kept and made as new, less is given. */
 	static function snapshotsAcrossCapacities():Void {
 		var small = new World(4, 4, 1), large = new World(4096, 8192, 256);
 		var hs:Array<BodyId> = [], hl:Array<BodyId> = [];

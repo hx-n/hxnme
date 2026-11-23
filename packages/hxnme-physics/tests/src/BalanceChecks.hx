@@ -34,7 +34,7 @@ class BalanceChecks {
 		return {world: w, feet: feet, torso: torso};
 	}
 
-	/** A balance measure of bodies that are already asleep: the first update wakes them, so the next step finds their support. */
+	/** Returns a balance measure of bodies that are already asleep: the first update wakes them, so the next step finds their support. */
 	static function measured(world:World, bodies:Array<BodyId>, planar:Bool = false):Balance {
 		var b = new Balance(world, bodies, planar);
 		b.update();
@@ -89,7 +89,7 @@ class BalanceChecks {
 		near(mb.captureX, mb.comX + vcom * Math.sqrt(mb.height / 9.81), "capture point", 1e-6);
 		near(mb.captureMargin, 0.3 - mb.captureX, "capture margin", 2e-3);
 		if (mb.describe().indexOf('"grounded":true') < 0) throw 'describe: ${mb.describe()}';
-		// A torso moved by a kinematic target: the measures see the motion the target gave it, which the world clears after the step.
+		// Next, a torso moved by a kinematic target: the measures see the motion the target gave it, which the world clears after the step.
 		var driven = stance(0);
 		var db = measured(driven.world, driven.feet.concat([driven.torso]));
 		var ts = driven.world.bodySlot(driven.torso);
@@ -121,7 +121,7 @@ class BalanceChecks {
 		}];
 		for (_ in 0...60) w.step(1.0 / 60.0);
 		var b = measured(w, feet, true);
-		// A planar support is the interval from -0.3 to 0.3; the centre of mass at 0 is 0.3 from either end.
+		// The planar support is the interval from -0.3 to 0.3; the centre of mass at 0 is 0.3 from either end.
 		if (b.supportCount != 2) throw 'a planar support is two ends';
 		near(b.margin, 0.3, "planar margin", 2e-3);
 		// Asleep again, the feet keep the support they had.

@@ -52,7 +52,7 @@ class ValidationChecks {
 			throw "Reused report lost the non-finite pose diagnostic";
 		w.posX[1] = savedX;
 		if (w.validate(report) != report || report.items.length != 0) throw "Reused report kept stale findings";
-		// An animated rig's joints, between kinematic bodies, are not a fault.
+		// The joints of an animated rig, between kinematic bodies, are not a fault.
 		w = sound();
 		w.setBodyType(w.bodyHandleAt(1), BodyType.Kinematic);
 		w.setBodyType(w.bodyHandleAt(2), BodyType.Kinematic);
@@ -89,7 +89,7 @@ class ValidationChecks {
 		expect(w, "WORLD_FELL_OUT", 'world/bodies/${w.bodySlot(lost)}/position');
 
 		w = sound();
-		// A joint needs a body that can move when it is made; both are made static after.
+		// Each joint needs a body that can move when it is made; both are made static after.
 		var a = w.createBody(BodyType.Dynamic, 3, 0, 0), b = w.createBody(BodyType.Dynamic, 4, 0, 0);
 		w.attachShape(a, ShapeBuilder.makeHull(w.verts, box(0.1, 0.1, 0.1), 0.01));
 		w.attachShape(b, ShapeBuilder.makeHull(w.verts, box(0.1, 0.1, 0.1), 0.01));

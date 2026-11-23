@@ -41,7 +41,7 @@ typedef WaterOptions = {
 }
 
 /**
- * A body of water in a physics world: it floats the bodies in it by the
+ * Models a body of water in a physics world: it floats the bodies in it by the
  * volume of their shapes under its surface, drags each shape toward its
  * current where it is under, presses on the faces the water runs into, and
  * damps their spin. Call `apply(dt)` before each `world.step(dt)`.
@@ -49,7 +49,7 @@ typedef WaterOptions = {
  * Each shape's submerged volume and its centre are found by cutting the
  * shape at the surface: exactly for boxes, prisms and hulls, whose mass uses
  * their core, and for rounded shapes from a convex tessellation scaled to
- * their exact volume. Planar shapes (no depth) float by area. A body
+ * their exact volume. Planar shapes (no depth) float by area. Each body
  * floating at rest is under by its density over the water's, as the mass
  * model and the cut agree. The surface may carry waves: a sum of
  * directional sine waves of fixed amplitude, length and speed, so the water
@@ -127,7 +127,7 @@ class Water {
 	final dragMatrix = new Float32Buffer(36);
 	final dragImpulse = new Float32Buffer(6);
 	final dragSystem = new Float32Buffer(42);
-	// A face's part under water as a convex polygon of at most five corners, with a value at each to clip by; and room to clip into.
+	// The part of a face under water, as a convex polygon of at most five corners, with a value at each to clip by; and room to clip into.
 	final polyX = new Float32Buffer(8);
 	final polyY = new Float32Buffer(8);
 	final polyZ = new Float32Buffer(8);
@@ -237,7 +237,7 @@ class Water {
 				fraction[b] = 0.0;
 				continue;
 			}
-			// A body asleep on still water stays as it settled, with the share under water it had.
+			// Each body asleep on still water stays as it settled, with the share under water it had.
 			if (world.islands.isAwake[b] == 0 && !moving)
 				continue;
 			fraction[b] = 0.0;
@@ -331,7 +331,7 @@ class Water {
 			world.angVelX[b] = world.angVelX[b] * spin;
 			world.angVelY[b] = world.angVelY[b] * spin;
 			world.angVelZ[b] = world.angVelZ[b] * spin;
-			// A body may sleep only where it would rest: buoyancy within a thousandth of its weight, and its centre of buoyancy under its
+			// Each body can sleep only where it would rest: buoyancy within a thousandth of its weight, and its centre of buoyancy under its
 			// centre of mass. Elsewhere it is still bobbing or turning, slowly enough to pass for asleep, so it is kept awake.
 			var weight = world.invMassY[b] > 0 ? density * volume * world.invMassY[b] : 1.0;
 			var g2 = gx * gx + gy * gy + gz * gz;
@@ -646,7 +646,7 @@ class Water {
 		row(nx, ny, nz, px - mx, py - my, pz - mz, push / speed, -speed);
 	}
 
-	/** An impulse at a world point on body slot `b`, as `World.applyImpulse`, without its handle checks. */
+	/** Applies an impulse at a world point on body slot `b`, as `World.applyImpulse`, without its handle checks. */
 	inline function impulse(b:Int, jx:Float, jy:Float, jz:Float, px:Float, py:Float, pz:Float):Void {
 		var w = world;
 		w.velX[b] = w.velX[b] + jx * w.invMassX[b];
@@ -900,7 +900,7 @@ class Water {
 }
 
 /**
- * A shape cut into simple pieces for finding what lies under a plane:
+ * Holds a shape cut into simple pieces for finding what lies under a plane:
  * triangles for a planar shape, tetrahedra fanned from its centre for a
  * solid, over points in the body's frame scaled about the centre so their
  * volume is the shape's exact volume. `reach` bounds every point's distance
@@ -1024,7 +1024,7 @@ private class Solid {
 					cloud.push(new Vec3(pool.vx[offset + i], pool.vy[offset + i], localZ + side * depth));
 			exact = MassProperties.polygon(pool, offset, count, depth, localZ, 1).mass;
 		} else {
-			// A segment (or a point) swept along Z by the depth, rounded by the radius: spheres at the four ends of that core.
+			// Here the core is a segment (or a point) swept along Z by the depth, rounded by the radius: spheres at the four ends of that core.
 			var ax = 0.0, ay = 0.0, bx = 0.0, by = 0.0;
 			if (kind == (Segment : Int)) {
 				ax = pool.vx[offset];

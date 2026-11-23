@@ -19,7 +19,7 @@ import hxn.Int32Buffer;
  * ```
  *
  * The first save allocates the snapshot's storage; later saves of the same
- * world, and every restore, copy into what is there. A snapshot can also be
+ * world, and every restore, copy into what is there. Each snapshot can also be
  * restored into another world built by the same calls, which is how many
  * copies of one environment start from one state.
  *
@@ -100,7 +100,7 @@ class WorldSnapshot {
 			throw 'Nothing has been saved in this snapshot';
 		if (world.structureVersion != structureVersion)
 			throw 'The world\'s shapes changed since this snapshot was saved (structure ${world.structureVersion}, snapshot $structureVersion)';
-		// A world with less room than the one saved is given it; one with more keeps it, and the room the snapshot did not cover is made as new.
+		// Each world with less room than the one saved is given it; one with more keeps it, and the room the snapshot did not cover is made as new.
 		world.reserve(bodyCapacity, shapeCapacity, jointCapacity);
 		restoring = true;
 		begin();
@@ -266,7 +266,7 @@ class WorldSnapshot {
 		return grown;
 	}
 
-	/** A growable int array: restoring returns a larger array when the saved one does not fit. */
+	/** Saves or restores a growable int array: restoring returns a larger array when the saved one does not fit. */
 	function growingInts(a:Int32Buffer, n:Int):Int32Buffer {
 		if (restoring && intLength[intAt] > a.length) {
 			var grown = new Int32Buffer(intLength[intAt]);

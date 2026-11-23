@@ -22,7 +22,7 @@ class WaterChecks {
 		if (!(Math.abs(actual - expected) <= tolerance)) throw '$label: expected $expected, got $actual';
 	}
 
-	/** A wide, shallow slab, 2 by 0.4 by 2: unlike a cube, it floats upright at any density. */
+	/** Builds a wide, shallow slab, 2 by 0.4 by 2: unlike a cube, it floats upright at any density. */
 	static function slab(world:World, x:Float, y:Float, density:Float, planar:Bool = false):BodyId {
 		var body = world.createBody(Dynamic, x, y, 0);
 		world.attachShape(body, ShapeBuilder.makeBox(world.verts, 1, 0.2, planar ? 0 : 2, 0.01, 0, density));
@@ -43,15 +43,15 @@ class WaterChecks {
 	}
 
 	static function cutting():Void {
-		// A cube turned 45 degrees about Z and about X, centre at the surface: half under, by symmetry, through every way a tetrahedron is cut.
+		// Measures a cube turned 45 degrees about Z and about X, centre at the surface: half under, by symmetry, through every way a tetrahedron is cut.
 		var world = new World(4, 4);
 		var body = cube(world, 0, 0, 500);
 		world.teleportBody(body, new Vec3(0, 0, 0), new Quat(0.3535534, 0, 0.3535534, 0.8660254));
 		near(share(world, body), 0.5, "a turned cube centred on the surface", 1e-5);
-		// A cube with its bottom 0.3 under: 0.3 of it.
+		// Measures a cube with its bottom 0.3 under: 0.3 of it.
 		world.teleportBody(body, new Vec3(0, 0.2, 0), new Quat());
 		near(share(world, body), 0.3, "an upright cube 0.3 under", 1e-5);
-		// A pill lying along Z (radius 0.5, straight length 1) at several depths, against the exact cylinder segment and sphere cap.
+		// Measures a pill lying along Z (radius 0.5, straight length 1) at several depths, against the exact cylinder segment and sphere cap.
 		var r = 0.5, length = 1.0, worst = 0.0;
 		var pill = world.createBody(Dynamic, 10, 0, 0);
 		world.attachShape(pill, ShapeBuilder.makeCircle(r, length, 0, 500));
@@ -65,7 +65,7 @@ class WaterChecks {
 			worst = Math.max(worst, Math.abs(got - exact));
 		}
 		if (worst > 2e-3) throw 'a lying pill strays $worst from the exact share';
-		// A planar disc a quarter under, against the circular segment.
+		// Measures a planar disc a quarter under, against the circular segment.
 		var flat = new World(4, 4);
 		var disc = flat.createBody(Dynamic, 0, 0.25, 0);
 		flat.attachShape(disc, ShapeBuilder.makeCircle(0.5, 0, 0, 500));
@@ -123,7 +123,7 @@ class WaterChecks {
 	}
 
 	/**
-	 * A wheel of eight paddles on a hinge, its axle 0.9 above the surface and
+	 * Builds a wheel of eight paddles on a hinge, its axle 0.9 above the surface and
 	 * its paddles reaching 1.3 from it, in a current along x; its average turn
 	 * rate over the last of `seconds`.
 	 */
@@ -247,7 +247,7 @@ class WaterChecks {
 			var broadside = plateImpulse(0.02, 1, 1, new Quat(), planar);
 			near(broadside.x, perArea, '$label plate broadside', 2e-4 * perArea);
 			if (Math.abs(broadside.y) + Math.abs(broadside.z) > 1e-6 * perArea) throw '$label plate broadside pushed sideways: $broadside';
-			// A wedge with one flat face upstream and its slope downstream is pushed straight along the current, by that face alone.
+			// The wedge with one flat face upstream and its slope downstream is pushed straight along the current, by that face alone.
 			var wedge = new World(2, 2);
 			wedge.gravity = new Vec3(0, 0, 0);
 			var body = wedge.createBody(Dynamic, 0, -3, 0);
@@ -278,7 +278,7 @@ class WaterChecks {
 	}
 
 	/**
-	 * A rotor of three flat blades pitched by `pitch` radians, wholly under
+	 * Builds a rotor of three flat blades pitched by `pitch` radians, wholly under
 	 * water on a hinge along x, in a current along x; its average turn rate
 	 * about x over the last of `seconds`.
 	 */
@@ -308,7 +308,7 @@ class WaterChecks {
 	static function submergedRotor():Void {
 		var pitch = Math.PI / 6;
 		var turning = rotor(1, pitch, 1, 12);
-		// A blade pitched this way is pushed toward -x turning: its face toward the water leans that way.
+		// Each blade pitched this way is pushed toward -x turning: its face toward the water leans that way.
 		if (!(turning < -0.5)) throw 'a rotor under water did not turn with its blades: $turning';
 		near(rotor(1, -pitch, 1, 12), -turning, "a rotor pitched the other way turns the other way", 1e-3 * Math.abs(turning));
 		near(rotor(-1, pitch, 1, 12), -turning, "a rotor in the reversed current turns back", 1e-3 * Math.abs(turning));
@@ -359,7 +359,7 @@ class WaterChecks {
 	}
 
 	static function waves():Void {
-		// A light float on a long wave rides it: its height swings with the wave's period.
+		// The light float on a long wave rides it: its height swings with the wave's period.
 		var world = new World(4, 4);
 		var body = slab(world, 0, 0, 300);
 		var water = new Water(world, {linearDrag: 2, angularDrag: 2});
@@ -431,7 +431,7 @@ class WaterChecks {
 		var water = new Water(world, {linearDrag: 4, angularDrag: 4, faceDrag: 50});
 		simulate(world, water, 30);
 		near(water.submerged(body), 0.5, "a float under strong face drag floats at its draft", 2e-3);
-		// A body as dense as the water, wholly under, stays where it is: at rest its top face meets no water either.
+		// Each body as dense as the water, wholly under, stays where it is: at rest its top face meets no water either.
 		// Let go from rest between steps, it first settles into the motion it keeps within a step.
 		var neutral = slab(world, 5, -2, 1000), n = world.bodySlot(neutral);
 		simulate(world, water, 2);

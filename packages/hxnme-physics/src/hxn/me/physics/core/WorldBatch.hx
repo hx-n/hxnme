@@ -16,7 +16,7 @@ import hxn.me.WorkerPool;
  * batch.step(1 / 60);
  * ```
  *
- * A world steps exactly as it would alone, whichever worker it lands on.
+ * Each world steps exactly as it would alone, whichever worker it lands on.
  * The callbacks must touch only their own world and its environment. Worlds
  * in a batch should not have island workers of their own. With one worker
  * everything runs on the calling thread. Stepping allocates nothing.

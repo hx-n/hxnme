@@ -52,7 +52,7 @@ class HingedChainChecks {
 		snapshot.restore(w);
 		for (_ in 0...180) w.step(DT);
 		if (bits(w) != expected) throw "Loop replay changed after restoring release state";
-		// A saved loop must keep its solve mode even when its contact edges are absent.
+		// Each saved loop must keep its solve mode even when its contact edges are absent.
 		for (s in 0...w.shapeCount) w.shapeMaskBits[s] = 0;
 		w.contacts.clear(); w.step(DT);
 		snapshot.save(w);

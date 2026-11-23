@@ -70,7 +70,7 @@ class ShapeDef {
 			throw 'Shape vertex pool mismatch';
 		if (pool.isLiveBlock(vertOffset, lease.generation))
 			return;
-		// A reusable descriptor restores its geometry after its previous block is released.
+		// Each reusable descriptor restores its geometry after its previous block is released.
 		var offset = pool.allocateBlock(vertCount);
 		for (i in 0...vertCount) {
 			pool.vx[offset + i] = lease.values[i * 3];

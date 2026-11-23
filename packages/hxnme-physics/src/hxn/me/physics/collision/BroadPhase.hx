@@ -247,7 +247,7 @@ class BroadPhase {
 				if (!visit(userData[node]))
 					return;
 			} else {
-				// A binary tree with nodeCapacity nodes needs at most nodeCapacity stack slots.
+				// Each binary tree with nodeCapacity nodes needs at most nodeCapacity stack slots.
 				if (sp + 2 > nodeCapacity)
 					throw 'Broad-phase query stack capacity exceeded';
 				queryStack[sp++] = child1[node];
@@ -486,7 +486,7 @@ class BroadPhase {
 				if (testOverlap(proxyA, nodeId)) {
 					if (child1[nodeId] == NULL_NODE) {
 						var sB = userData[nodeId];
-						// Avoid duplicate pairs (sA < sB) and self-body collisions. A pair with no dynamic
+						// Avoid duplicate pairs (sA < sB) and self-body collisions. Each pair with no dynamic
 						// body gives the solver nothing to move, so static and kinematic shapes never pair.
 						if (sA < sB) {
 							var bodyB = shapeBody[sB];

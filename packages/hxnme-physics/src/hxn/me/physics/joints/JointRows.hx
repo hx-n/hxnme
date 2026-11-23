@@ -14,7 +14,7 @@ import hxn.me.physics.joints.JointSimd4;
  * Scalar constraint rows for every active joint, prepared once per substep.
  *
  * Each joint kind turns its geometry into rows during `prepare`; iterations
- * then solve rows without touching body poses or inertia again. A row updates
+ * then solve rows without touching body poses or inertia again. Each row updates
  * its accumulated impulse as
  *
  *     impulse = clamp(impulse + target - gain * speed - decay * impulse, lower, upper)
@@ -31,7 +31,7 @@ import hxn.me.physics.joints.JointSimd4;
  */
 @:allow(hxn.me.physics.joints.JointSimd4)
 class JointRows {
-	// A row's linear direction is shared by both bodies; its angular Jacobian
+	// Each row's linear direction is shared by both bodies; its angular Jacobian
 	// and inverse-inertia response are stored per body, negated for A.
 	static inline var DIR = 0;
 	static inline var NEG_INV_MASS_A = 3;
@@ -351,7 +351,7 @@ class JointRows {
 
 	/**
 	 * Shorthand for the common equality row: impulse += -mass * (speed + bias + gamma * impulse).
-	 * A rigid row's bias only corrects position, so it relaxes without it; a soft row's is its spring.
+	 * Each rigid row's bias only corrects position, so it relaxes without it; a soft row's is its spring.
 	 */
 	public inline function setEquality(mass:Float, bias:Float, gamma:Float, store:Float32Buffer, index:Int):Void {
 		set(-mass * bias, mass, mass * gamma, Math.NEGATIVE_INFINITY, Math.POSITIVE_INFINITY, store, index);

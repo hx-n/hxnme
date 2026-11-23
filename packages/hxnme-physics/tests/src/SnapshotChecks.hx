@@ -24,7 +24,7 @@ class SnapshotChecks {
 	}
 
 	/**
-	 * A floor; a stack of boxes, one of them bouncy; a box off to one side
+	 * Builds a floor; a stack of boxes, one of them bouncy; a box off to one side
 	 * that falls asleep before a sweeping kinematic paddle wakes it; a sensor;
 	 * a chain of driven spherical joints; a hinge with limits and a drive; a
 	 * prismatic slider with a motor; a weld; a spring and a rigid rod.
@@ -32,7 +32,7 @@ class SnapshotChecks {
 	static function build(parallel:Bool):{world:World, paddle:BodyId, spherical:Array<JointId>, hinge:JointId, marker:BodyId, rail:BodyId, hook:BodyId} {
 		var w = new World(64, 64, 32);
 		if (parallel) w.enableParallelIslands(2, 1, 1);
-		// A body with no shape, destroyed after the snapshot to reorder the world's list of live bodies.
+		// Adds a body with no shape, destroyed after the snapshot to reorder the world's list of live bodies.
 		var marker = w.createBody(BodyType.Dynamic, 0, 10, 0);
 		var floor = w.createBody(BodyType.Static, 0, -0.5, 0);
 		w.attachShape(floor, ShapeBuilder.makeHull(w.verts, box(6, 0.5, 6), 0.0), 1, -1, 0, 0.8);
@@ -48,7 +48,7 @@ class SnapshotChecks {
 		var sensor = w.attachShape(gate, ShapeBuilder.makeHull(w.verts, box(0.5, 0.5, 0.5), 0.0));
 		w.setShapeSensor(sensor, true);
 
-		// A hanging chain of three links on driven spherical joints.
+		// Adds a hanging chain of three links on driven spherical joints.
 		var anchor = w.createBody(BodyType.Static, -2, 3, 0);
 		var previous = anchor, top = 3.0, spherical = [];
 		for (i in 0...3) {
@@ -60,18 +60,18 @@ class SnapshotChecks {
 			previous = link;
 			top -= 0.6;
 		}
-		// A door on a limited, driven hinge.
+		// Adds a door on a limited, driven hinge.
 		var post = w.createBody(BodyType.Static, 0, 2, 3);
 		var door = w.createBody(BodyType.Dynamic, 0.5, 2, 3);
 		w.attachShape(door, ShapeBuilder.makeHull(w.verts, box(0.45, 0.4, 0.04), 0.01, 0, 300), 1, -1, -2);
 		var hinge = w.createHingeJoint(post, door, new Vec3(0, 2, 3), new Vec3(0, 1, 0), -1.2, 1.2);
 		w.setHingeDrive(hinge, 0.8, 10, 1, 60);
-		// A slider pushed along X by a motor against its limits, on a rail that tilts back and forth.
+		// Adds a slider pushed along X by a motor against its limits, on a rail that tilts back and forth.
 		var rail = w.createBody(BodyType.Kinematic, 3, 2, 3);
 		var slider = w.createBody(BodyType.Dynamic, 3, 2, 3);
 		w.attachShape(slider, ShapeBuilder.makeHull(w.verts, box(0.1, 0.1, 0.1), 0.01, 0, 300), 1, -1, -3);
 		w.createPrismaticJoint(rail, slider, new Vec3(3, 2, 3), new Vec3(1, 0, 0), -2, 2, 0.4, 3);
-		// A soft weld, a spring and a rigid rod, hanging from a hook that sways.
+		// Adds a soft weld, a spring and a rigid rod, hanging from a hook that sways.
 		var a = w.createBody(BodyType.Dynamic, -4, 2, 3), b = w.createBody(BodyType.Dynamic, -4, 1.5, 3);
 		w.attachShape(a, ShapeBuilder.makeHull(w.verts, box(0.1, 0.1, 0.1), 0.01, 0, 300), 1, -1, -4);
 		w.attachShape(b, ShapeBuilder.makeHull(w.verts, box(0.1, 0.1, 0.1), 0.01, 0, 300), 1, -1, -4);
@@ -142,7 +142,7 @@ class SnapshotChecks {
 		run(scene, 90, 300, again);
 		compare(straight, again, 'restoring $label');
 
-		// A body and joints made after the snapshot go with it, and one destroyed comes back; the replay is unchanged.
+		// Bodies and joints made after the snapshot go with it, and one destroyed comes back; the replay is unchanged.
 		snapshot.restore(w);
 		var bodies = w.bodyCount, live = w.activeBodyCount;
 		w.destroyBody(scene.marker);
@@ -157,14 +157,14 @@ class SnapshotChecks {
 		run(scene, 90, 300, third);
 		compare(straight, third, 'restoring $label after making a body and joint');
 
-		// A second world built by the same calls takes the snapshot and runs on the same.
+		// Then a second world built by the same calls takes the snapshot and runs on the same.
 		var copy = build(parallel);
 		snapshot.restore(copy.world);
 		var copied = [];
 		run(copy, 90, 300, copied);
 		compare(straight, copied, 'restoring $label into another world');
 
-		// A new shape changes the world's structure; restoring then is refused.
+		// Adding a shape changes the world's structure; restoring then is refused.
 		var refused = false;
 		var b = w.createBody(BodyType.Dynamic, 0, 9, 0);
 		w.attachShape(b, ShapeBuilder.makeHull(w.verts, box(0.1, 0.1, 0.1), 0.01));

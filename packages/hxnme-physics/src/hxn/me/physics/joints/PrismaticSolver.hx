@@ -221,7 +221,7 @@ class PrismaticSolver {
 		limitState[id] = state;
 		var maxImpulse = maxMotorForce[id] * h;
 		motorImpulse[id] = Math.max(-maxImpulse, Math.min(maxImpulse, motorImpulse[id]));
-		// A motor pushing into an active limit is left to the limit row.
+		// Each motor pushing into an active limit is left to the limit row.
 		var blocked = state == 1 && motorSpeed[id] < 0.0 || state == -1 && motorSpeed[id] > 0.0;
 		if (blocked)
 			motorImpulse[id] = 0.0;

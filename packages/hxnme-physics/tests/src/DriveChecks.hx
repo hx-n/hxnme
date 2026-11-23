@@ -124,7 +124,7 @@ class DriveChecks {
         Sys.println('Drive checks passed');
     }
 
-    /** A long, thin forearm driven to a swing between two axes settles on it; its weak twist axis does not drift. */
+    /** The long, thin forearm driven to a swing between two axes settles on it; its weak twist axis does not drift. */
     static function checkSlenderSwing():Void {
         for (stiffness in [5.0, 20.0]) {
             var world = new World(4, 4, 2);

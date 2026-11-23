@@ -16,7 +16,7 @@ import hxn.me.physics.core.Handles;
  * above, of the points where something outside the set pushes a body of the
  * set upward; a planar set has a support interval along X instead. Distances
  * to it are signed: positive inside, negative outside. Call `update` after
- * each step. A body asleep keeps the support it had; one already asleep the
+ * each step. Each body asleep keeps the support it had; one already asleep the
  * first time it is measured is woken, so its support is known from the next
  * step: that is the only way measuring changes the simulation. Allocates
  * nothing after construction.
@@ -25,7 +25,7 @@ class Balance {
 	/** Contact points considered at most; further points are ignored. */
 	public static inline var MAX_POINTS = 64;
 
-	/** A contact counts as support when its normal is within this cosine of up. */
+	/** Each contact counts as support when its normal is within this cosine of up. */
 	public static inline var SUPPORT_COSINE = 0.5;
 
 	/** Contacts separated by more than this are not touching. */
@@ -221,7 +221,7 @@ class Balance {
 		velY = vy / total;
 		velZ = vz / total;
 
-		// Support points: where something outside the set pushes a body of the set upward. A sleeping body keeps no
+		// Support points: where something outside the set pushes a body of the set upward. Each sleeping body keeps no
 		// contacts but has not moved, so it keeps the points it had; one asleep since before it was first seen is woken
 		// once, so its contacts are found at the next step.
 		var n = 0;

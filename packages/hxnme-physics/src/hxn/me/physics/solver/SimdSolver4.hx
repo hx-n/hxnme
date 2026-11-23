@@ -12,7 +12,7 @@ import hxn.me.math.Float32Bytes;
  * once, the normal and both friction impulses update in vector registers, and
  * each dynamic body is written back once.
  *
- * A group may be partial or hold skipped rows: those lanes are masked, so
+ * Each group can be partial or hold skipped rows: those lanes are masked, so
  * every row of a SIMD colour is solved with the same lane arithmetic however
  * rows are grouped, and a serial solve matches an island-parallel one.
  *
@@ -66,7 +66,7 @@ class SimdSolver4 {
 		for (lane in 0...4) {
 			var o = lane << 2;
 			if (lane >= count || skip[slot + lane] != 0) {
-				// A masked lane gathers nothing and changes nothing.
+				// Each masked lane gathers nothing and changes nothing.
 				scratch.setF32(VEL_A + o, 0.0);
 				scratch.setF32(VEL_A + 16 + o, 0.0);
 				scratch.setF32(VEL_A + 32 + o, 0.0);

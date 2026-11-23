@@ -415,7 +415,7 @@ class Epa {
 				triangleResult(best);
 				return true;
 			}
-			// A known vertex beyond the face plane means the face is not on the hull.
+			// Any known vertex beyond the face plane means the face is not on the hull.
 			if (!added) {
 				fdepth[best] = Math.POSITIVE_INFINITY;
 				continue;

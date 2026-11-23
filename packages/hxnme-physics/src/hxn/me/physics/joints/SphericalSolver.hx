@@ -266,7 +266,7 @@ class SphericalSolver {
 		localRefBX[id] *= ex;
 		localRefBY[id] *= ey;
 		localRefBZ[id] *= ez;
-		// A rotation reflected by E is the quaternion (-E v, w).
+		// Reflected by E, a rotation is the quaternion (-E v, w).
 		neutralX[id] *= -ex;
 		neutralY[id] *= -ey;
 		neutralZ[id] *= -ez;

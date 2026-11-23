@@ -41,7 +41,7 @@ class JointSimd4 {
 		for (lane in 0...4) {
 			var id = joints[batch * 4 + lane], o = lane << 2;
 			if (id < 0) {
-				// An empty lane: zero velocities and zero rows, so it changes nothing and is never written back.
+				// The lane is empty: zero velocities and zero rows, so it changes nothing and is never written back.
 				scratch.setF32(VEL_A + o, 0.0);
 				scratch.setF32(VEL_A + 16 + o, 0.0);
 				scratch.setF32(VEL_A + 32 + o, 0.0);

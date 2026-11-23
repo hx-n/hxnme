@@ -280,7 +280,7 @@ class PhysicsChecks {
         rotating.attachShape(paddle, ShapeBuilder.makeBox(rotating.verts, 1, 0.15, 0.3, 0));
         var bead = rotating.createBody(BodyType.Dynamic, 0.75, 0.75, 0);
         rotating.attachShape(bead, ShapeBuilder.makeCircle(0.2, 0.3));
-        // A quarter turn over several steps, so the paddle's face meets the bead rather than appearing inside it.
+        // Turns a quarter turn over several steps, so the paddle's face meets the bead rather than appearing inside it.
         for (step in 1...7) {
             var half = angle * step / 6;
             rotating.setKinematicTarget(paddle, new Vec3(), new Quat(0, 0, Math.sin(half), Math.cos(half)));
@@ -379,7 +379,7 @@ class PhysicsChecks {
         for (i in 0...120) world.step(1.0 / 60.0);
         near(world.posY[slot], 0.25, 'switched box landed', 0.05);
 
-        // A kinematic body that held still in the last step switches at rest.
+        // Each kinematic body that held still in the last step switches at rest.
         var still = world.createBody(BodyType.Kinematic, -3, 2);
         world.attachShape(still, ShapeBuilder.makeCircle(0.2));
         world.setKinematicTarget(still, new Vec3(-2.9, 2), new Quat());
@@ -397,7 +397,7 @@ class PhysicsChecks {
         world.step(1.0 / 60.0);
         near(world.posY[slot], 2, 'kinematic again follows targets');
 
-        // A volumetric body regains full 3D freedom; a joint left between two kinematic bodies is inert.
+        // Each volumetric body regains full 3D freedom; a joint left between two kinematic bodies is inert.
         var cube = world.createBody(BodyType.Kinematic, 3, 2, 0);
         world.attachShape(cube, ShapeBuilder.makeBox(world.verts, 0.2, 0.2, 0.2, 0));
         var arm = world.createBody(BodyType.Dynamic, 3, 1, 0);
@@ -885,7 +885,7 @@ class PhysicsChecks {
     }
 
     static function checkQueryReach():Void {
-        // A flat circle reaches a volumetric shape within its radius along Z, as it does in contacts.
+        // The flat circle reaches a volumetric shape within its radius along Z, as it does in contacts.
         var world = new World(8, 8);
         var slab = world.createBody(BodyType.Static, 3, 0, 0.3);
         var slabShape = world.attachShape(slab, ShapeBuilder.makeBox(world.verts, 0.5, 1, 0.2));
@@ -995,7 +995,7 @@ class PhysicsChecks {
         for (i in 0...20) small.addContact(i, i + 1, i, i + 1, i, up, point, 0.1);
         if (small.count != 16 || small.capacity != 16) throw 'a full pool should hold 16 and drop the rest, holds ${small.count} in ${small.capacity}';
 
-        // A world whose pile needs more contacts than its storage starts with.
+        // Builds a world whose pile needs more contacts than its storage starts with.
         var world = new World(128, 128, 4);
         var floor = world.createBody(BodyType.Static, 0, -0.5, 0);
         world.attachShape(floor, ShapeBuilder.makeBox(world.verts, 20, 0.5, 20, 0));

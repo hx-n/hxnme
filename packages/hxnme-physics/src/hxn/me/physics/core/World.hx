@@ -117,7 +117,7 @@ class World {
 
 	/**
 	 * Each body's pose before the most recent step, kept while
-	 * `keepPreviousPoses` is on, for drawing between steps. A teleport sets it
+	 * `keepPreviousPoses` is on, for drawing between steps. Each teleport sets it
 	 * to the new pose, so a cut is never drawn halfway.
 	 */
 	public var prevPosX(default, null):Float32Buffer;
@@ -221,7 +221,7 @@ class World {
 	public var gravity:Vec3 = new Vec3(0.0, -9.81, 0.0);
 
 	/**
-	 * Joint sweeps per solver iteration. A load passes one joint per sweep, so a
+	 * Joint sweeps per solver iteration. Loads pass one joint per sweep, so a
 	 * long jointed chain carrying weight, such as a standing character, needs
 	 * more than one to settle. One is cheaper and suits loose chains; any
 	 * positive value is safe.
@@ -232,7 +232,7 @@ class World {
 	public var structureVersion(default, null):Int = 0;
 
 	/**
-	 * Starts a pool of Ash workers that solves large islands. A positive
+	 * Starts a pool of Ash workers that solves large islands. Any positive
 	 * `minPairsPerWorker` also splits a segment's collision tests across the
 	 * workers once there are at least that many candidate pairs per worker;
 	 * zero keeps collision on the calling thread. Needs Ash 0.1.2 or later:
@@ -699,7 +699,7 @@ class World {
 	}
 
 	/**
-	 * Turns a shape's collision on or off without detaching it. A disabled shape
+	 * Turns a shape's collision on or off without detaching it. Each disabled shape
 	 * keeps its handle, geometry and share of the body's mass, but takes no part
 	 * in contacts, queries or time-of-impact checks until it is enabled again.
 	 */
@@ -775,7 +775,7 @@ class World {
 		if (kind == ShapeKind.Polygon || kind == ShapeKind.Hull) {
 			var def = pairScratch.shapeA;
 			def.assign(kind, offset, count, shapeDepth[sId], shapeRadius[sId], shapeLocalZ[sId], shapeDensity[sId]);
-			// A polygon keeping its winding only moves its faces; anything else is rebuilt.
+			// Each polygon keeping its winding only moves its faces; anything else is rebuilt.
 			if (!ManifoldClipper.refreshPolygon(verts, def, shapeTopology[sId]))
 				shapeTopology[sId] = ManifoldClipper.buildTopology(verts, def);
 		}
@@ -786,7 +786,7 @@ class World {
 	/**
 	 * Gives a shape new geometry from `def`, on a body of any type, keeping its
 	 * handle, material, filtering, sensor flag and user data. Its contacts are
-	 * dropped, so the next step finds them afresh. A dynamic body's mass,
+	 * dropped, so the next step finds them afresh. Each dynamic body's mass,
 	 * inertia and centre follow the new geometry; its velocities are kept.
 	 */
 	public function reshapeShape(shape:ShapeId, def:ShapeDef):Void {
@@ -856,7 +856,7 @@ class World {
 	}
 
 	/**
-	 * Makes a shape a sensor, or a solid collider again. A sensor reports
+	 * Makes a shape a sensor, or a solid collider again. Each sensor reports
 	 * overlaps through `events` but never pushes on anything; ray and shape
 	 * casts and time-of-impact checks pass through it.
 	 */
@@ -1065,7 +1065,7 @@ class World {
 				wakeBodySlot(contacts.bodyB[c]);
 			}
 		}
-		// A reused shape slot must not inherit this shape's warm-start impulses.
+		// The reused shape slot must not inherit this shape's warm-start impulses.
 		contacts.removeShape(sId);
 		if (shapeProxy[sId] != BroadPhase.NULL_NODE)
 			broadPhase.destroyProxy(shapeProxy[sId]);
@@ -1121,7 +1121,7 @@ class World {
 
 	/** Whether a body's shapes give it volume, which makes it a 3D body when dynamic. */
 	/**
-	 * A body's velocity over the last step, by slot: its velocity, or for a
+	 * Returns a body's velocity over the last step, by slot: its velocity, or for a
 	 * kinematic body that followed a target in that step, the motion the
 	 * target gave it, which `velX` and the rest no longer hold after the step.
 	 */
@@ -1659,7 +1659,7 @@ class World {
 	}
 
 	/**
-	 * A body's pose a fraction `alpha` of the way from before the most recent
+	 * Returns a body's pose a fraction `alpha` of the way from before the most recent
 	 * step (0) to now (1), for drawing between fixed steps. Needs
 	 * `keepPreviousPoses`; without it the previous pose may be stale.
 	 */
@@ -1704,7 +1704,7 @@ class World {
 	 * non-finite or skewed poses, dynamic bodies with no mass or only
 	 * sensors, bodies far from the origin or fallen out of the world, joints
 	 * that hold nothing, shapes with no extent, and capacities nearly full.
-	 * A sound world reports nothing. Allocates only the report; pass a report
+	 * Sound worlds report nothing. Allocates only the report; pass a report
 	 * to clear and reuse it without allocating on a sound world.
 	 */
 	public function validate(?report:hxn.me.physics.diagnostics.Diagnostics):hxn.me.physics.diagnostics.Diagnostics {
@@ -1745,7 +1745,7 @@ class World {
 	/**
 	 * Uses the pose in `targetX`..`targetQw` at `slot` as the kinematic target
 	 * for the next step, like `setKinematicTarget` without building objects.
-	 * Normalises the rotation. A pose that is not finite, or a zero rotation,
+	 * Normalises the rotation. Any pose that is not finite, or a zero rotation,
 	 * throws and leaves the body with no pending target.
 	 */
 	public function commitKinematicTarget(slot:Int):Void {
@@ -1901,7 +1901,7 @@ class World {
 	 * kinematic body that followed a target in the last step keeps that motion
 	 * as a dynamic body; any other switch leaves the body at rest. Set
 	 * `velX`..`angVelZ` afterwards to choose the motion yourself.
-	 * A joint with no dynamic body applies no impulse until one of its bodies
+	 * Each joint with no dynamic body applies no impulse until one of its bodies
 	 * is dynamic.
 	 */
 	public function setBodyType(body:BodyId, type:BodyType):Void {

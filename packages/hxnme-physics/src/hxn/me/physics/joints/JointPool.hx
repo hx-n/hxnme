@@ -200,7 +200,7 @@ class JointPool {
 	}
 
 
-	/** A joint is being made and the pool is full: asks the world for twice the room, up to the limit a handle's index allows. */
+	/** Called when a joint is being made and the pool is full: asks the world for twice the room, up to the limit a handle's index allows. */
 	function roomForOneMore():Void {
 		if (capacity >= (1 << 20))
 			throw 'Joint capacity exceeded';
@@ -596,7 +596,7 @@ class JointPool {
 			var ba = contacts.bodyA[c], bb = contacts.bodyB[c];
 			if (root(jointParent, ba) != root(jointParent, bb))
 				continue;
-			// A fixed support closes loops but does not transmit a correction to its other branches.
+			// Each fixed support closes loops but does not transmit a correction to its other branches.
 			if (world.bodyType[ba] == BodyType.Dynamic) {
 				loopMarked[loopRoot(ba)] = 1;
 				found = true;
@@ -608,7 +608,7 @@ class JointPool {
 		}
 		if (!found)
 			return false;
-		// A fixed body cannot transmit a correction to another contact island.
+		// Fixed bodies cannot transmit a correction to another contact island.
 		for (c in 0...contacts.count) {
 			var a = contacts.bodyA[c], b = contacts.bodyB[c];
 			if (world.bodyType[a] == BodyType.Dynamic && world.bodyType[b] == BodyType.Dynamic)
@@ -873,7 +873,7 @@ class JointPool {
 		s.floats(impulse, n);
 		s.ints(firstExcluded, bodies);
 		s.ints(splitVelocity, bodies);
-		// A kind's solver exists once a joint of that kind has been made; a world built by the same calls has the same ones.
+		// Each kind's solver exists once a joint of that kind has been made; a world built by the same calls has the same ones.
 		if (s.bool(hinge != null)) {
 			if (hinge == null)
 				throw 'The world has no hinge joints to restore';
