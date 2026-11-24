@@ -46,6 +46,7 @@ var s:Sprite = sprites.add(texture, x, y, w, h, tint, alpha, angle, u0, v0, u1, 
 sprites.move(s, x, y); sprites.resize(s, w, h); sprites.turn(s, angle);
 sprites.tint(s, color, alpha); sprites.region(s, u0, v0, u1, v1);
 sprites.xOf(s); sprites.yOf(s); sprites.exists(s); sprites.remove(s);
+var t:Sprite = sprites.addText(label, x, y, color, alpha, angle);   // glyphs kept; move, turn, tint, remove
 ```
 
 Text goes through `ResMut<Typesetter>` (hxn-text). Keep the `Text` and

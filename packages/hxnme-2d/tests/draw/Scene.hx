@@ -17,35 +17,10 @@ import hxn.me.render2d.Typesetter;
 import hxn.text.Font;
 
 /**
-	The check draws through two cameras, each into a 64x64 render target. The
-	main camera is a screen camera that shows layer 1: shapes, a sprite, and
-	an image whose top half is red and bottom half blue. The second camera is
-	an orthographic camera in the world, with y up, that shows layer 2: a
-	yellow square at the world's origin, the same image, a green line, a cyan
-	line that widens from its start to its end, and a magenta rectangle on a
-	plane that is turned 90 degrees and moved. The third is a
-	perspective camera with a 90-degree field of view, 32 units in front of
-	the z = 0 plane, so it sees the same 64 by 64 units as the second and its
-	target matches the second's. The fourth is a perspective camera tilted
-	back 45 degrees about x, which sees a white square in the XY plane with its
-	far side narrower than its near side. The fifth is an orthographic camera
-	with depth: it sees a red square on a plane 10 units nearer, drawn first,
-	and a blue square on the world's plane, drawn after over the same area, and
-	the red square stays in front. The sixth is a screen camera that shows
-	sprites of `Sprites`: after the first frame, the check moves one sprite
-	and removes another, and counts the bytes that the next two frames
-	upload. It also shows a rectangle with squircle corners and one with
-	round corners, and the check tests a pixel near each corner. Under them
-	are a red rectangle in a clip with rounded corners, and a white shadow
-	blurred by 4 pixels, whose edge the blur covers in part. The seventh
-	and eighth cameras show the same text, a screen
-	camera and an orthographic camera with y up. The text is "L" in the first
-	frame and "T" after, so its widest row is at its top only when it was
-	laid out again and reads upright. Right of the text, both cameras show a
-	nine-slice of a 12x12 texture with 4-texel borders, red corners, a green top edge, a yellow
-	bottom edge, cyan sides and a blue center. After the plugin presents three frames, the check reads every
-	target back, compares one pixel of each shape with the color it expects,
-	and stops the app.
+	The 2D check. It draws through nine cameras, each into its own render
+	target, changes part of what it draws after the first frame, and after
+	three frames reads every target back and compares it with what each
+	camera must show. The README's Checks section lists what it tests.
 **/
 class Scene {
 	static final screen = new RenderTarget(64, 64);
@@ -60,6 +35,8 @@ class Scene {
 	static var uploadedAfterChange = -1;
 	static final lettered = new RenderTarget(64, 64);
 	static final letteredUp = new RenderTarget(64, 64);
+	static final retained = new RenderTarget(64, 64);
+	static var keptLabel:Text;
 	static var label:Text;
 	static var panel:Texture;
 	static final near = new Plane();
@@ -121,9 +98,25 @@ class Scene {
 
 	// Moving the first sprite writes its rect, and the sprite that fills the
 	// removed one's place writes all seven fields: the rects of indices 0 and
-	// 1, and one instance of each other field.
-	static inline final CHANGED_BYTES = 2 * 16 + 6 * 16;
+	// 1, and one instance of each other field. The text in `Sprites` changes
+	// from L to T, one glyph of seven fields.
+	static inline final CHANGED_BYTES = 2 * 16 + 6 * 16 + 7 * 16;
 
+	/**
+		Sets up a camera for each part of the check, each with its own layers
+		and render target:
+
+		- 1, the main camera: a screen camera of shapes and sprites.
+		- 2: an orthographic camera with y up, of shapes, an image and lines,
+		  and a rectangle on a turned plane.
+		- 3: a perspective camera that sees the same 64 by 64 units as camera 2.
+		- 4: a perspective camera tilted back 45 degrees, of a square.
+		- 5: an orthographic camera with depth, of two squares on two planes.
+		- 6: a screen camera of `Sprites`, corner shapes, a clip and a shadow.
+		- 7 and 8: a screen camera and a camera with y up, of text and a
+		  nine-slice.
+		- 9: a screen camera of text in `Sprites`.
+	**/
 	@:system(Start)
 	static function setup(cameras:ResMut<Cameras>, sprites:ResMut<Sprites>, typesetter:ResMut<Typesetter>) {
 		var main = cameras.main;
@@ -194,6 +187,13 @@ class Scene {
 		eighth.target = letteredUp;
 		eighth.clear = {r: 0, g: 0, b: 0, a: 1};
 		cameras.add(eighth);
+		var ninth = new Camera();
+		ninth.projection = Screen;
+		ninth.layers = 64;
+		ninth.order = 8;
+		ninth.target = retained;
+		ninth.clear = {r: 0, g: 0, b: 0, a: 1};
+		cameras.add(ninth);
 		// Each region of the panel is 4x4 texels, so linear filtering keeps the middle of each piece one color.
 		var regions = [
 			[255, 0, 0], [0, 255, 0], [255, 0, 0],
@@ -211,6 +211,7 @@ class Scene {
 		panel = new Texture(12, 12, bytes);
 		var font = new Font(haxe.Resource.getBytes("font"), {});
 		label = (typesetter : Typesetter).text(font, "L", {size: 40});
+		keptLabel = (typesetter : Typesetter).text(font, "L", {size: 40});
 		near.z = 10;
 		turned.rotate(Math.PI / 2, 0, 0, 1);
 		turned.x = 20;
@@ -231,8 +232,11 @@ class Scene {
 		removed = store.add(blank, 16, 0, 8, 8, 0xFF0000);
 		store.add(blank, 48, 0, 8, 8, 0x0000FF);
 		store.add(image, 0, 48, 8, 8);
+		store.layer = 64;
+		store.addText(keptLabel, 8, 4, 0xFFFFFF);
 	}
 
+	// After the first frame, moves one sprite, removes another and changes both texts. In the next frame, records what `Sprites` uploaded.
 	@:system(Update)
 	static function change(gpu:Res<Gpu>, sprites:ResMut<Sprites>) {
 		var store:Sprites = sprites;
@@ -241,6 +245,7 @@ class Scene {
 			store.move(moved, 32, 32);
 			store.remove(removed);
 			label.set("T");
+			keptLabel.set("T");
 		} else if (gpu.presented == 2 && uploadedAfterChange < 0)
 			uploadedAfterChange = store.uploaded;
 	}
@@ -339,7 +344,7 @@ class Scene {
 		reading = true;
 		var state:Lifecycle = lifecycle;
 		var device = gpu.device;
-		var targets = [screen, world, perspective, tilted, deep, kept, lettered, letteredUp];
+		var targets = [screen, world, perspective, tilted, deep, kept, lettered, letteredUp, retained];
 		var read:Array<Bytes> = [];
 		function next() {
 			if (read.length < targets.length) {
@@ -385,11 +390,11 @@ class Scene {
 				failed++;
 			Sys.println('${e.name}: ${close ? "as expected" : 'got ${got.join(", ")}, not ${e.rgb.join(", ")}'}');
 		}
-		for (target in [lettered, letteredUp]) {
+		for (target in [lettered, letteredUp, retained]) {
 			var ok = upright(read[targets.indexOf(target)]);
 			if (!ok)
 				failed++;
-			Sys.println('text through the ${target == lettered ? "screen camera" : "camera with y up"}: ${ok ? "an upright T" : "not an upright T"}');
+			Sys.println('${target == lettered ? "text through the screen camera" : target == letteredUp ? "text through the camera with y up" : "text in Sprites"}: ${ok ? "an upright T" : "not an upright T"}');
 		}
 		var changes = uploadedAfterChange == CHANGED_BYTES;
 		if (!changes)

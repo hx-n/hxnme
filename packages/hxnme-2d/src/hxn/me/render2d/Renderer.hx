@@ -82,6 +82,7 @@ class Renderer {
 	}
 
 	function uploadSprites():Void {
+		sprites.refresh();
 		var bytes = 0;
 		for (group in sprites.groups) {
 			var instances = group.instances;

@@ -73,7 +73,7 @@ static function draw(draw:ResMut<Draw>) {
 | Method | Effect |
 |---|---|
 | `rect(x, y, width, height, color, alpha, radius, border, borderColor, borderAlpha, corner)` | Adds a rectangle. `radius` is the radius of its corners, and `corner` is their `CornerShape`: `Round` (the default), `Squircle`, `Bevel`, `Scoop`, `Square` or `Notch`. If `border` is above 0, the rectangle has a border. |
-| `shadow(x, y, width, height, blur, color, alpha, radius, corner)` | Adds the shadow of a rectangle, blurred by `blur` as with CSS `box-shadow`. Add it before the shape that casts it, at the shadow's offset. |
+| `shadow(x, y, width, height, blur, color, alpha, radius, corner)` | Adds the shadow of a rectangle, blurred by `blur` as with CSS `box-shadow`. Add it before the shape that casts it, at the shadow's offset. The shadow is one instance, and the shader computes its blur for each pixel. |
 | `circle(x, y, radius, color, alpha, border, borderColor, borderAlpha)` | Adds a circle with its center at `x`, `y`. |
 | `ellipse(x, y, width, height, color, alpha)` | Adds an ellipse that fills the rectangle. |
 | `line(x0, y0, x1, y1, width, color, alpha, endWidth)` | Adds a line with round ends. It is `width` wide at its start and `endWidth` wide at its end. `endWidth` defaults to `width`. |
@@ -176,6 +176,14 @@ static function walk(sprites:ResMut<Sprites>, time:Res<Time>) {
 | `tint(sprite, color, alpha)` | Sets the color and alpha that multiply the texture. |
 | `region(sprite, u0, v0, u1, v1)` | Selects the part of the texture that the sprite shows. |
 | `xOf(sprite)`, `yOf(sprite)` | Return the sprite's corner. |
+| `addText(text, x, y, color, alpha, angle)` | Adds a `Text` and returns its handle, which `move`, `turn`, `tint`, `xOf`, `yOf`, `exists` and `remove` take. |
+
+Text in `Sprites` keeps its glyph instances from frame to frame. The
+renderer writes and uploads them again only after the text moves, turns or
+changes color, or lays itself out again. Each text draws with one instanced
+draw for each glyph atlas that it uses. Use `addText` for labels that change
+less often than every frame, and `draw.text` for text that changes in each
+frame.
 
 `sprites.layer`, `sprites.plane` and `sprites.clip` set the layer, the plane
 and the clip of the sprites that you add next, as in `Draw`. Sprites with
@@ -243,6 +251,7 @@ render target for each of these cameras:
 - Orthographic camera with depth.
 - Screen camera that shows `Sprites`.
 - Screen camera and orthographic camera that show the same text and nine-slice.
+- Screen camera that shows text in `Sprites`.
 
 The check compares one pixel of each shape with the color that it expects.
 It also tests that:
@@ -252,7 +261,8 @@ It also tests that:
 - A rectangle in a clip with rounded corners shows only inside the clip.
 - The middle of a shadow is fully covered, and the blur covers its edge in part.
 - After one sprite moves and another is removed, the next frame uploads only the changed parts. The frame after that uploads nothing.
-- The text changes from L to T after the first frame. The last two cameras show a T with its bar at the top, so the text was laid out again and is not mirrored. The top border of the nine-slice is at the top.
+- The text changes from L to T after the first frame. The two text cameras show a T with its bar at the top, so the text was laid out again and is not mirrored. The top border of the nine-slice is at the top.
+- Text in `Sprites` that changes from L to T also shows a T, and uploads only its one new glyph.
 
 The check uses the font Noto Sans. Its license is listed in
 [third-party/NOTICES.md](third-party/NOTICES.md).

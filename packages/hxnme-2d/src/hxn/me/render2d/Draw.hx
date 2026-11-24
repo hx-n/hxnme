@@ -1,7 +1,5 @@
 package hxn.me.render2d;
 
-import hxn.text.AtlasKind;
-
 /**
 	`Draw` holds what the app draws again in every frame, for example shapes and
 	debug lines. Systems call its methods in each frame. The renderer draws what
@@ -48,7 +46,9 @@ class Draw {
 		Adds a shadow of the rectangle at `x`, `y`, blurred by `blur` as with
 		CSS `box-shadow`, in `color` and `alpha`. `radius` and `corner` give
 		the rectangle's corners. Add the shadow before the shape that casts it,
-		and move it by the shadow's offset.
+		and move it by the shadow's offset. The shadow is one instance, a quad
+		larger than the rectangle by the reach of the blur. The shader computes
+		the blur for each pixel from its distance to the rectangle.
 	**/
 	public function shadow(x:Float, y:Float, width:Float, height:Float, blur:Float, color = 0x000000, alpha = 0.5, radius = 0.0,
 			corner:CornerShape = Round):Void {
@@ -143,31 +143,8 @@ class Draw {
 		with y up and through a screen camera. Color glyphs, such as emoji,
 		keep their own colors and use only `alpha`.
 	**/
-	public function text(text:Text, x:Float, y:Float, color = 0xFFFFFF, alpha = 1.0, angle = 0.0):Void {
-		var laid = text.layout();
-		var w = laid.width, h = laid.height;
-		var c = Math.cos(angle), s = Math.sin(angle);
-		for (g in laid.glyphs) {
-			var atlas = text.atlas(g.kind);
-			if (atlas == null || g.width <= 0 || g.height <= 0)
-				continue;
-			var i = instances.add();
-			// Glyph rects are laid out from the top of the box. The shader mirrors
-			// them within the box, given in `shape.zw`, for a view with y up.
-			var gx = x + g.x, gy = y + g.y;
-			instances.set(Instances.RECT, i, gx, gy, g.width, g.height);
-			instances.set(Instances.UV, i, g.atlasX / atlas.width, g.atlasY / atlas.height, (g.atlasX + g.atlasWidth) / atlas.width,
-				(g.atlasY + g.atlasHeight) / atlas.height);
-			if (g.kind == Coverage)
-				tint(Instances.COLOR, i, color, alpha);
-			else
-				instances.set(Instances.COLOR, i, 1, 1, 1, alpha);
-			// Every glyph turns about the box's center, so the text turns as one piece.
-			instances.set(Instances.XFORM, i, c, s, (x + w / 2 - gx) / g.width, (y + h / 2 - gy) / g.height);
-			instances.set(Instances.SHAPE, i, g.kind == Coverage ? 1 : 0, 0, y, h);
-			textured(atlas, i);
-		}
-	}
+	public function text(text:Text, x:Float, y:Float, color = 0xFFFFFF, alpha = 1.0, angle = 0.0):Void
+		text.write(instances, x, y, color, alpha, angle, null, textured);
 
 	// Adds instance `i`, which draws with `texture`, to the last run. If the texture, layer or plane differs, it starts a new run.
 	function textured(texture:Texture, i:Int):Void {
