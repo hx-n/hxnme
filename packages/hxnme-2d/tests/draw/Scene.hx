@@ -6,6 +6,7 @@ import hxn.me.gpu.Camera;
 import hxn.me.gpu.Cameras;
 import hxn.me.gpu.Gpu;
 import hxn.me.gpu.RenderTarget;
+import hxn.me.render2d.Clip;
 import hxn.me.render2d.Draw;
 import hxn.me.render2d.Plane;
 import hxn.me.render2d.Sprite;
@@ -34,7 +35,9 @@ import hxn.text.Font;
 	sprites of `Sprites`: after the first frame, the check moves one sprite
 	and removes another, and counts the bytes that the next two frames
 	upload. It also shows a rectangle with squircle corners and one with
-	round corners, and the check tests a pixel near each corner. The seventh
+	round corners, and the check tests a pixel near each corner. Under them
+	are a red rectangle in a clip with rounded corners, and a white shadow
+	blurred by 4 pixels, whose edge the blur covers in part. The seventh
 	and eighth cameras show the same text, a screen
 	camera and an orthographic camera with y up. The text is "L" in the first
 	frame and "T" after, so its widest row is at its top only when it was
@@ -64,6 +67,7 @@ class Scene {
 	static var halves:Texture;
 	static var reading = false;
 	static final turned = new Plane();
+	static final clip = new Clip(12, 38, 16, 20, 6);
 
 	// Rows of the readback are top first, as each target shows them.
 	static final expected = [
@@ -99,6 +103,10 @@ class Scene {
 		{target: kept, name: "sprite of a second texture", x: 4, y: 52, rgb: [40, 80, 120]},
 		{target: kept, name: "near the corner of the squircle", x: 12, y: 12, rgb: [255, 255, 255]},
 		{target: kept, name: "same place near a round corner", x: 36, y: 12, rgb: [0, 0, 0]},
+		{target: kept, name: "inside the clip", x: 20, y: 48, rgb: [255, 0, 0]},
+		{target: kept, name: "outside the clip", x: 11, y: 48, rgb: [0, 0, 0]},
+		{target: kept, name: "in the clip's rounded corner", x: 12, y: 38, rgb: [0, 0, 0]},
+		{target: kept, name: "middle of the shadow", x: 52, y: 52, rgb: [255, 255, 255]},
 		{target: lettered, name: "nine-slice corner on the screen", x: 38, y: 8, rgb: [255, 0, 0]},
 		{target: lettered, name: "nine-slice top edge on the screen", x: 48, y: 8, rgb: [0, 255, 0]},
 		{target: lettered, name: "nine-slice side on the screen", x: 38, y: 24, rgb: [0, 255, 255]},
@@ -282,6 +290,10 @@ class Scene {
 		// Squircle corners reach nearer the corner of the box than round ones, along the diagonal.
 		draw.rect(10, 10, 20, 20, 0xFFFFFF, 1, 10, 0, 0, 1, Squircle);
 		draw.rect(34, 10, 20, 20, 0xFFFFFF, 1, 10);
+		draw.clip = clip;
+		draw.rect(10, 34, 22, 28, 0xFF0000);
+		draw.clip = null;
+		draw.shadow(46, 46, 12, 12, 4, 0xFFFFFF, 1);
 		draw.layer = 32;
 		draw.text(label, 8, 4, 0xFFFFFF);
 		draw.nineSlice(panel, 34, 4, 28, 40, 4, 4, 4, 4, 0xFFFFFF, 1, 0, 2);
@@ -357,6 +369,13 @@ class Scene {
 		if (!foreshortened)
 			failed++;
 		Sys.println('tilted square: ${foreshortened ? "its far side is narrower than its near side" : 'far side $far pixels, near side $near'}');
+		// The blur covers the shadow's edge in part: about 0.6 at the edge, and about 0.1 2.5 pixels outside it.
+		var shadowed = read[targets.indexOf(kept)];
+		var edge = shadowed.get((52 * 64 + 46) * 4), beyond = shadowed.get((52 * 64 + 43) * 4);
+		var blurred = edge > 110 && edge < 200 && beyond > 5 && beyond < 60;
+		if (!blurred)
+			failed++;
+		Sys.println('shadow: ${blurred ? "its edge is blurred" : 'edge $edge, beyond it $beyond'}');
 		for (e in expected) {
 			var pixels = read[targets.indexOf(e.target)];
 			var at = (e.y * 64 + e.x) * 4;

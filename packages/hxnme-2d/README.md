@@ -73,6 +73,7 @@ static function draw(draw:ResMut<Draw>) {
 | Method | Effect |
 |---|---|
 | `rect(x, y, width, height, color, alpha, radius, border, borderColor, borderAlpha, corner)` | Adds a rectangle. `radius` is the radius of its corners, and `corner` is their `CornerShape`: `Round` (the default), `Squircle`, `Bevel`, `Scoop`, `Square` or `Notch`. If `border` is above 0, the rectangle has a border. |
+| `shadow(x, y, width, height, blur, color, alpha, radius, corner)` | Adds the shadow of a rectangle, blurred by `blur` as with CSS `box-shadow`. Add it before the shape that casts it, at the shadow's offset. |
 | `circle(x, y, radius, color, alpha, border, borderColor, borderAlpha)` | Adds a circle with its center at `x`, `y`. |
 | `ellipse(x, y, width, height, color, alpha)` | Adds an ellipse that fills the rectangle. |
 | `line(x0, y0, x1, y1, width, color, alpha, endWidth)` | Adds a line with round ends. It is `width` wide at its start and `endWidth` wide at its end. `endWidth` defaults to `width`. |
@@ -83,6 +84,27 @@ static function draw(draw:ResMut<Draw>) {
 
 Each nine-slice costs the same as one sprite, because the shader does the
 slicing on the GPU.
+
+## Clips
+
+`draw.clip` sets the clip of the content that you add next, and null
+removes it. Each `Clip` is a rectangle with a corner radius and a
+`CornerShape`, in the coordinates of the plane that the content lies on.
+Only the parts of the content inside the clip show. The GPU tests each
+pixel against the clip, so a clip adds no data to the instances. Changes to
+a clip's fields apply from the next frame, so a clip can move with a
+scrolling panel.
+
+```haxe
+static final panel = new Clip(16, 16, 200, 120, 8);
+
+draw.clip = panel;
+draw.text(log, 20, 20 - scroll, 0xFFFFFF);
+draw.clip = null;
+```
+
+`sprites.clip` sets the clip of the sprites that you add next, in the same
+way.
 
 ## Text
 
@@ -155,9 +177,9 @@ static function walk(sprites:ResMut<Sprites>, time:Res<Time>) {
 | `region(sprite, u0, v0, u1, v1)` | Selects the part of the texture that the sprite shows. |
 | `xOf(sprite)`, `yOf(sprite)` | Return the sprite's corner. |
 
-`sprites.layer` and `sprites.plane` set the layer and the plane of the
-sprites that you add next, as in `Draw`. Sprites with the same texture,
-layer and plane form a group, and each group draws with one instanced draw.
+`sprites.layer`, `sprites.plane` and `sprites.clip` set the layer, the plane
+and the clip of the sprites that you add next, as in `Draw`. Sprites with
+the same texture, layer, plane and clip form a group, and each group draws with one instanced draw.
 Groups draw in the order that their first sprites were added, and before
 the contents of `Draw`. The sprites of one group draw in the order that
 they were added. `remove` changes that order, because it moves the last
@@ -227,6 +249,8 @@ It also tests that:
 
 - The tilted camera shows the far side of a square as narrower than its near side.
 - A pixel near the corner of a squircle is inside it, and the same pixel near a round corner is outside.
+- A rectangle in a clip with rounded corners shows only inside the clip.
+- The middle of a shadow is fully covered, and the blur covers its edge in part.
 - After one sprite moves and another is removed, the next frame uploads only the changed parts. The frame after that uploads nothing.
 - The text changes from L to T after the first frame. The last two cameras show a T with its bar at the top, so the text was laid out again and is not mirrored. The top border of the nine-slice is at the top.
 

@@ -27,6 +27,9 @@ class Draw {
 	/** The plane of the content added next, or null for the XY plane of the world. **/
 	public var plane:Null<Plane>;
 
+	/** The clip of the content added next, or null for none. **/
+	public var clip:Null<Clip>;
+
 	public function new() {}
 
 	/**
@@ -38,6 +41,21 @@ class Draw {
 			borderAlpha = 1.0, corner:CornerShape = Round):Void {
 		var i = shape(2, x, y, width, height, color, alpha, border, borderColor, borderAlpha);
 		instances.set(Instances.SHAPE, i, 2, border, corner, 0);
+		instances.set(Instances.RADIUS, i, radius, radius, radius, radius);
+	}
+
+	/**
+		Adds a shadow of the rectangle at `x`, `y`, blurred by `blur` as with
+		CSS `box-shadow`, in `color` and `alpha`. `radius` and `corner` give
+		the rectangle's corners. Add the shadow before the shape that casts it,
+		and move it by the shadow's offset.
+	**/
+	public function shadow(x:Float, y:Float, width:Float, height:Float, blur:Float, color = 0x000000, alpha = 0.5, radius = 0.0,
+			corner:CornerShape = Round):Void {
+		// The blur reaches one and a half times `blur` past the rectangle, and one more pixel covers the edge.
+		var grow = blur * 1.5 + 1;
+		var i = shape(6, x - grow, y - grow, width + grow * 2, height + grow * 2, color, alpha, 0, 0, 1);
+		instances.set(Instances.SHAPE, i, 6, blur, corner, grow);
 		instances.set(Instances.RADIUS, i, radius, radius, radius, radius);
 	}
 
@@ -154,8 +172,8 @@ class Draw {
 	// Adds instance `i`, which draws with `texture`, to the last run. If the texture, layer or plane differs, it starts a new run.
 	function textured(texture:Texture, i:Int):Void {
 		var last = runs.length > 0 ? runs[runs.length - 1] : null;
-		if (last == null || last.layer != layer || last.plane != plane || (last.texture != null && last.texture != texture))
-			runs.push({texture: texture, layer: layer, plane: plane, start: i, count: 1});
+		if (last == null || last.layer != layer || last.plane != plane || last.clip != clip || (last.texture != null && last.texture != texture))
+			runs.push({texture: texture, layer: layer, plane: plane, clip: clip, start: i, count: 1});
 		else {
 			last.texture = texture;
 			last.count++;
@@ -176,8 +194,8 @@ class Draw {
 		tint(Instances.BORDER, i, borderColor, borderAlpha);
 		// Shapes sample no texture, so each shape joins the run before it.
 		var last = runs.length > 0 ? runs[runs.length - 1] : null;
-		if (last == null || last.layer != layer || last.plane != plane)
-			runs.push({texture: null, layer: layer, plane: plane, start: i, count: 1});
+		if (last == null || last.layer != layer || last.plane != plane || last.clip != clip)
+			runs.push({texture: null, layer: layer, plane: plane, clip: clip, start: i, count: 1});
 		else
 			last.count++;
 		return i;
@@ -192,6 +210,7 @@ typedef Run = {
 	var texture:Null<Texture>;
 	var layer:Int;
 	var plane:Null<Plane>;
+	var clip:Null<Clip>;
 	var start:Int;
 	var count:Int;
 }

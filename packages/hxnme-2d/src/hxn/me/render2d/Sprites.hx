@@ -9,7 +9,7 @@ import hxn.gpu.Buffer;
 	part of each field that changed since the last frame. Sprites that do not
 	change cost no upload.
 
-	Sprites with the same texture, layer and plane form a group, and each group
+	Sprites with the same texture, layer, plane and clip form a group, and each group
 	draws with one instanced draw. Groups draw in the order that their first
 	sprites were added, and before the contents of `Draw` in the same frame. The
 	sprites of one group draw in the order that they were added. `remove`
@@ -22,6 +22,9 @@ class Sprites {
 
 	/** The plane of the sprites added next, or null for the XY plane of the world. **/
 	public var plane:Null<Plane>;
+
+	/** The clip of the sprites added next, or null for none. **/
+	public var clip:Null<Clip>;
 
 	/** The number of sprites. **/
 	public var length(default, null) = 0;
@@ -150,9 +153,9 @@ class Sprites {
 
 	function groupFor(texture:Texture):SpriteGroup {
 		for (group in groups)
-			if (group.texture == texture && group.layer == layer && group.plane == plane)
+			if (group.texture == texture && group.layer == layer && group.plane == plane && group.clip == clip)
 				return group;
-		var group = new SpriteGroup(texture, layer, plane);
+		var group = new SpriteGroup(texture, layer, plane, clip);
 		groups.push(group);
 		return group;
 	}
@@ -165,7 +168,7 @@ class Sprites {
 }
 
 /**
-	Each group holds the sprites of one texture, layer and plane, and the
+	Each group holds the sprites of one texture, layer, plane and clip, and the
 	range of each field that changed since the renderer last uploaded it.
 **/
 @:allow(hxn.me.render2d)
@@ -173,6 +176,7 @@ class SpriteGroup {
 	final texture:Texture;
 	final layer:Int;
 	final plane:Null<Plane>;
+	final clip:Null<Clip>;
 	final instances = new Instances(64);
 
 	// The slot of the sprite at each index.
@@ -186,10 +190,11 @@ class SpriteGroup {
 	final buffers:Array<Buffer> = [];
 	var bufferCapacity = 0;
 
-	function new(texture:Texture, layer:Int, plane:Null<Plane>) {
+	function new(texture:Texture, layer:Int, plane:Null<Plane>, clip:Null<Clip>) {
 		this.texture = texture;
 		this.layer = layer;
 		this.plane = plane;
+		this.clip = clip;
 	}
 
 	inline function changed(field:Int, index:Int):Void {

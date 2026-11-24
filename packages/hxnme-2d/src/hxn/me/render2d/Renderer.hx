@@ -21,8 +21,8 @@ import hxn.me.gpu.Pass;
 	field. In each frame, it uploads the contents of `Draw`.
 
 	Each camera has its own view, with a pass in the frame graph. For each plane
-	that the frame draws on, the view also has a uniform buffer with the matrix
-	of the camera times the matrix of the plane. The pass draws the sprite
+	and clip that the frame draws on, the view also has a uniform buffer with
+	the matrix of the camera times the matrix of the plane, and the clip. The pass draws the sprite
 	groups of `Sprites` in the layers of the camera, then the runs of `Draw`.
 	Each group and each run is one instanced draw.
 **/
@@ -39,10 +39,12 @@ class Renderer {
 	final matrix = [for (_ in 0...16) 0.0];
 	final model = [for (_ in 0...16) 0.0];
 	final combined = [for (_ in 0...16) 0.0];
-	// The planes whose uniforms the current camera wrote this frame.
-	final written:Array<Plane> = [];
+	// Counts the cameras shown. Each plane view records the count when its uniforms are written, so they are written once for each camera in each frame.
+	var shown = 0;
 	// The world's XY plane, for runs without a plane.
 	final flat = new Plane();
+	// The key for runs without a clip.
+	final open = new Clip(0, 0, 0, 0);
 	final draw:Draw;
 	final sprites:Sprites;
 	var capacity = 0;
@@ -134,21 +136,22 @@ class Renderer {
 		view.pass.enabled = draw.instances.length > 0 || sprites.length > 0;
 		camera.writeMatrix(width, height, matrix);
 		params.setFloat(Shader.PARAMS_flags, camera.yDown() ? 1 : 0);
-		written.resize(0);
+		shown++;
 		for (group in sprites.groups)
 			if (group.layer & camera.layers != 0 && group.instances.length > 0)
-				writePlane(view, group.plane);
+				writeUniforms(view, group.plane, group.clip);
 		for (run in draw.runs)
 			if (run.layer & camera.layers != 0)
-				writePlane(view, run.plane);
+				writeUniforms(view, run.plane, run.clip);
 	}
 
-	// Writes the camera's matrix times the matrix of `plane` into the camera's uniforms for that plane, once in each frame.
-	function writePlane(view:View, plane:Null<Plane>):Void {
-		var plane = plane != null ? plane : flat;
-		if (written.indexOf(plane) >= 0)
+	// Writes the camera's matrix times the matrix of `plane`, and `clip`, into the camera's uniforms for that plane and clip.
+	function writeUniforms(view:View, plane:Null<Plane>, clip:Null<Clip>):Void {
+		var on = view.on(plane != null ? plane : flat, clip != null ? clip : open, device);
+		if (on.shown == shown)
 			return;
-		written.push(plane);
+		on.shown = shown;
+		var plane = plane != null ? plane : flat;
 		plane.writeMatrix(model);
 		multiply(matrix, model, combined);
 		// The uniform block of the shader gives each column its own offset.
@@ -157,7 +160,16 @@ class Renderer {
 			params.setFloat(Shader.PARAMS_matrix1 + i * 4, combined[4 + i]);
 			params.setFloat(Shader.PARAMS_matrix3 + i * 4, combined[12 + i]);
 		}
-		device.writeBuffer(view.on(plane, device).uniforms, 0, params);
+		if (clip != null) {
+			params.setFloat(Shader.PARAMS_clipRect, clip.x);
+			params.setFloat(Shader.PARAMS_clipRect + 4, clip.y);
+			params.setFloat(Shader.PARAMS_clipRect + 8, clip.width);
+			params.setFloat(Shader.PARAMS_clipRect + 12, clip.height);
+			params.setFloat(Shader.PARAMS_clipShape, clip.radius);
+			params.setFloat(Shader.PARAMS_clipShape + 4, clip.corner);
+		}
+		params.setFloat(Shader.PARAMS_clipShape + 8, clip != null ? 1 : 0);
+		device.writeBuffer(on.uniforms, 0, params);
 	}
 
 	// Writes a times b into out. All three are 4x4 matrices, stored column by column.
@@ -184,17 +196,17 @@ class Renderer {
 		pass.setPipeline(pipeline);
 		for (group in sprites.groups)
 			if (group.layer & camera.layers != 0 && group.instances.length > 0)
-				drawRange(view, pass, pipeline, group.plane, group.texture, group.buffers, 0, group.instances.length);
+				drawRange(view, pass, pipeline, group.plane, group.clip, group.texture, group.buffers, 0, group.instances.length);
 		for (run in draw.runs)
 			if (run.layer & camera.layers != 0)
-				drawRange(view, pass, pipeline, run.plane, run.texture != null ? run.texture : white, buffers, run.start, run.count);
+				drawRange(view, pass, pipeline, run.plane, run.clip, run.texture != null ? run.texture : white, buffers, run.start, run.count);
 	}
 
-	// Draws `count` instances of `source` from index `start`, on `plane`, with `image`.
-	function drawRange(view:View, pass:RenderPass, pipeline:RenderPipeline, plane:Null<Plane>, image:Texture, source:Array<Buffer>, start:Int,
-			count:Int):Void {
+	// Draws `count` instances of `source` from index `start`, on `plane` inside `clip`, with `image`.
+	function drawRange(view:View, pass:RenderPass, pipeline:RenderPipeline, plane:Null<Plane>, clip:Null<Clip>, image:Texture, source:Array<Buffer>,
+			start:Int, count:Int):Void {
 		var shared = Shader.PARAMS_GROUP == Shader.TEXTURE_image_GROUP;
-		var on = view.on(plane != null ? plane : flat, device);
+		var on = view.on(plane != null ? plane : flat, clip != null ? clip : open, device);
 		if (!shared) {
 			if (on.params == null)
 				on.params = device.createBindGroup({
@@ -257,29 +269,36 @@ class Renderer {
 	}
 }
 
-/** Each view holds what one camera needs to draw: its pass, and one plane view for each plane. **/
+/** Each view holds what one camera needs to draw: its pass, and one plane view for each plane and clip. **/
 private class View {
 	public final camera:Camera;
 	public var pass:Pass;
-	final planes = new ObjectMap<Plane, PlaneView>();
+	final planes = new ObjectMap<Plane, ObjectMap<Clip, PlaneView>>();
 
 	public function new(camera:Camera)
 		this.camera = camera;
 
-	/** Returns the plane view for `plane`, and makes it on first use. **/
-	public function on(plane:Plane, device:GpuDevice):PlaneView {
-		var found = planes.get(plane);
+	/** Returns the plane view for `plane` and `clip`, and makes it on first use. **/
+	public function on(plane:Plane, clip:Clip, device:GpuDevice):PlaneView {
+		var clips = planes.get(plane);
+		if (clips == null) {
+			clips = new ObjectMap();
+			planes.set(plane, clips);
+		}
+		var found = clips.get(clip);
 		if (found == null) {
 			found = new PlaneView(device.createBuffer({size: Shader.PARAMS_SIZE, usage: Uniform}));
-			planes.set(plane, found);
+			clips.set(clip, found);
 		}
 		return found;
 	}
 }
 
-/** Each plane view holds one camera's uniform buffer for one plane, and its bind groups. **/
+/** Each plane view holds one camera's uniform buffer for one plane and clip, and its bind groups. **/
 private class PlaneView {
 	public final uniforms:Buffer;
+	// The count of cameras shown when the uniforms were last written.
+	public var shown = -1;
 	public var params:Null<BindGroup>;
 	public final groups = new ObjectMap<Texture, BindGroup>();
 

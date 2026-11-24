@@ -1,6 +1,6 @@
 ---
 name: hxnme-2d
-description: Draw sprites, shapes (with round, squircle and other corner shapes), nine-slices and text, and keep sprites from frame to frame, in an hxnme app with the hxnme-2d haxelib (package `hxn.me.render2d`), the 2D renderer of the hxn media engine, through hxnme-gpu on HashLink, Ash, hxcpp and CPPIA. Use when an app draws 2D shapes, sprites or textures, moves a 2D camera, or draws 2D into a render target, or when changing the renderer itself.
+description: Draw sprites, shapes (with round, squircle and other corner shapes), shadows, nine-slices and text, clip them, and keep sprites from frame to frame, in an hxnme app with the hxnme-2d haxelib (package `hxn.me.render2d`), the 2D renderer of the hxn media engine, through hxnme-gpu on HashLink, Ash, hxcpp and CPPIA. Use when an app draws 2D shapes, sprites or textures, moves a 2D camera, or draws 2D into a render target, or when changing the renderer itself.
 ---
 
 # hxnme-2d
@@ -26,6 +26,8 @@ Draw through `ResMut<Draw>` in `Update`, every frame; it is emptied in
 ```haxe
 draw.rect(x, y, w, h, 0x3366CC, 1, radius, border, borderColor, borderAlpha, Squircle /* CornerShape */);
 draw.circle(cx, cy, r, 0xFFCC00);
+draw.shadow(x + 4, y + 4, w, h, blur, 0x000000, 0.5, radius, corner);   // before the shape
+draw.clip = new Clip(x, y, w, h, radius, corner);   // null removes it; plane coordinates
 draw.ellipse(x, y, w, h, color);
 draw.line(x0, y0, x1, y1, width, color, alpha, endWidth);
 draw.stroke(points /* x, y pairs */, width, color, alpha, widths);
@@ -39,7 +41,7 @@ Sprites that stay from frame to frame go in `ResMut<Sprites>`. Only the
 parts that change are uploaded, so sprites that stand still cost nothing:
 
 ```haxe
-sprites.layer = 1; sprites.plane = null;   // for the sprites added next
+sprites.layer = 1; sprites.plane = null; sprites.clip = null;   // for the sprites added next
 var s:Sprite = sprites.add(texture, x, y, w, h, tint, alpha, angle, u0, v0, u1, v1);
 sprites.move(s, x, y); sprites.resize(s, w, h); sprites.turn(s, angle);
 sprites.tint(s, color, alpha); sprites.region(s, u0, v0, u1, v1);
@@ -63,7 +65,9 @@ Rules:
 
 - Order is draw order. Sprites with the same texture, and shapes between
   them, share one instanced draw; a texture change starts another.
-- `Sprites` groups sprites by texture, layer and plane, with one draw for
+- Clips are uniforms of each run and group, tested for each pixel in the
+  shader. A clip change starts a new run.
+- `Sprites` groups sprites by texture, layer, plane and clip, with one draw for
   each group. Groups draw before `Draw`, in the order of their first
   sprites. `remove` moves the group's last sprite into the removed one's
   place, which changes the order within the group.

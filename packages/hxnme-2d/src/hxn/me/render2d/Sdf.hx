@@ -75,6 +75,14 @@ class Sdf implements hxn.gpu.Shader {
 			return (norm - 1.) * r / max(length(grad), 0.0001);
 		}
 
+		/** Returns the error function of `x`, to Abramowitz and Stegun 7.1.26. **/
+		function erf(x:Float):Float {
+			var a = abs(x);
+			var t = 1. / (1. + 0.3275911 * a);
+			var y = 1. - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * exp(-a * a);
+			return sign(x) * y;
+		}
+
 		/** Returns the distance to an ellipse centered on the origin, with half size `half`. **/
 		function ellipse(p:Vec2, half:Vec2):Float {
 			return (length(p / half) - 1.) * min(half.x, half.y);
