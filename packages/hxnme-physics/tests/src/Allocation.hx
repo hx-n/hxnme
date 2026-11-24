@@ -47,7 +47,9 @@ class Allocation {
 	// the previous frame. hxcpp finds the frames by thread number. After worker
 	// threads have run, the main thread's number can find another thread's
 	// stack, or none. Reading through it counts nothing or reads freed memory,
-	// so counting stops when the number no longer finds this thread.
+	// so counting stops when the number no longer finds this thread. Whether it
+	// does depends on how the threads ran, so the note goes to stderr, which
+	// output comparisons leave out.
 	static var thread = -1;
 	static var counted = 0.0;
 	static var lost = false;
@@ -57,11 +59,12 @@ class Allocation {
 			thread = untyped __cpp__("__hxcpp_hxt_start_telemetry(true, true)");
 		if (!lost && !untyped __cpp__("(hx::StackContext::getStackForId({0}) == hx::StackContext::getCurrent())", thread)) {
 			lost = true;
-			Sys.println("allocations: no longer measured: hxcpp's telemetry no longer finds this thread");
+			Sys.stderr().writeString("allocations: no longer measured: hxcpp's telemetry no longer finds this thread\n");
 		}
 		if (lost)
 			return counted;
-		var added:Float = untyped __cpp__("({
+		// An immediately invoked lambda, because MSVC has no statement expressions.
+		var added:Float = untyped __cpp__("[&]() -> double {
 			__hxcpp_hxt_stash_telemetry();
 			TelemetryFrame *frame = __hxcpp_hxt_dump_telemetry({0});
 			double sum = 0;
@@ -73,8 +76,8 @@ class Allocation {
 					else i += 2;
 				}
 			}
-			sum;
-		})", thread);
+			return sum;
+		}()", thread);
 		counted += added;
 		return counted;
 	}
