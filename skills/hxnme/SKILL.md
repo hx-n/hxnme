@@ -9,6 +9,13 @@ The hxn media engine (hxnme) kernel is intentionally lightweight. Engine
 features such as rendering, audio, input, ECS, UI and physics ship as
 plugins, each a haxelib, composed at compile time.
 
+## Creating an app
+
+`hxn me new <name>` creates a small game (window, input, GPU and 2D plugins,
+an atlas and a font declared in `GameAssets`) in `<name>/`. Run it with
+`hxn run hl app.hxml`. `app.frames` in `hxnme.toml` stops an app after that
+many frames, for unattended checks.
+
 ## Setup
 
 Each app is an hxn program file that selects the kernel, with `hxnme.toml`

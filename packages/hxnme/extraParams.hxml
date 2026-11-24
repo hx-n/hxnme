@@ -1,1 +1,2 @@
 --macro hxn.me.macro.Registry.install()
+--macro hxn.me.macro.AssetFields.install()

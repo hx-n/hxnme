@@ -9,6 +9,24 @@ architecture flexible without costing performance: plugins are composed at
 compile time, with no run-time discovery or lookup, and an app compiles only
 the plugins it needs.
 
+## Creating an app
+
+`hxn me new <name>` creates a small game in a new directory called `<name>`.
+It lists the window, input, GPU and 2D plugins in its `hxnme.toml`, and
+declares an atlas and a font in `GameAssets`. The player moves with WASD,
+the arrow keys or a gamepad's left stick, and collects gems, and a screen
+camera draws the score:
+
+```
+hxn me new my-game
+cd my-game
+hxn run hl app.hxml
+```
+
+The template keeps the license of its font in `licenses/`. Keep it with
+the game, or replace the font. The check in `tests/new` creates a game with
+the command and checks the files that it writes.
+
 ## Project file
 
 Each app keeps its plugins and its metadata in `hxnme.toml`, colocated
@@ -38,6 +56,7 @@ The kernel reads these keys:
 | `app.step_snap` | The tolerance for a whole number of fixed steps in a frame, as a part of one step. The default is 0.1, and 0 turns the correction off. |
 | `app.rate` | The number of frames in a second on `HeadlessHost`, the host of an app without a window. The default is 60. |
 | `app.id` | The name of the app's storage, for its bundled files and saves. The default is `hxnme`. |
+| `app.frames` | The number of frames after which the app stops, for checks that run an app unattended. The default is 0, which runs the app until it quits. |
 | `display.width`, `display.height`, `display.scale` | The display on `HeadlessHost`. The defaults are 1280, 720 and 1. |
 | `display.refresh` | The refresh rate of the display, in frames a second, if the host does not set it. The default is 60. |
 | `libraries.<plugin>` | Replaces the haxelibs that the plugin's manifest lists for some targets. Each key is part of a target triple, such as `linux`, and its value is the list for every target whose triple contains it. The longest key that matches applies. Paths are relative to `hxnme.toml`. |
@@ -358,7 +377,10 @@ The type `T` selects the decoder:
 
 - An engine type names its asset type with `@:assetType(expr)` on its class,
   such as `Texture` and `Atlas` of hxnme-2d. `@:assetType` on the field
-  overrides it.
+  overrides it. A plugin can also give a field a more exact type that it
+  makes from the file at compile time, such as an atlas with a property for
+  each region. It registers a function with
+  `hxn.me.macro.AssetFields.refine` from an init macro.
 - Any other type is data, which hxn-assets decodes as it decodes a dynamic
   field: `String` from text, `haxe.io.Bytes` as is, and JSON checked against
   the declared type. `@:assetFormat` and `@:assetDecode` apply as in

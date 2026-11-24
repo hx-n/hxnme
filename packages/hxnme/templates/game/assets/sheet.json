@@ -1,0 +1,8 @@
+{
+	"image": "sheet.png",
+	"regions": {
+		"player": {"x": 0, "y": 0, "width": 32, "height": 32},
+		"gem": {"x": 33, "y": 0, "width": 24, "height": 24},
+		"panel": {"x": 58, "y": 0, "width": 24, "height": 24, "slice": [6, 6, 6, 6]}
+	}
+}

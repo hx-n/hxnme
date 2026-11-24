@@ -1,0 +1,9 @@
+plugins = ["hxnme-window", "hxnme-input", "hxnme-gpu", "hxnme-2d"]
+
+[app]
+id = "{{id}}"
+
+[window]
+title = "{{title}}"
+width = 960
+height = 540

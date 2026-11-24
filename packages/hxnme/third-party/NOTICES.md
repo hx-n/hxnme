@@ -1,6 +1,7 @@
 # Third-party notices
 
-The hxnme kernel depends on the code listed below. Original license and notice
+The hxnme kernel depends on the code listed below, and its game template
+includes the font listed below. Original license and notice
 texts are kept under `licenses/`. These terms apply to their respective code,
 and do not change the license of this project.
 
@@ -12,3 +13,4 @@ libraries they build on in their own `third-party/` directories.
 |---|---|---|
 | hxn-assets 0.2.0 | Apache-2.0 | [LICENSE](licenses/hxn-assets-0.2.0/LICENSE) |
 | hxn-file 0.2.0 | Apache-2.0 | [LICENSE](licenses/hxn-file-0.2.0/LICENSE) |
+| Noto Sans Regular, in `templates/game` | OFL-1.1 | [OFL.txt](licenses/noto-sans/OFL.txt) |

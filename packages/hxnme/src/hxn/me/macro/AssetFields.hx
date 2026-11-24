@@ -3,6 +3,7 @@ package hxn.me.macro;
 #if macro
 import haxe.macro.Context;
 import haxe.macro.Expr;
+import haxe.io.Path;
 import haxe.macro.Type;
 
 /**
@@ -16,6 +17,85 @@ import haxe.macro.Type;
 	hxn-assets decodes as it decodes a dynamic field of that type.
 **/
 class AssetFields {
+	// For the full name of an engine type, the function that gives an `AssetRef` field of that type a more exact type, such as an atlas with its regions as properties.
+	static final refiners = new Map<String, (file:String, owner:ClassType, field:String, pos:Position) -> Null<ComplexType>>();
+	// The endings of the names of refined types: each is the declaring class's name, the field's name and one of these.
+	static final suffixes:Array<String> = [];
+	// Refined types that the not-found hook asked for, which it returns instead of defining them.
+	static final requested = new Map<String, Null<TypeDefinition>>();
+
+	/**
+		Registers `refine` for the engine type called `type`, such as
+		`hxn.me.render2d.Atlas`. For each `AssetRef` field of that type,
+		`refine` gets the path of the asset's file at compile time, the class
+		and the field, and returns the type to use instead, or null to keep the
+		engine type. The new type must be an abstract over the engine type,
+		named with the class's name, the field's name and `suffix`, such as
+		`GameAssetsSheetAtlas`, and defined with `define`. Plugins call it from
+		an init macro in their `extraParams.hxml`.
+	**/
+	public static function refine(type:String, suffix:String, refine:(file:String, owner:ClassType, field:String, pos:Position) -> Null<ComplexType>):Void {
+		refiners.set(type, refine);
+		if (suffixes.indexOf(suffix) < 0)
+			suffixes.push(suffix);
+	}
+
+	/**
+		Defines `type`, which a refiner made, and returns the type for the
+		field to use. The type itself is defined as its name with `Data` added,
+		and its name becomes an alias of it. The field uses the first, because
+		the class's build may run while the compiler looks for the alias.
+	**/
+	public static function define(type:TypeDefinition):ComplexType {
+		var name = type.name;
+		type.name = name + "Data";
+		Context.defineType(type);
+		var data = TPath({pack: type.pack, name: type.name});
+		var alias:TypeDefinition = {pack: type.pack, name: name, pos: type.pos, doc: type.doc, kind: TDAlias(data), fields: []};
+		var full = type.pack.concat([name]).join(".");
+		if (requested.exists(full))
+			requested.set(full, alias);
+		else
+			Context.defineType(alias);
+		return data;
+	}
+
+	/**
+		Lets code name a refined type, such as `GameAssetsSheetAtlas`, before
+		anything builds the class that declares it. When the compiler cannot
+		find such a name, this builds each class that the name can start with,
+		and returns the type that the build made. The kernel's
+		`extraParams.hxml` calls it.
+	**/
+	public static function install():Void
+		Context.onTypeNotFound(notFound);
+
+	static function notFound(name:String):Null<TypeDefinition> {
+		if (requested.exists(name) || !Lambda.exists(suffixes, s -> StringTools.endsWith(name, s)))
+			return null;
+		var parts = name.split(".");
+		var short = parts.pop();
+		requested.set(name, null);
+		for (i in 1...short.length) {
+			var code = short.charCodeAt(i);
+			if (code < "A".code || code > "Z".code)
+				continue;
+			var owner = parts.concat([short.substr(0, i)]).join(".");
+			// Reading the statics builds the class, which runs the refiner.
+			switch (try Context.getType(owner) catch (_:Dynamic) null) {
+				case TInst(c, _): c.get().statics.get();
+				case _:
+			}
+			var made = requested.get(name);
+			if (made != null) {
+				requested.remove(name);
+				return made;
+			}
+		}
+		requested.remove(name);
+		return null;
+	}
+
 	public static function build():Array<Field> {
 		var fields = Context.getBuildFields();
 		var owner = Context.getLocalClass().get();
@@ -47,6 +127,13 @@ class AssetFields {
 				// hxn-assets lists and bundles the file as bytes, and the engine type decodes them.
 				field.kind = FVar(macro :haxe.io.Bytes, null);
 				type = engine;
+				var refiner = refiners.get(fullName(inner, field.pos));
+				var refined = refiner == null ? null : refiner(Path.join([assetDirectory(), literal(asset.params[asset.params.length - 1])]), owner, field.name,
+					field.pos);
+				if (refined != null) {
+					type = macro(cast $engine : hxn.me.AssetType<$refined>);
+					inner = refined;
+				}
 			} else {
 				field.kind = FVar(inner, null);
 				var path = literal(asset.params[asset.params.length - 1]);
@@ -103,6 +190,20 @@ class AssetFields {
 			case TInst(_.get() => {pack: ["hxn", "me"], name: "AssetRef"}, [inner]): haxe.macro.TypeTools.toComplexType(inner);
 			case _: null;
 		}
+	}
+
+	static function fullName(type:ComplexType, pos:Position):String {
+		return switch (Context.follow(Context.resolveType(type, pos))) {
+			case TInst(c, _): c.get().pack.concat([c.get().name]).join(".");
+			case TAbstract(a, _): a.get().pack.concat([a.get().name]).join(".");
+			case _: "";
+		}
+	}
+
+	// The directory of the app's bundled files, as hxn-assets reads it.
+	static function assetDirectory():String {
+		var selected = Context.definedValue("hxn_assets_dir");
+		return selected == null ? "assets" : selected;
 	}
 
 	// Returns the asset type that `@:assetType` on the class or abstract of `type` gives, or null.

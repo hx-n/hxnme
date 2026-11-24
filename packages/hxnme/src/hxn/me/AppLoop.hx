@@ -24,6 +24,9 @@ class AppLoop {
 	**/
 	public static final SNAP:Float = Project.number("app.step_snap", 0.1);
 
+	/** The number of frames after which the app stops, from `app.frames` in `hxnme.toml`, or 0 to run until it quits. Checks use it. **/
+	public static final FRAMES:Int = Project.integer("app.frames", 0);
+
 	/** The clock that the loop advances. **/
 	public final time:Time;
 
@@ -89,6 +92,8 @@ class AppLoop {
 		phases.update();
 		phases.render();
 		phases.end();
+		if (FRAMES > 0 && time.frame >= FRAMES)
+			lifecycle.quit();
 		return lifecycle.running;
 	}
 }

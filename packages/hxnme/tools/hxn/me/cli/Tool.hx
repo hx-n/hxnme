@@ -33,8 +33,12 @@ class Tool {
 
 	static function main() {
 		var request:Dynamic = Json.parse(Sys.stdin().readAll().toString());
+		if (request.kind == "command") {
+			command(request.arguments, request.cwd, request.root);
+			return;
+		}
 		if (request.kind != "hook") {
-			Sys.stderr().writeString("hxn me has no commands yet. hxnme reads an app's plugins and metadata from the hxnme.toml colocated with its program file.\n");
+			Sys.stderr().writeString('hxn me: unknown request ${request.kind}\n');
 			Sys.exit(2);
 		}
 		var reply:Dynamic = {version: 1};
@@ -73,6 +77,53 @@ class Tool {
 		if (args.length > 0)
 			reply.haxe_args = args;
 		Sys.println(Json.stringify(reply));
+	}
+
+	static final USAGE = "usage: hxn me new <name>\n  Creates an hxnme game called <name> in a new directory of that name.\n";
+
+	static function command(arguments:Array<String>, cwd:String, root:String):Void {
+		switch (arguments) {
+			case ["new", name]:
+				create(name, cwd, root);
+			case [] | ["help"] | ["--help"]:
+				Sys.print(USAGE);
+			case _:
+				Sys.stderr().writeString(USAGE);
+				Sys.exit(2);
+		}
+	}
+
+	// Copies the game template into `cwd/name`, with the app's id and title filled in.
+	static function create(name:String, cwd:String, root:String):Void {
+		if (!~/^[A-Za-z][A-Za-z0-9_-]*$/.match(name))
+			fail('$name is not a directory name for a project: use letters, digits, - and _, starting with a letter');
+		var into = Path.join([cwd, name]);
+		if (FileSystem.exists(into))
+			fail('$into already exists');
+		var template = Path.join([root, "templates", "game"]);
+		if (!FileSystem.isDirectory(template))
+			fail('hxnme has no game template at $template');
+		var title = [for (word in ~/[-_]+/g.split(name)) if (word.length > 0) word.charAt(0).toUpperCase() + word.substr(1)].join(" ");
+		copy(template, into, ["{{id}}" => name.toLowerCase(), "{{title}}" => title]);
+		Sys.println('Created $into. Run it with: cd $name && hxn run hl app.hxml');
+	}
+
+	static function copy(from:String, into:String, fill:Map<String, String>):Void {
+		FileSystem.createDirectory(into);
+		for (entry in FileSystem.readDirectory(from)) {
+			var source = Path.join([from, entry]);
+			// Packages can drop dotfiles, so the template keeps .gitignore without its dot.
+			var target = Path.join([into, entry == "gitignore" ? ".gitignore" : entry]);
+			if (FileSystem.isDirectory(source))
+				copy(source, target, fill);
+			else if (entry == "hxnme.toml") {
+				var text = File.getContent(source);
+				for (key => value in fill)
+					text = text.split(key).join(value);
+				File.saveContent(target, text);
+			} else
+				File.copy(source, target);
+		}
 	}
 
 	// Adds the haxe arguments that `-lib` would give for `entry`, after those
