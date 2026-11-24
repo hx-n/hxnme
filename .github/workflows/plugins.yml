@@ -1,0 +1,74 @@
+name: Plugins
+
+# The checks of the window, input, GPU and 2D plugins in a hidden window, and a game
+# made with `hxn me new`, on each platform's default GPU driver: Metal on macOS, Vulkan
+# on Mesa's software driver on Linux, and Direct3D 12 on Windows. Each runs on Ash,
+# hxcpp and CPPIA, in Ash's JIT and interpreter modes, and as an Ash executable.
+# hxnme-gpu's pacing check needs a visible window on a display with vsync, which the
+# runners do not have.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plugins:
+    name: plugins, ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            drivers: hxn-gpu-metal:0.2.4
+          - os: ubuntu-latest
+            drivers: hxn-gpu-vulkan:0.3.3 hxn-gpu-gles:0.3.3
+          - os: windows-latest
+            drivers: hxn-gpu-d3d12:0.2.3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          drivers: ${{ matrix.drivers }}
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme-window/tests/window
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme-input/tests/input
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme-gpu/tests/gpu
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme-2d/tests/draw
+          minutes: 30
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme-2d/tests/assets
+      # Each error check compiles broken programs and expects each one's compile error.
+      - name: Compile errors
+        run: |
+          (cd packages/hxnme-input/tests && haxe action-errors.hxml)
+          (cd packages/hxnme-2d/tests && haxe asset-errors.hxml)
+      # The game the template makes, for 120 frames in a hidden window.
+      - name: Create a game
+        run: |
+          mkdir -p "$RUNNER_TEMP/new"
+          cd "$RUNNER_TEMP/new"
+          hxn me new game
+          perl -0pi -e 's/^\[app\]\n/[app]\nframes = 120\n/m; s/^\[window\]\n/[window]\nvisible = false\n/m' game/hxnme.toml
+          cat game/hxnme.toml
+          echo "GAME=$RUNNER_TEMP/new/game" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/check
+        with:
+          directory: ${{ env.GAME }}

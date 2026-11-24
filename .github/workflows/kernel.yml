@@ -1,0 +1,121 @@
+name: Kernel
+
+# The kernel's checks and the physics checks, which open no window, on macOS, Linux
+# and Windows: each on Ash, hxcpp and CPPIA, in Ash's JIT and interpreter modes, and
+# as an Ash executable built ahead of time.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  kernel:
+    name: kernel, ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme/tests
+          file: toml-checks.hxml
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme/tests/plugins
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme/tests/systems
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme/tests/loop
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme/tests/headless
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme/tests/libraries
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme/tests/libraries-override
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme/tests/assets
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme/tests/new
+      # Each error check compiles broken programs and expects each one's compile error.
+      - name: Compile errors
+        working-directory: packages/hxnme/tests
+        run: |
+          haxe plugin-errors.hxml
+          haxe system-errors.hxml
+
+  physics:
+    name: physics, ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    # Ash otherwise counts allocations only in whole 32 KiB regions, and the allocation
+    # checks around World.step can pass when the code allocates.
+    env:
+      ASH_GC_TLAB: "0"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # With --no-fma, Ash rounds each operation as hxcpp does, so the output must be the
+      # same. CPPIA keeps Single values in double precision, so it runs on its own below.
+      # hxn build takes no --no-fma, so the Ash executable is not compared here.
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme-physics/tests
+          file: checks.hxml
+          runtimes: hl cpp
+          ash-options: --no-fma
+          modes: jit interp
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme-physics/tests
+          file: concurrent-checks.hxml
+          runtimes: hl cpp
+          ash-options: --no-fma
+          modes: jit interp
+      - uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme-physics/tests
+          file: world-growth-checks.hxml
+          runtimes: hl cpp
+          ash-options: --no-fma
+          modes: jit interp
+      # The rest print timings, so they run without comparing output. Each check
+      # program exits with an error when a check fails.
+      - name: CPPIA, island parallel checks and SIMD paths
+        working-directory: packages/hxnme-physics/tests
+        run: |
+          for file in checks concurrent-checks world-growth-checks island-parallel-checks; do
+            echo "== cppia $file"
+            timeout 1200 hxn run cppia $file.hxml
+          done
+          echo "== cpp island-parallel-checks"
+          timeout 1200 hxn run cpp island-parallel-checks.hxml
+          for file in checks concurrent-checks world-growth-checks island-parallel-checks; do
+            for mode in "" "--mode jit" "--mode interp"; do
+              echo "== Ash $mode $file-simd"
+              timeout 1200 hxn run hl $file-simd.hxml --vm "$ASH $mode"
+            done
+          done

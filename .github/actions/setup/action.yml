@@ -1,0 +1,76 @@
+name: setup
+description: Haxe, hxcpp, Ash, the hxn command and the haxelibs hxnme runs on, with this checkout's packages as dev links.
+
+inputs:
+  drivers:
+    description: The GPU driver haxelibs to install at their versions, such as "hxn-gpu-metal:0.2.4". Empty for checks that open no window.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - if: runner.os != 'macOS'
+      uses: krdlab/setup-haxe@v1
+      with:
+        haxe-version: 4.3.6
+    # setup-haxe has no Haxe for arm64 macOS, which Homebrew has. coreutils gives `timeout`.
+    - if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        brew install haxe coreutils
+        mkdir -p "$HOME/haxelib" && haxelib setup "$HOME/haxelib"
+    # The hxcpp commit the hxn libraries are tested with.
+    - shell: bash
+      run: |
+        haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp --quiet
+        dir="$(haxelib libpath hxcpp)"
+        git -C "$dir" checkout -q 615adc73d5ef28f3f74ea47977c39c4f25ce256d
+        (cd "$dir/tools/hxcpp" && haxe compile.hxml)
+    # hxnme uses hxn after 0.3.10: typed buffers in each runtime's layout, program files
+    # for hxn run and hxn check, and Ash builds ahead of time. The command and the haxelib
+    # come from the same commit.
+    - shell: bash
+      run: echo "HXN_REV=fe775d09867053c5ee3a08431774b7dcbaf7df0c" >> "$GITHUB_ENV"
+    - id: hxn-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/hxn*
+        key: hxn-${{ runner.os }}-${{ env.HXN_REV }}
+    - if: steps.hxn-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: cargo install --git https://github.com/hx-n/hxn.git --rev "$HXN_REV" --locked hxn-cli
+    - shell: bash
+      run: |
+        git clone -q https://github.com/hx-n/hxn.git "$RUNNER_TEMP/hxn"
+        git -C "$RUNNER_TEMP/hxn" checkout -q "$HXN_REV"
+        hxn version
+    # Each release is installed without its dependencies, which are all listed here.
+    # A dev link overrides the version a dependency asks for, so every library sees the
+    # same hxn and the same hxnme packages.
+    - shell: bash
+      run: |
+        for lib in format:3.8.0 hashlink:1.15.0 ash-simd:0.1.1 hxnsl:0.2.1 hxn-file:0.2.1 hxn-assets:0.2.1 \
+          hxn-text:0.1.0 hxn-window:0.2.3 hxn-gpu:0.2.5 ${{ inputs.drivers }}; do
+          haxelib install "${lib%%:*}" "${lib##*:}" --always --skip-dependencies
+        done
+        haxelib dev hxn "$RUNNER_TEMP/hxn"
+        for package in packages/*/; do
+          haxelib dev "$(basename "$package")" "$package"
+        done
+    - shell: bash
+      run: |
+        case "$RUNNER_OS" in
+          Linux) archive=ash-linux-x86_64.tar.gz ;;
+          macOS) archive=ash-macos-aarch64.tar.gz ;;
+          Windows) archive=ash-windows-x86_64.tar.gz ;;
+        esac
+        mkdir -p "$RUNNER_TEMP/ash"
+        # Extracted in place: tar reads a Windows path's drive as a host.
+        (cd "$RUNNER_TEMP/ash" && curl -fsSL "https://github.com/rayzor-blade/ash/releases/download/v0.1.22/$archive" | tar -xz)
+        echo "ASH=$RUNNER_TEMP/ash/ash" >> "$GITHUB_ENV"
+    - if: runner.os == 'Linux' && inputs.drivers != ''
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libvulkan1 mesa-vulkan-drivers libegl1 libgles2 libegl-mesa0 libgl1-mesa-dri \
+          libxkbcommon-x11-0 libxcursor1 libxrandr2 libxi6 libudev-dev xvfb xauth
