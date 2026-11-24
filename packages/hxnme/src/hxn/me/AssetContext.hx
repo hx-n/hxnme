@@ -9,8 +9,8 @@ import hxn.Future;
 	value closes.
 **/
 class AssetContext {
-	/** The address of the asset that is being decoded. **/
-	public final address:String;
+	/** The path of the file of the asset that is being decoded. **/
+	public final path:String;
 
 	final assets:Assets;
 	final entry:AssetEntry;
@@ -18,19 +18,19 @@ class AssetContext {
 	@:allow(hxn.me) function new(assets:Assets, entry:AssetEntry) {
 		this.assets = assets;
 		this.entry = entry;
-		address = entry.address;
+		path = entry.path;
 	}
 
-	/** Loads `address` as `type`, held until the value of this asset closes. **/
-	public function load<T>(address:String, type:AssetType<T>):Future<T>
-		return assets.load(address, type).map(asset -> {
+	/** Loads the bundled file at `path` as `type`, held until the value of this asset closes. **/
+	public function load<T>(path:String, type:AssetType<T>):Future<T>
+		return assets.loadFile(path, type).map(asset -> {
 			entry.held.push(cast asset);
 			asset.value;
 		});
 
-	/** Returns `path`, which is relative to the directory of this asset, as an address. **/
-	public function resolve(path:String):String {
-		var slash = address.lastIndexOf("/");
-		return slash < 0 ? path : address.substr(0, slash + 1) + path;
+	/** Returns `relative`, a path relative to the directory of this asset's file, as a path in the bundled assets. **/
+	public function resolve(relative:String):String {
+		var slash = path.lastIndexOf("/");
+		return slash < 0 ? relative : path.substr(0, slash + 1) + relative;
 	}
 }

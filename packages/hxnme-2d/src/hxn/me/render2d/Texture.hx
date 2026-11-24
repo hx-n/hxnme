@@ -11,6 +11,7 @@ import hxn.gpu.TextureFormat;
 	first frame after the GPU device opens, the 2D renderer uploads it and
 	releases the pixels.
 **/
+@:assetType(hxn.me.render2d.RenderAssets.texture)
 class Texture {
 	public var width(default, null):Int;
 	public var height(default, null):Int;

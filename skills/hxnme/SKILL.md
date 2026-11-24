@@ -145,13 +145,16 @@ system. Read it to see the order the kernel chose.
   runs the job for each index on the calling thread.
 - `hxn.me.project.Toml`: the reader for `hxnme.toml`. It refuses dates,
   arrays of tables and multi-line strings, with the file and line in the error.
-- `hxn.me.Assets` (resource): `load(address, type)` returns
-  `Future<Asset<T>>`. Loads of one address and type share one value, and
-  `release()` on the last handle closes it. Types: `AssetTypes.bytes`, `text`
-  and `json`, and plugin types such as hxnme-2d's. `add(GameAssets.catalog())`
-  adds an hxn-assets catalog. With a catalog class, only listed files are
-  bundled. `new AssetType<T>(name, (bytes, context) -> future, ?close)` makes a
-  type, and `context.load` holds what the value depends on.
+- `hxn.me.Assets` (resource): declare assets on
+  `@:build(hxn.me.Assets.build()) class GameAssets { @:asset("ui/sheet.json") public static var Sheet:AssetRef<Atlas>; }`.
+  The macro runs hxn-assets' macro too. `assets.load(GameAssets.Sheet)`
+  returns `Future<Asset<T>>`. Loads of one asset share one value, and
+  `release()` on the last handle closes it. `T` with `@:assetType(expr)` on
+  its class (or the field) is an engine type. Any other `T` is data that
+  hxn-assets decodes. Fields of other types are hxn-assets fields, such as
+  data embedded at compile time. Only declared files are bundled.
+  `new AssetType<T>(name, (bytes, context) -> future, ?close)`; `context.load`
+  holds what the value depends on.
 
 ## Rules for engine and plugin code
 

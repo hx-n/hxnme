@@ -6,7 +6,11 @@ import hxn.me.AssetContext;
 import hxn.me.AssetType;
 import hxn.text.Font;
 
-/** The asset types of the 2D renderer, for `hxn.me.Assets.load`. **/
+/**
+	The asset types of the 2D renderer. `Texture`, `Atlas` and
+	`hxn.text.Font` name them with `@:assetType`, so `AssetRef<Texture>`,
+	`AssetRef<Atlas>` and `AssetRef<Font>` fields use them.
+**/
 class RenderAssets {
 	/** A PNG image as a `Texture`. The texture closes with the asset. **/
 	public static final texture = new AssetType<Texture>("hxnme-2d texture", (bytes, _) -> try {
@@ -18,13 +22,13 @@ class RenderAssets {
 	public static final font = new AssetType<Font>("hxnme-2d font", (bytes, _) -> try Future.resolved(new Font(bytes, {})) catch (e:haxe.Exception)
 		Future.rejected(e), f -> f.close());
 
-	/** A JSON file of regions, and the image it lists, as an `Atlas`. **/
+	/** A JSON file of regions, and the image it lists, as an `Atlas`. The image must be declared too, so that it is bundled. **/
 	public static final atlas = new AssetType<Atlas>("hxnme-2d atlas", decodeAtlas);
 
 	static function decodeAtlas(bytes:Bytes, context:AssetContext):Future<Atlas> {
 		var data:Dynamic = try haxe.Json.parse(bytes.toString()) catch (e:haxe.Exception) return Future.rejected(e);
 		if (!Std.isOfType(data.image, String))
-			return Future.rejected(new haxe.Exception('the atlas ${context.address} has no image'));
+			return Future.rejected(new haxe.Exception('the atlas ${context.path} has no image'));
 		return context.load(context.resolve(data.image), texture).map(image -> {
 			var made = new Atlas(image);
 			var regions:Dynamic = data.regions;

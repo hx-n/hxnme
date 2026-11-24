@@ -1,1 +1,2 @@
 --macro hxn.me.macro.Registry.add("hxnme-2d")
+--macro addMetadata('@:assetType(hxn.me.render2d.RenderAssets.font)', 'hxn.text.Font')

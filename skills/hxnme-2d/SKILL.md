@@ -59,12 +59,13 @@ label.set("Score 10"); label.width; label.height;
 draw.text(label, x, y, color, alpha, angle);   // upright through y-up and Screen cameras
 ```
 
-Assets through the kernel's `ResMut<Assets>`, with `RenderAssets.texture`
-(PNG), `RenderAssets.font` (TTF, OTF, WOFF2) and `RenderAssets.atlas` (JSON
-of regions with an image; `slice: [l, t, r, b]` for nine-slices):
+Assets through the kernel's `hxn.me.Assets`: declare `AssetRef<Texture>`
+(PNG), `AssetRef<hxn.text.Font>` (TTF, OTF, WOFF2) and `AssetRef<Atlas>`
+(JSON of regions with an image; `slice: [l, t, r, b]` for nine-slices) fields
+on an `@:build(hxn.me.Assets.build())` class, and declare the atlas image too:
 
 ```haxe
-assets.load("ui/sheet.json", RenderAssets.atlas).then(a -> sheet = a);   // sheet.release() closes it
+assets.load(GameAssets.Sheet).then(a -> sheet = a);   // sheet.release() closes it
 draw.region(sheet.value.region("hero"), x, y);
 draw.regionSlice(sheet.value.region("panel"), x, y, w, h, tint, alpha, angle, scale);
 sprites.addRegion(sheet.value.region("tree"), x, y);

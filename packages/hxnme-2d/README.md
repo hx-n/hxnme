@@ -231,17 +231,23 @@ draw.plane = null;
 
 ## Assets
 
-`hxn.me.render2d.RenderAssets` holds the asset types of the renderer, for
-the kernel's `hxn.me.Assets`:
+`Texture`, `Atlas` and `hxn.text.Font` have asset types, so the app declares
+them as `AssetRef` fields for the kernel's `hxn.me.Assets`:
 
-| Type | Loads |
+| Field type | Loads |
 |---|---|
-| `RenderAssets.texture` | A PNG image as a `Texture`. When the asset is released, the texture draws nothing more, and its GPU texture is released at the start of the next frame, so what was drawn with it earlier in the frame still shows. |
-| `RenderAssets.font` | A TTF, OpenType or WOFF2 file as an `hxn.text.Font`, for `typesetter.text`. |
-| `RenderAssets.atlas` | A JSON file of named regions, and the image it lists, as an `Atlas`. |
+| `AssetRef<Texture>` | A PNG image. When the asset is released, the texture draws nothing more, and its GPU texture is released at the start of the next frame, so what was drawn with it earlier in the frame still shows. |
+| `AssetRef<hxn.text.Font>` | A TTF, OpenType or WOFF2 file, for `typesetter.text`. |
+| `AssetRef<Atlas>` | A JSON file of named regions, and the image it lists. |
 
 ```haxe
-assets.load("ui/sheet.json", RenderAssets.atlas).then(a -> sheet = a);
+@:build(hxn.me.Assets.build())
+class GameAssets {
+	@:asset("ui/sheet.png") public static var SheetImage:AssetRef<Texture>;
+	@:asset("ui/sheet.json") public static var Sheet:AssetRef<Atlas>;
+}
+
+assets.load(GameAssets.Sheet).then(a -> sheet = a);
 
 var atlas = sheet.value;
 draw.region(atlas.region("hero"), x, y);
@@ -251,7 +257,8 @@ sprites.addRegion(atlas.region("tree"), 120, 40);
 
 The atlas file lists the image, relative to the file, and each region's
 corner and size in texture pixels, top left first. `slice` gives a region's
-nine-slice borders, left, top, right and bottom:
+nine-slice borders, left, top, right and bottom. Declare the image as well,
+because only declared files are bundled:
 
 ```json
 {

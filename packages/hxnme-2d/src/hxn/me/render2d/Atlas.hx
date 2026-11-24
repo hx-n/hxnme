@@ -19,6 +19,7 @@ package hxn.me.render2d;
 	one pixel between regions, because linear filtering reads the texels next
 	to a region at its edges.
 **/
+@:assetType(hxn.me.render2d.RenderAssets.atlas)
 class Atlas {
 	public final texture:Texture;
 

@@ -1,5 +1,6 @@
 package hxn.me;
 
+#if !macro
 import haxe.ds.StringMap;
 import haxe.io.Bytes;
 import hxn.Future;
@@ -7,59 +8,63 @@ import hxn.assets.AssetCatalog;
 import hxn.assets.AssetLoader;
 import hxn.assets.FileSource;
 import hxn.file.Storage;
+#end
 
 /**
 	`Assets` is the kernel resource that loads the app's assets with
-	hxn-assets. `load` reads an address and decodes it with an `AssetType`,
-	and returns a handle when it is ready. Loads of one address and type share
-	one value. When the last handle to it is released, the value closes and
-	its bytes are unloaded.
+	hxn-assets. The app declares its assets as fields of type `AssetRef<T>` on
+	a class built with `@:build(hxn.me.Assets.build())`:
 
-	Bundled files come from the `assets` directory, which hxn-assets copies
-	beside the program at compile time. If the app declares no hxn-assets
-	catalog class, every file is bundled. If it declares one, only the files
-	that its catalogs list are bundled. An address that a catalog added with
-	`add` lists, such as `GameAssets.addresses.Hero`, loads with that
-	catalog's dependencies and content checks. Any other address is a path in
-	`assets`. `app.id` in `hxnme.toml` names the app's storage.
+	```haxe
+	@:build(hxn.me.Assets.build())
+	class GameAssets {
+		@:asset("ui/sheet.json") public static var Sheet:AssetRef<Atlas>;
+		@:asset("levels/start.json") public static var Start:LevelData;
+	}
+	```
+
+	`load(GameAssets.Sheet)` returns a handle when the asset is ready. Loads
+	of one asset share one value. When the last handle to it is released, the
+	value closes and its bytes are unloaded. Fields of other types are
+	hxn-assets fields, such as data that is decoded at compile time.
 **/
 class Assets {
+	/** The build macro for a class of asset declarations. It runs hxn-assets' macro on the class too. **/
+	public static macro function build():Array<haxe.macro.Expr.Field>
+		return hxn.me.macro.AssetFields.build();
+
+	#if !macro
 	final entries = new StringMap<AssetEntry>();
-	final loaders:Array<{catalog:AssetCatalog, loader:AssetLoader}> = [];
+	final loaders = new StringMap<AssetLoader>();
 	var storage:Null<Storage>;
 	var source:Null<FileSource>;
 
 	public function new() {}
 
-	/** Adds the addresses of `catalog`, such as `GameAssets.catalog()` of an hxn-assets class. **/
-	public function add(catalog:AssetCatalog):Void
-		loaders.push({catalog: catalog, loader: new AssetLoader(files(), catalog)});
-
 	/**
-		Loads `address` and decodes it as `type`, such as `AssetTypes.json`.
-		The future gives a handle to the value, or fails if the asset cannot be
-		read or decoded.
+		Loads the asset that `ref` declares. The future gives a handle to its
+		value, or fails if the asset cannot be read or decoded.
 	**/
-	public function load<T>(address:String, type:AssetType<T>):Future<Asset<T>> {
-		var key = type.name + "\n" + address;
-		var entry = entries.get(key);
-		if (entry == null) {
-			var made = new AssetEntry(this, key, address, cast type);
-			entries.set(key, made);
-			var context = new AssetContext(this, made);
-			made.ready = read(address).flatMap(bytes -> (cast type : AssetType<Dynamic>).decode(bytes, context)).map(value -> {
-				made.value = value;
-				value;
-			});
-			made.ready.then(_ -> {}, _ -> forget(made));
-			entry = made;
+	public function load<T>(ref:AssetRef<T>):Future<Asset<T>> {
+		var loader = loaders.get(ref.source());
+		if (loader == null) {
+			loader = new AssetLoader(files(), ref.list());
+			loaders.set(ref.source(), loader);
 		}
-		entry.count++;
-		var shared = entry;
-		return entry.ready.map(_ -> new Asset<T>(shared));
+		var from = loader;
+		return open(ref.source() + "\n" + ref.address, ref.path, ref.decoder(), () -> from.load(ref.address), () -> from.unload(ref.address));
 	}
 
-	/** Returns the number of addresses and types that are loaded or loading. **/
+	/**
+		Loads the bundled file at `path` and decodes it as `type`. Decoders use
+		it, through `AssetContext`, for files that an asset lists, such as the
+		image of an atlas. If the app declares assets, the file must be one of
+		them, because only declared files are bundled.
+	**/
+	public function loadFile<T>(path:String, type:AssetType<T>):Future<Asset<T>>
+		return open("\n" + path, path, type, () -> files().read(path), () -> {});
+
+	/** Returns the number of assets that are loaded or loading. **/
 	public var loaded(get, never):Int;
 
 	function get_loaded():Int {
@@ -72,12 +77,31 @@ class Assets {
 	/** Closes the storage and the loaders. Values that handles still hold stay as they are. **/
 	public function close():Void {
 		for (l in loaders)
-			l.loader.close();
-		loaders.resize(0);
+			l.close();
+		loaders.clear();
 		if (storage != null)
 			storage.close();
 		storage = null;
 		source = null;
+	}
+
+	function open<T>(where:String, path:String, type:AssetType<T>, read:() -> Future<Bytes>, unload:() -> Void):Future<Asset<T>> {
+		var key = type.name + "\n" + where;
+		var entry = entries.get(key);
+		if (entry == null) {
+			var made = new AssetEntry(this, key, path, cast type, unload);
+			entries.set(key, made);
+			var context = new AssetContext(this, made);
+			made.ready = read().flatMap(bytes -> (cast type : AssetType<Dynamic>).decode(bytes, context)).map(value -> {
+				made.value = value;
+				value;
+			});
+			made.ready.then(_ -> {}, _ -> forget(made));
+			entry = made;
+		}
+		entry.count++;
+		var shared = entry;
+		return entry.ready.map(_ -> new Asset<T>(shared));
 	}
 
 	// Counts down the handles of `entry`, and closes its value after the last one.
@@ -88,9 +112,7 @@ class Assets {
 		forget(entry);
 		if (entry.value != null)
 			entry.type.close(entry.value);
-		for (l in loaders)
-			if (has(l.catalog, entry.address))
-				l.loader.unload(entry.address);
+		entry.unload();
 	}
 
 	// Removes `entry` and releases the assets that its value holds.
@@ -102,16 +124,6 @@ class Assets {
 		entry.held.resize(0);
 	}
 
-	function read(address:String):Future<Bytes> {
-		for (l in loaders)
-			if (has(l.catalog, address))
-				return l.loader.load(address);
-		return files().read(address);
-	}
-
-	static function has(catalog:AssetCatalog, address:String):Bool
-		return try catalog.get(address) != null catch (_:Dynamic) false;
-
 	function files():FileSource {
 		if (source == null) {
 			storage = new Storage(Project.text("app.id", "hxnme"));
@@ -119,4 +131,5 @@ class Assets {
 		}
 		return source;
 	}
+	#end
 }

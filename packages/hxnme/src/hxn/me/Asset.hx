@@ -7,14 +7,14 @@ package hxn.me;
 	released, the value closes.
 **/
 class Asset<T> {
-	/** The address that the asset was loaded from. **/
-	public final address:String;
+	/** The path of the file that the asset was loaded from. **/
+	public final path:String;
 
 	var entry:Null<AssetEntry>;
 
 	@:allow(hxn.me) function new(entry:AssetEntry) {
 		this.entry = entry;
-		address = entry.address;
+		path = entry.path;
 	}
 
 	/** The loaded value. Reading it after `release` throws. **/
@@ -22,7 +22,7 @@ class Asset<T> {
 
 	function get_value():T {
 		if (entry == null)
-			throw 'the asset $address was released';
+			throw 'the asset $path was released';
 		return entry.value;
 	}
 

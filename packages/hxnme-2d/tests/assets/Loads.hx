@@ -8,7 +8,6 @@ import hxn.me.gpu.Gpu;
 import hxn.me.gpu.RenderTarget;
 import hxn.me.render2d.Atlas;
 import hxn.me.render2d.Draw;
-import hxn.me.render2d.RenderAssets;
 import hxn.me.render2d.Typesetter;
 import hxn.text.Font;
 
@@ -32,8 +31,8 @@ class Loads {
 		main.target = target;
 		main.clear = {r: 0, g: 0, b: 0, a: 1};
 		var store:Assets = assets;
-		store.load("sheet.json", RenderAssets.atlas).then(a -> atlas = a, fail);
-		store.load("font.ttf", RenderAssets.font).then(f -> font = f, fail);
+		store.load(Art.Sheet).then(a -> atlas = a, fail);
+		store.load(Art.UiFont).then(f -> font = f, fail);
 	}
 
 	// Draws the red region at its own size, and the panel as a nine-slice twice its border.

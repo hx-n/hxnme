@@ -6,17 +6,20 @@ package hxn.me;
 class AssetEntry {
 	final assets:Assets;
 	final key:String;
-	final address:String;
+	// The path of the asset's file, which `AssetContext.resolve` resolves against.
+	final path:String;
 	final type:AssetType<Dynamic>;
 	var value:Dynamic;
 	var ready:Null<hxn.Future<Dynamic>>;
 	var count = 0;
 	final held:Array<Asset<Dynamic>> = [];
+	final unload:() -> Void;
 
-	function new(assets:Assets, key:String, address:String, type:AssetType<Dynamic>) {
+	function new(assets:Assets, key:String, path:String, type:AssetType<Dynamic>, unload:() -> Void) {
 		this.assets = assets;
 		this.key = key;
-		this.address = address;
+		this.path = path;
 		this.type = type;
+		this.unload = unload;
 	}
 }

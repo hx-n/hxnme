@@ -322,43 +322,62 @@ window, with the display that the `display` keys set.
 ## Assets
 
 The kernel resource `hxn.me.Assets` loads the app's assets with
-[hxn-assets](https://github.com/hx-n/hxn-assets). `load(address, type)`
-reads the asset and decodes it with an `AssetType`, and its future gives an
-`Asset` handle. `asset.value` is the decoded value. Call `release()` when the
-handle is no longer needed:
+[hxn-assets](https://github.com/hx-n/hxn-assets). The app declares its assets
+on a class built with `@:build(hxn.me.Assets.build())`, as hxn-assets fields:
 
 ```haxe
-static var level:Null<Asset<Dynamic>>;
+typedef LevelData = {name:String, lives:Int};
 
-@:system(Start)
-static function setup(assets:ResMut<Assets>) {
-	assets.load("levels/start.json", AssetTypes.json).then(a -> level = a);
+@:build(hxn.me.Assets.build())
+class GameAssets {
+	@:asset("ui/sheet.png") public static var SheetImage:AssetRef<Texture>;
+	@:asset("ui/sheet.json") public static var Sheet:AssetRef<Atlas>;
+	@:asset("levels/start.json") public static var Start:LevelData;
 }
 ```
 
-Loads of one address and type share one decoded value. After the last
-handle to it is released, the value closes and its bytes are unloaded.
-`AssetTypes` has `bytes`, `text` and `json`. Plugins provide types for their
-own objects, such as the textures and fonts of hxnme-2d.
+The macro runs hxn-assets' macro on the class, which checks each path at
+compile time, makes the catalog and bundles the files. A field of type
+`AssetRef<T>` becomes a reference that `assets.load` takes:
 
-Bundled files come from the `assets` directory of the app, which hxn-assets
-copies beside the program at compile time. If the app declares no
-hxn-assets catalog class, every file in `assets` is bundled. If it declares
-one, only the files that its catalogs list are bundled. `assets.add(catalog)`
-adds a catalog, such as `GameAssets.catalog()`, and its addresses then load
-with the catalog's dependencies and content checks. Any other address is a
-path in `assets`.
+```haxe
+static var sheet:Null<Asset<Atlas>>;
+
+@:system(Start)
+static function setup(assets:ResMut<Assets>) {
+	assets.load(GameAssets.Sheet).then(a -> sheet = a);
+}
+```
+
+The future gives an `Asset` handle, whose `value` is the decoded value. Loads
+of one asset share one value. Call `release()` when the handle is no longer
+needed. After the last handle to it is released, the value closes and its
+bytes are unloaded.
+
+The type `T` selects the decoder:
+
+- An engine type names its asset type with `@:assetType(expr)` on its class,
+  such as `Texture` and `Atlas` of hxnme-2d. `@:assetType` on the field
+  overrides it.
+- Any other type is data, which hxn-assets decodes as it decodes a dynamic
+  field: `String` from text, `haxe.io.Bytes` as is, and JSON checked against
+  the declared type. `@:assetFormat` and `@:assetDecode` apply as in
+  hxn-assets.
+
+Fields of other types keep their hxn-assets meaning. `Start` above is
+decoded at compile time and embedded, so it needs no load. hxn-assets bundles
+only the files that the app's declaration classes list, so an atlas's image is
+declared too.
 
 An `AssetType` is made from a name, a `decode` function and an optional
-`close` function. `decode` takes the bytes and an `AssetContext`, and returns
-a future of the value. Through the context, it loads the other assets that
-the value holds, such as an image next to the file, and the context releases
-them after the value closes:
+`close` function. `decode` takes the bytes and an `AssetContext`. Through the
+context, it loads other files that the value holds, such as the image that an
+atlas lists, and the context releases them after the value closes:
 
 ```haxe
 final pair = new AssetType<String>("pair", (bytes, context) ->
-	context.load(context.resolve("other.txt"), AssetTypes.text).map(other -> bytes.toString() + other));
+	context.load(context.resolve("other.txt"), note).map(other -> bytes.toString() + other));
 ```
 
-The check in `tests/assets` loads JSON, text and catalog addresses, and
-tests what handles share, close and release.
+The check in `tests/assets` declares text, JSON and a type with a dependency,
+and tests what handles share, close and release.

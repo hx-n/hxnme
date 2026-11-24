@@ -7,7 +7,9 @@ import hxn.Future;
 	`AssetType` turns an asset's bytes into a value of type `T` for
 	`Assets.load`, and closes the value after the last handle to it is
 	released. Plugins provide types for their objects, such as the textures
-	of hxnme-2d. `AssetTypes` holds the kernel's types for data.
+	of hxnme-2d, and put `@:assetType(expr)` on the class so that
+	`AssetRef<Class>` fields find the type. hxn-assets decodes data types
+	itself.
 **/
 class AssetType<T> {
 	/** The name that keeps loads of one address with different types apart. **/
