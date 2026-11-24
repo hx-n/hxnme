@@ -68,6 +68,37 @@ runs:
         # Extracted in place: tar reads a Windows path's drive as a host.
         (cd "$RUNNER_TEMP/ash" && curl -fsSL "https://github.com/rayzor-blade/ash/releases/download/v0.1.22/$archive" | tar -xz)
         echo "ASH=$RUNNER_TEMP/ash/ash" >> "$GITHUB_ENV"
+    # On Windows, Ash links a program that loads HDLLs against an import library for
+    # libhl.dll, which its archive does not ship. Without it, Ash hands the DLL itself to
+    # the linker. The import library is made from the DLL's exports, with each export
+    # outside .text marked DATA. Programs load libhl.dll from PATH.
+    - if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        bin="/c/Program Files/LLVM/bin"
+        dll="$RUNNER_TEMP/ash/libhl.dll"
+        start=0 size=0 text=0
+        while read -r key value _; do
+          case $key in
+            Name:) [ "$value" = .text ] && text=1 || text=0 ;;
+            VirtualSize:) [ $text = 1 ] && size=$((value)) ;;
+            VirtualAddress:) [ $text = 1 ] && start=$((value)) ;;
+          esac
+        done < <("$bin/llvm-readobj" --sections "$dll")
+        {
+          echo "LIBRARY libhl.dll"
+          echo "EXPORTS"
+          while read -r key value _; do
+            case $key in
+              Name:) name=$value ;;
+              RVA:)
+                rva=$((value))
+                if [ $rva -lt $start ] || [ $rva -ge $((start + size)) ]; then echo "  $name DATA"; else echo "  $name"; fi ;;
+            esac
+          done < <("$bin/llvm-readobj" --coff-exports "$dll")
+        } > "$RUNNER_TEMP/ash/libhl.def"
+        "$bin/llvm-dlltool" -m i386:x86-64 -d "$RUNNER_TEMP/ash/libhl.def" -D libhl.dll -l "$RUNNER_TEMP/ash/libhl.dll.lib"
+        echo "$(cygpath -w "$RUNNER_TEMP/ash")" >> "$GITHUB_PATH"
     - if: runner.os == 'Linux' && inputs.drivers != ''
       shell: bash
       run: |

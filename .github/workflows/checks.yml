@@ -102,6 +102,8 @@ jobs:
       # With --no-fma, Ash rounds each operation as hxcpp does, so hxcpp prints the same
       # output. CPPIA keeps Single values in double precision, so it is not compared.
       # hxn build takes no --no-fma, so the Ash executable is not compared either.
+      # The physics checks run for many minutes in Ash's interpreter, so CI runs them in
+      # hybrid and JIT modes. The kernel and plugin checks cover the interpreter.
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         uses: ./.github/actions/check
         with:
@@ -109,7 +111,7 @@ jobs:
           file: checks.hxml
           runtime: ${{ inputs.runtime }}
           ash-options: --no-fma
-          ash-modes: jit interp
+          ash-modes: jit
           compare: ${{ inputs.runtime == 'cpp' }}
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         uses: ./.github/actions/check
@@ -118,7 +120,7 @@ jobs:
           file: concurrent-checks.hxml
           runtime: ${{ inputs.runtime }}
           ash-options: --no-fma
-          ash-modes: jit interp
+          ash-modes: jit
           compare: ${{ inputs.runtime == 'cpp' }}
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         uses: ./.github/actions/check
@@ -127,7 +129,7 @@ jobs:
           file: world-growth-checks.hxml
           runtime: ${{ inputs.runtime }}
           ash-options: --no-fma
-          ash-modes: jit interp
+          ash-modes: jit
           compare: ${{ inputs.runtime == 'cpp' }}
       # The island parallel checks print timings, so their output is not compared.
       # Each check program exits with an error when a check fails.
@@ -141,7 +143,7 @@ jobs:
         run: |
           timeout 1200 hxn run hl island-parallel-checks.hxml --vm "$ASH"
           for file in checks concurrent-checks world-growth-checks island-parallel-checks; do
-            for mode in "" "--mode jit" "--mode interp"; do
+            for mode in "" "--mode jit"; do
               echo "== Ash $mode $file-simd"
               timeout 1200 hxn run hl $file-simd.hxml --vm "$ASH $mode"
             done
