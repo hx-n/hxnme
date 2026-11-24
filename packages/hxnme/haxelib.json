@@ -11,7 +11,7 @@
   "classPath": "src",
   "dependencies": {
     "hxn": "",
-    "hxn-assets": "0.2.0"
+    "hxn-assets": "0.2.1"
   },
   "tags": [
     "hashlink",

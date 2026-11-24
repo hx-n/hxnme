@@ -11,7 +11,7 @@
   "classPath": "src",
   "dependencies": {
     "hxnme": "0.0.1",
-    "hxn-window": "0.2.0"
+    "hxn-window": "0.2.3"
   },
   "tags": [
     "hashlink",
