@@ -26,47 +26,57 @@ jobs:
         os: [macos-15, ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - uses: ./.github/actions/check
+      - id: setup
+        uses: ./.github/actions/setup
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme/tests
           file: toml-checks.hxml
           runtime: ${{ inputs.runtime }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme/tests/plugins
           runtime: ${{ inputs.runtime }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme/tests/systems
           runtime: ${{ inputs.runtime }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme/tests/loop
           runtime: ${{ inputs.runtime }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme/tests/headless
           runtime: ${{ inputs.runtime }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme/tests/libraries
           runtime: ${{ inputs.runtime }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme/tests/libraries-override
           runtime: ${{ inputs.runtime }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme/tests/assets
           runtime: ${{ inputs.runtime }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme/tests/new
           runtime: ${{ inputs.runtime }}
       # Each error check compiles broken programs with Haxe's interpreter and expects
       # each one's compile error, so it runs in one workflow only.
-      - if: inputs.runtime == 'ash'
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' && inputs.runtime == 'ash' }}
         name: Compile errors
         working-directory: packages/hxnme/tests
         run: |
@@ -87,11 +97,13 @@ jobs:
         os: [macos-15, ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
+      - id: setup
+        uses: ./.github/actions/setup
       # With --no-fma, Ash rounds each operation as hxcpp does, so hxcpp prints the same
       # output. CPPIA keeps Single values in double precision, so it is not compared.
       # hxn build takes no --no-fma, so the Ash executable is not compared either.
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme-physics/tests
           file: checks.hxml
@@ -99,7 +111,8 @@ jobs:
           ash-options: --no-fma
           ash-modes: jit interp
           compare: ${{ inputs.runtime == 'cpp' }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme-physics/tests
           file: concurrent-checks.hxml
@@ -107,7 +120,8 @@ jobs:
           ash-options: --no-fma
           ash-modes: jit interp
           compare: ${{ inputs.runtime == 'cpp' }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme-physics/tests
           file: world-growth-checks.hxml
@@ -117,11 +131,11 @@ jobs:
           compare: ${{ inputs.runtime == 'cpp' }}
       # The island parallel checks print timings, so their output is not compared.
       # Each check program exits with an error when a check fails.
-      - if: inputs.runtime != 'ash'
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' && inputs.runtime != 'ash' }}
         name: Island parallel checks
         working-directory: packages/hxnme-physics/tests
         run: timeout 1200 hxn run ${{ inputs.runtime }} island-parallel-checks.hxml
-      - if: inputs.runtime == 'ash'
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' && inputs.runtime == 'ash' }}
         name: Island parallel checks and SIMD paths
         working-directory: packages/hxnme-physics/tests
         run: |
@@ -153,37 +167,44 @@ jobs:
             drivers: hxn-gpu-d3d12:0.2.3
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
+      - id: setup
+        uses: ./.github/actions/setup
         with:
           drivers: ${{ matrix.drivers }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme-window/tests/window
           runtime: ${{ inputs.runtime }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme-input/tests/input
           runtime: ${{ inputs.runtime }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme-gpu/tests/gpu
           runtime: ${{ inputs.runtime }}
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme-2d/tests/draw
           runtime: ${{ inputs.runtime }}
           minutes: 30
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: packages/hxnme-2d/tests/assets
           runtime: ${{ inputs.runtime }}
-      - if: inputs.runtime == 'ash'
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' && inputs.runtime == 'ash' }}
         name: Compile errors
         run: |
           (cd packages/hxnme-input/tests && haxe action-errors.hxml)
           (cd packages/hxnme-2d/tests && haxe asset-errors.hxml)
       # The game the template makes, for 120 frames in a hidden window.
-      - name: Create a game
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: Create a game
         run: |
           mkdir -p "$RUNNER_TEMP/new"
           cd "$RUNNER_TEMP/new"
@@ -191,7 +212,8 @@ jobs:
           perl -0pi -e 's/^\[app\]\n/[app]\nframes = 120\n/m; s/^\[window\]\n/[window]\nvisible = false\n/m' game/hxnme.toml
           cat game/hxnme.toml
           echo "GAME=$RUNNER_TEMP/new/game" >> "$GITHUB_ENV"
-      - uses: ./.github/actions/check
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/check
         with:
           directory: ${{ env.GAME }}
           runtime: ${{ inputs.runtime }}
