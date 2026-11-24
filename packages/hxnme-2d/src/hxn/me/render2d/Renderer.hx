@@ -83,11 +83,11 @@ class Renderer {
 				b.close();
 			own.resize(0);
 			capacities[set] = instances.capacity;
-			for (_ in 0...Instances.FIELDS)
-				own.push(device.createBuffer({size: instances.capacity * Instances.STRIDE, usage: Vertex}));
+			for (field in 0...Instances.FIELDS)
+				own.push(device.createBuffer({size: instances.capacity * Instances.stride(field), usage: Vertex}));
 		}
 		for (i in 0...Instances.FIELDS)
-			device.writeBuffer(own[i], 0, instances.fields[i].sub(0, instances.length * Instances.STRIDE));
+			device.writeBuffer(own[i], 0, instances.fields[i].sub(0, instances.length * Instances.stride(i)));
 		for (run in draw.runs)
 			if (run.texture != null)
 				run.texture.upload(device);
@@ -112,9 +112,9 @@ class Renderer {
 				own.resize(0);
 				group.capacities[set] = instances.capacity;
 				for (i in 0...Instances.FIELDS) {
-					own.push(device.createBuffer({size: instances.capacity * Instances.STRIDE, usage: Vertex}));
-					device.writeBuffer(own[i], 0, instances.fields[i].sub(0, length * Instances.STRIDE));
-					bytes += length * Instances.STRIDE;
+					own.push(device.createBuffer({size: instances.capacity * Instances.stride(i), usage: Vertex}));
+					device.writeBuffer(own[i], 0, instances.fields[i].sub(0, length * Instances.stride(i)));
+					bytes += length * Instances.stride(i);
 				}
 			} else
 				for (i in 0...Instances.FIELDS) {
@@ -123,7 +123,7 @@ class Renderer {
 					var low = group.low[set][i];
 					if (low >= high)
 						continue;
-					var at = low * Instances.STRIDE, size = (high - low) * Instances.STRIDE;
+					var at = low * Instances.stride(i), size = (high - low) * Instances.stride(i);
 					device.writeBuffer(own[i], at, instances.fields[i].sub(at, size));
 					bytes += size;
 				}
@@ -232,7 +232,7 @@ class Renderer {
 		}
 		pass.setBindGroup(Shader.TEXTURE_image_GROUP, groupOf(on, image, pipeline, shared));
 		for (i in 0...Instances.FIELDS)
-			pass.setVertexBuffer(i, source[i], start * Instances.STRIDE);
+			pass.setVertexBuffer(i, source[i], start * Instances.stride(i));
 		pass.draw(4, count);
 	}
 
@@ -256,10 +256,10 @@ class Renderer {
 		var found = pipelines.get(key);
 		if (found != null)
 			return found;
-		var field = (location:Int) -> ({
-			stride: Instances.STRIDE,
+		var field = (location:Int, field:Int) -> ({
+			stride: Instances.stride(field),
 			perInstance: true,
-			attributes: [{location: location, format: Float32x4, offset: 0}]
+			attributes: [{location: location, format: Instances.packed(field) ? Unorm8x4 : Float32x4, offset: 0}]
 		} : hxn.gpu.Descriptors.VertexBufferLayout);
 		var pipeline = device.createRenderPipeline({
 			shader: shader,
@@ -269,13 +269,13 @@ class Renderer {
 			// Later content at the same depth draws over earlier content, as without depth.
 			depth: depth ? {format: Depth32Float, compare: LessEqual} : null,
 			vertexBuffers: [
-				field(Shader.INPUT_rect),
-				field(Shader.INPUT_uv),
-				field(Shader.INPUT_color),
-				field(Shader.INPUT_xform),
-				field(Shader.INPUT_shape),
-				field(Shader.INPUT_radius),
-				field(Shader.INPUT_border)
+				field(Shader.INPUT_rect, Instances.RECT),
+				field(Shader.INPUT_uv, Instances.UV),
+				field(Shader.INPUT_color, Instances.COLOR),
+				field(Shader.INPUT_xform, Instances.XFORM),
+				field(Shader.INPUT_shape, Instances.SHAPE),
+				field(Shader.INPUT_radius, Instances.RADIUS),
+				field(Shader.INPUT_border, Instances.BORDER)
 			]
 		});
 		pipelines.set(key, pipeline);

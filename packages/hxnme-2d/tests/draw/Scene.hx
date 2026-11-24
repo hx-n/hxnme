@@ -102,8 +102,8 @@ class Scene {
 	// Moving the first sprite writes its rect, and the sprite that fills the
 	// removed one's place writes all seven fields: the rects of indices 0 and
 	// 1, and one instance of each other field. The text in `Sprites` changes
-	// from L to T, one glyph of seven fields.
-	static inline final CHANGED_BYTES = 2 * 16 + 6 * 16 + 7 * 16;
+	// from L to T, one glyph of all the fields.
+	static final CHANGED_BYTES = 2 * 16 + (hxn.me.render2d.Instances.BYTES - 16) + hxn.me.render2d.Instances.BYTES;
 
 	/**
 		Sets up a camera for each part of the check, each with its own layers
