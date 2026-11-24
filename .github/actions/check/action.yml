@@ -90,7 +90,8 @@ runs:
             cat hl.txt
             [ $code -eq 0 ] || { cat hl.err; fail "the check failed on HashLink"; }
             timeout $limit "${wrap[@]}" hxn run hl $file --vm "$vm" > ash.txt 2> ash.err
-            diff -u ash.txt hl.txt || fail "HashLink differs from Ash" ;;
+            # On Windows, the two runtimes end lines differently.
+            diff -u <(tr -d '\r' < ash.txt) <(tr -d '\r' < hl.txt) || fail "HashLink differs from Ash" ;;
           *)
             fail "unknown runtime ${{ inputs.runtime }}" ;;
         esac
