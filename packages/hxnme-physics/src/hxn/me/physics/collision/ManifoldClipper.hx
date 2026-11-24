@@ -57,7 +57,7 @@ class ClipTopology {
 	public var points:Array<Vec3>;
 	public var faces:Array<LocalFace>;
 
-	/** Polygon winding the faces were built for; a reshape that keeps it can update in place. */
+	/** Holds the polygon winding that the faces were built for. Each reshape that keeps it can update in place. */
 	public var ccw:Bool = true;
 
 	public function new(points:Array<Vec3>, faces:Array<LocalFace>) {
@@ -66,7 +66,7 @@ class ClipTopology {
 	}
 }
 
-/** Clipped contacts remain valid until the next generate call using this workspace. */
+/** `ClipWorkspace` holds the clipped contacts, which stay valid until the next generate call that uses this workspace. */
 class ClipWorkspace {
 	var pointPool:Array<Vec3> = [];
 	var facePool:Array<ClipFace> = [];
@@ -84,7 +84,7 @@ class ClipWorkspace {
 	public var clipA:Array<ClipVertex> = [];
 	public var clipB:Array<ClipVertex> = [];
 	public var contacts:Array<ClippedContact> = [];
-	// Inward normal of the side plane currently clipping the incident face.
+	// Holds the inward normal of the side plane that is clipping the incident face.
 	public var plane:Vec3 = new Vec3();
 
 	public function new() {}
@@ -139,7 +139,7 @@ class ClipWorkspace {
 	}
 }
 
-/** Clips the incident face to the reference face's side planes. */
+/** `ManifoldClipper` clips the incident face to the side planes of the reference face. */
 class ManifoldClipper {
 	static function localVertices(pool:VertexPool, def:ShapeDef):Array<Vec3> {
 		var points:Array<Vec3> = [];
@@ -519,7 +519,7 @@ class ManifoldClipper {
 		}
 		var limit = a.hasDepth() ? 4 : 2;
 		if (contacts.length > limit) {
-			// Keep the deepest points; the sort is stable, so equal depths keep clipping order.
+			// Keep the deepest points. The sort is stable, so equal depths keep the clipping order.
 			for (i in 1...contacts.length) {
 				var c = contacts[i];
 				var j = i - 1;

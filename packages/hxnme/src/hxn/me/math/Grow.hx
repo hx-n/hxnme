@@ -3,21 +3,21 @@ package hxn.me.math;
 import hxn.Float32Buffer;
 import hxn.Int32Buffer;
 
-/** Larger copies of the storage a physics world keeps by body, shape or joint, for when it is given more room. */
+/** `Grow` makes larger copies of the storage that a physics world keeps for each body, shape or joint, when the world gets more room. */
 // Haxe Int arithmetic wraps on overflow. -fwrapv gives the generated C++ the
-// same meaning on clang and gcc; without it, signed overflow is undefined and
+// same meaning on clang and gcc. Without it, signed overflow is undefined, and
 // the optimizer can drop masks and comparisons that depend on wrapping.
 // Haxe rounds the result of each Float and Single operation, as HashLink does.
 // -ffp-contract=off stops clang and gcc from fusing a multiply and an add into
 // one rounding, so hxcpp computes the same bits as HashLink.
-// Under Emscripten the heap has a fixed size unless it is allowed to grow,
+// Under Emscripten, the heap has a fixed size unless the linker lets it grow,
 // and the storage grows here.
 #if cpp
 @:buildXml('<files id="haxe"><compilerflag value="-fwrapv" unless="isMsvc"/><compilerflag value="-ffp-contract=off" unless="isMsvc"/></files>
 <linker id="exe" if="emscripten"><flag value="-sALLOW_MEMORY_GROWTH=1"/></linker>')
 #end
 class Grow {
-	/** `a` with room for `to` entries: the first `from` kept, the rest `fill`. */
+	/** Returns a copy of `a` with room for `to` entries. It keeps the first `from` entries and sets the rest to `fill`. */
 	public static function ints(a:Int32Buffer, from:Int, to:Int, fill:Int = 0):Int32Buffer {
 		var b = new Int32Buffer(to);
 		b.blit(0, a, 0, from);

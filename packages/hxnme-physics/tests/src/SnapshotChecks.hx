@@ -7,11 +7,12 @@ import hxn.me.physics.core.WorldBatch;
 import hxn.me.physics.core.WorldSnapshot;
 
 /**
- * Snapshots: a busy world saved partway, run on, restored and run again
- * gives the same bits; so does a second world built the same way; a body or
- * joint made after the snapshot disappears with it; saving and restoring
- * again allocates nothing. Worlds stepped together in a batch, on several
- * workers, step exactly as they would alone.
+ * `SnapshotChecks` tests snapshots. The checks save a busy world partway,
+ * run it on, restore it and run it again, and it gives the same bits. So
+ * does a second world built the same way. Each body or joint made after the
+ * snapshot disappears with it. Saving and restoring again allocates nothing.
+ * Worlds stepped together in a batch, on several workers, step exactly as
+ * they do alone.
  */
 class SnapshotChecks {
 	static function box(hx:Float, hy:Float, hz:Float):Array<Vec3> {
@@ -24,10 +25,11 @@ class SnapshotChecks {
 	}
 
 	/**
-	 * Builds a floor; a stack of boxes, one of them bouncy; a box off to one side
-	 * that falls asleep before a sweeping kinematic paddle wakes it; a sensor;
-	 * a chain of driven spherical joints; a hinge with limits and a drive; a
-	 * prismatic slider with a motor; a weld; a spring and a rigid rod.
+	 * Builds a scene with a floor, a stack of boxes with one bouncy box, a box
+	 * off to one side that falls asleep before a sweeping kinematic paddle
+	 * wakes it, a sensor, a chain of driven spherical joints, a hinge with
+	 * limits and a drive, a prismatic slider with a motor, a weld, a spring
+	 * and a rigid rod.
 	 */
 	static function build(parallel:Bool):{world:World, paddle:BodyId, spherical:Array<JointId>, hinge:JointId, marker:BodyId, rail:BodyId, hook:BodyId} {
 		var w = new World(64, 64, 32);
@@ -84,7 +86,7 @@ class SnapshotChecks {
 		return {world: w, paddle: paddle, spherical: spherical, hinge: hinge, marker: marker, rail: rail, hook: hook};
 	}
 
-	/** Everything the scene does at a step depends only on the step's number, so a replay gets the same inputs. */
+	/** Drives the scene. Everything it does at a step depends only on the step's number, so a replay gets the same inputs. */
 	static function drive(s:{world:World, paddle:BodyId, spherical:Array<JointId>, hinge:JointId, marker:BodyId, rail:BodyId, hook:BodyId}, step:Int):Void {
 		var w = s.world, t = step / 60.0;
 		// The paddle waits, then sweeps across where the lone box sleeps.
@@ -96,7 +98,7 @@ class SnapshotChecks {
 		w.setKinematicTarget(s.hook, new Vec3(-4 + 0.3 * Math.sin(t * 2.1), 2.6, 3 + 0.2 * Math.sin(t * 1.7)), turn(1, 0, 0, 0.2 * Math.sin(t)));
 	}
 
-	/** Every body's pose and velocities, every contact's impulses, and the step's events, bit for bit. */
+	/** Returns every body's pose and velocities, every contact's impulses, and the step's events, bit for bit. */
 	static function fingerprint(w:World):String {
 		var out = new StringBuf();
 		inline function bits(v:Float) out.add(haxe.io.FPHelper.floatToI32(v) + ",");
@@ -142,7 +144,8 @@ class SnapshotChecks {
 		run(scene, 90, 300, again);
 		compare(straight, again, 'restoring $label');
 
-		// Bodies and joints made after the snapshot go with it, and one destroyed comes back; the replay is unchanged.
+		// Bodies and joints made after the snapshot go with it, and the destroyed body comes back. The
+		// replay is unchanged.
 		snapshot.restore(w);
 		var bodies = w.bodyCount, live = w.activeBodyCount;
 		w.destroyBody(scene.marker);
@@ -164,7 +167,7 @@ class SnapshotChecks {
 		run(copy, 90, 300, copied);
 		compare(straight, copied, 'restoring $label into another world');
 
-		// Adding a shape changes the world's structure; restoring then is refused.
+		// Adding a shape changes the world's structure, so the restore after it is refused.
 		var refused = false;
 		var b = w.createBody(BodyType.Dynamic, 0, 9, 0);
 		w.attachShape(b, ShapeBuilder.makeHull(w.verts, box(0.1, 0.1, 0.1), 0.01));

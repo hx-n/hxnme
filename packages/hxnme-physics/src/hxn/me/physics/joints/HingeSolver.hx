@@ -95,7 +95,7 @@ class HingeSolver {
 		driveTorque = new Float32Buffer(capacity);
 	}
 
-	/** Room for `to` joints, keeping the first `from`. */
+	/** Makes room for `to` joints, and keeps the first `from`. */
 	public function grow(from:Int, to:Int):Void {
 		localAxisAX = Grow.floats(localAxisAX, from, to);
 		localAxisAY = Grow.floats(localAxisAY, from, to);
@@ -171,10 +171,11 @@ class HingeSolver {
 	}
 
 	/**
-	 * Reflects the joint's frames through the plane the diagonal reflection
-	 * (ex, ey, ez) fixes, in each body's frame: axes reflect and reverse,
-	 * references reflect, so the angle and its limits keep their values as the
-	 * bodies' relative turn mirrors. Applying it twice restores the joint.
+	 * Reflects the joint's frames through the plane that the diagonal
+	 * reflection (ex, ey, ez) fixes, in each body's frame. The axes reflect and
+	 * reverse, and the references reflect, so the angle and its limits keep
+	 * their values as the relative turn of the bodies mirrors. Applying it
+	 * twice restores the joint.
 	 */
 	public function mirror(id:Int, ex:Float, ey:Float, ez:Float):Void {
 		localAxisAX[id] *= -ex;
@@ -280,7 +281,7 @@ class HingeSolver {
 			maxImpulse = maxMotorTorque[id] * h;
 		}
 		motorImpulse[id] = Math.max(-maxImpulse, Math.min(maxImpulse, motorImpulse[id]));
-		// Each motor pushing into an active limit is left to the limit row.
+		// When a motor pushes into an active limit, the limit row handles it.
 		var blocked = state == 1 && speed < 0.0 || state == -1 && speed > 0.0;
 		if (blocked)
 			motorImpulse[id] = 0.0;
@@ -294,7 +295,7 @@ class HingeSolver {
 		if (maxImpulse > 0.0 && !blocked) {
 			var k = rows.angular(ax, ay, az);
 			var mass = k > 0.0 ? 1.0 / k : 0.0;
-			// Solved exactly toward speed / damping; with no damping the push is limited by the torque alone.
+			// Solves exactly toward speed / damping. With no damping, only the torque limits the push.
 			if (damping > 0.0)
 				rows.set(mass * speed / damping, mass, 0.0, -maxImpulse, maxImpulse, motorImpulse, id);
 			else
@@ -302,12 +303,12 @@ class HingeSolver {
 		}
 	}
 
-	/** The hinge angle the solver would measure with its bodies at rotations `qa` and `qb`. */
+	/** Returns the hinge angle that the solver measures with its bodies at rotations `qa` and `qb`. */
 	public function angleFor(id:Int, qa:Quat, qb:Quat):Float {
 		var ax = localAxisAX[id], ay = localAxisAY[id], az = localAxisAZ[id];
 		var rax = localRefAX[id], ray = localRefAY[id], raz = localRefAZ[id];
 		var rbx = localRefBX[id], rby = localRefBY[id], rbz = localRefBZ[id];
-		// Axis and reference vectors into world space: v + w t + q x t, with t = 2 q x v.
+		// Rotates the axis and reference vectors into world space: v + w t + q x t, with t = 2 q x v.
 		var tx = 2.0 * (qa.y * az - qa.z * ay),
 			ty = 2.0 * (qa.z * ax - qa.x * az),
 			tz = 2.0 * (qa.x * ay - qa.y * ax);
@@ -344,7 +345,7 @@ class HingeSolver {
 		outZ[id] = lz + qw * tz + qx * ty - qy * tx;
 	}
 
-	/** Visits settings and warm starts for `WorldSnapshot`; the world-space axes are rebuilt every substep. */
+	/** Visits settings and warm starts for `WorldSnapshot`. Each substep rebuilds the world-space axes. */
 	@:noCompletion public function visitState(s:hxn.me.physics.core.WorldSnapshot, joints:Int):Void {
 		s.floats(localAxisAX, joints);
 		s.floats(localAxisAY, joints);

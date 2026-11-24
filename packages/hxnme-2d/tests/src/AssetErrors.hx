@@ -4,10 +4,10 @@ import sys.io.File;
 import sys.io.Process;
 
 /**
-	Compiles atlas declarations that are wrong, and makes sure that each
-	compile fails with the error that describes the problem. Run it in
-	`tests` with `haxe asset-errors.hxml`. It needs hxnme, its window
-	and GPU plugins, and their libraries in haxelib.
+	`AssetErrors` compiles atlas declarations that are wrong, and makes sure
+	that each compile fails with the error that describes the problem. Run it
+	in `tests` with `haxe asset-errors.hxml`. It needs hxnme, its window and
+	GPU plugins, and their libraries in haxelib.
 **/
 class AssetErrors {
 	static final out = "bin/asset-errors";
@@ -53,8 +53,8 @@ class AssetErrors {
 		Sys.println('$what: $error');
 	}
 
-	// The class paths of the haxelib `name`. The check compiles without output,
-	// so it needs the classes only, and not the haxelib's macros.
+	// Returns the class paths of the haxelib `name`. The check compiles without
+	// output, so it needs the classes only, and not the haxelib's macros.
 	static function classPaths(name:String):Array<String> {
 		var process = new Process("haxelib", ["libpath", name]);
 		var root = StringTools.trim(process.stdout.readAll().toString());

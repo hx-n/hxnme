@@ -6,14 +6,14 @@ import hxn.text.PreparedText;
 import hxn.text.TextOptions;
 
 /**
-	`Text` is a string laid out in one font, for `Draw.text`. `Typesetter.text`
-	makes it. The first time that it is drawn or measured, it lays itself out.
-	After `set` changes the string, or after the scale or the atlases of the
-	typesetter change, it lays itself out again. The app can therefore keep one
-	`Text` for a label and change it in each frame.
+	`Text` holds a string laid out in one font, for `Draw.text`.
+	`Typesetter.text` makes it. The first time that it is drawn or measured,
+	it lays itself out. After `set` changes the string, or after the scale or
+	the atlases of the typesetter change, it lays itself out again. The app
+	can therefore keep one `Text` for a label and change it in each frame.
 **/
 class Text {
-	/** The string. Set it with `set`. **/
+	/** `value` holds the string. Change it with `set`. **/
 	public var value(default, null):String;
 
 	final typesetter:Typesetter;
@@ -37,13 +37,13 @@ class Text {
 		}
 	}
 
-	/** The width of the laid-out text, in logical pixels. **/
+	/** `width` gives the width of the laid-out text, in logical pixels. **/
 	public var width(get, never):Float;
 
 	function get_width():Float
 		return layout().width;
 
-	/** The height of the laid-out text, in logical pixels. **/
+	/** `height` gives the height of the laid-out text, in logical pixels. **/
 	public var height(get, never):Float;
 
 	function get_height():Float

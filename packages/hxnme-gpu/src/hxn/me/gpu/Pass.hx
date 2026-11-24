@@ -5,7 +5,7 @@ import hxn.gpu.RenderPass;
 import hxn.gpu.Texture;
 
 /**
-	Each pass draws into the frame, or into `target` when `target` is not
+	`Pass` draws into the frame, or into `target` when `target` is not
 	null. In each frame, the graph calls `draw` with the recording pass and
 	the texture that the pass draws into, and `draw` records the commands.
 	The first pass into the frame clears it to `Gpu.clear`, unless the pass

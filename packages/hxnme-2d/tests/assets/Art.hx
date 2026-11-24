@@ -3,7 +3,7 @@ import hxn.me.render2d.Atlas;
 import hxn.me.render2d.Texture;
 import hxn.text.Font;
 
-/** The check's asset declarations. The atlas image is declared too, so that it is bundled. **/
+/** `Art` declares the assets of the check. It declares the atlas image too, so that the image is bundled. **/
 @:build(hxn.me.Assets.build())
 class Art {
 	@:asset("sheet.png")

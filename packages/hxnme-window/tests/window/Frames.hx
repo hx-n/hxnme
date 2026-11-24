@@ -4,7 +4,7 @@ import hxn.me.Res;
 import hxn.me.ResMut;
 import hxn.me.Time;
 
-/** Prints the size of the window in logical pixels, and stops the app after three frames. **/
+/** `Frames` prints the size of the window in logical pixels, and stops the app after three frames. **/
 class Frames {
 	@:system(Start)
 	static function begin(display:Res<Display>) {

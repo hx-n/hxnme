@@ -5,7 +5,7 @@ import hxn.me.math.Vec3;
 import hxn.me.physics.core.Handles;
 import hxn.me.physics.core.World;
 
-/** World.validate: a sound world reports nothing, and each kind of fault is reported with its code and path. */
+/** `ValidationChecks` tests `World.validate`. Sound worlds report nothing, and each kind of fault is reported with its code and path. */
 class ValidationChecks {
 	static function box(hx:Float, hy:Float, hz:Float):Array<Vec3> {
 		return [for (k in 0...8) new Vec3(k & 1 != 0 ? hx : -hx, k & 2 != 0 ? hy : -hy, k & 4 != 0 ? hz : -hz)];
@@ -35,7 +35,7 @@ class ValidationChecks {
 		var d = w.validate();
 		if (d.items.length != 0) throw 'a sound world reported ${d.toJson()}';
 		if (w.validate() == d) throw "Validation reused a report without being asked";
-		// Span allocator refill regions so even one small allocation per call is visible.
+		// Spans the allocator's refill regions, so even one small allocation per call is visible.
 		var report = new Diagnostics(), batch = 8192;
 		var planar = new World(16,16,4), flatReport = new Diagnostics();
 		planar.attachShape(planar.createBody(BodyType.Dynamic,0,1),ShapeBuilder.makeBox(planar.verts,0.1,0.1,0,0));
@@ -89,7 +89,7 @@ class ValidationChecks {
 		expect(w, "WORLD_FELL_OUT", 'world/bodies/${w.bodySlot(lost)}/position');
 
 		w = sound();
-		// Each joint needs a body that can move when it is made; both are made static after.
+		// Each joint needs a body that can move when it is made. Both are made static afterwards.
 		var a = w.createBody(BodyType.Dynamic, 3, 0, 0), b = w.createBody(BodyType.Dynamic, 4, 0, 0);
 		w.attachShape(a, ShapeBuilder.makeHull(w.verts, box(0.1, 0.1, 0.1), 0.01));
 		w.attachShape(b, ShapeBuilder.makeHull(w.verts, box(0.1, 0.1, 0.1), 0.01));
@@ -100,7 +100,7 @@ class ValidationChecks {
 
 		w = sound();
 		var flat = w.createBody(BodyType.Static, -3, 0, 0);
-		// The builders refuse a flat polygon, but the vertex buffers are public: flatten a triangle through them.
+		// The builders refuse a flat polygon, but the vertex buffers are public. Flatten a triangle through them.
 		var line = w.attachShape(flat, ShapeBuilder.makePolygon(w.verts, [new Vec3(0, 0), new Vec3(1, 0), new Vec3(0, 1)], 0.0, 0.0));
 		var o = w.shapeVertOffset[w.shapeSlot(line)];
 		w.verts.vx[o + 2] = 2; w.verts.vy[o + 2] = 0;

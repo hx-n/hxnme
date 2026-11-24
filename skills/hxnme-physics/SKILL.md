@@ -7,8 +7,9 @@ description: Simulate rigid bodies in Haxe with the hxnme-physics haxelib (packa
 
 ## Setup
 
-List the plugin in the app's `hxnme.toml`, or select it with `-lib` in the
-program file:
+List the plugin in the app's `hxnme.toml`, or select it with
+`-lib hxnme-physics` in the program file. With `hxnme.toml`, the program
+file selects only the kernel:
 
 ```toml
 plugins = ["hxnme-physics"]
@@ -19,10 +20,11 @@ plugins = ["hxnme-physics"]
 -main Main
 ```
 
-Run with `hxn run hl app.hxml --vm ash` while developing. Build for
-distribution with `hxn build hl app.hxml` (Ash AOT) or `hxn build cpp app.hxml`.
-Add `-D ash_simd` to the program file for the 4-wide SIMD solver on Ash. The
-scalar solver runs everywhere else, with the same API.
+While you develop, run the app with `hxn run hl app.hxml --vm ash`. To
+build it for distribution, run `hxn build hl app.hxml` (Ash AOT) or
+`hxn build cpp app.hxml`. To use the 4-wide SIMD solver on Ash, add
+`-D ash_simd` to the program file. The scalar solver runs everywhere else,
+with the same API.
 
 ## Use
 
@@ -47,18 +49,19 @@ var p = world.getBodyTransform(disc).position;
 - `ShapeBuilder` makes circles, capsules, segments, boxes and convex polygons
   with optional depth and corner radius, and hulls from 3D points. Polygon
   vertices live in `world.verts`.
-- Joints: `createDistanceJoint`, `createHingeJoint` (limits, motor,
+- `createDistanceJoint`, `createHingeJoint` (limits, motor,
   `setHingeDrive`), `createPrismaticJoint`, `createSphericalJoint` (swing and
-  twist limits, `setSphericalDrive`) and `createWeldJoint`.
-- Queries: `queryAABB`, `rayCast`, `shapeCast`. Sensors and per-step contact,
-  overlap and impact events come from the world's events.
+  twist limits, `setSphericalDrive`) and `createWeldJoint` make joints.
+- `queryAABB`, `rayCast` and `shapeCast` query the world. Sensors and
+  per-step contact, overlap and impact events come from the world's events.
 - `FixedStep` runs a fixed timestep, and `getInterpolatedTransform` gives
-  the transform between steps for rendering. `World.reserve` grows storage ahead of time.
+  the transform between steps for rendering. `World.reserve` grows storage
+  ahead of time.
 - `WorldSnapshot` saves and restores the full solver state, bit for bit.
   `WorldBatch` steps independent worlds on a worker pool with the same
   results as stepping each alone. `World.enableParallelIslands` solves
   islands on worker threads.
-- Handles are generational: a handle to a destroyed body throws.
+- Handles are generational. Using a handle to a destroyed body throws.
   `World.validate` reports invalid state with a fault code and a path.
 
 The [README](https://github.com/hx-n/hxnme/blob/main/packages/hxnme-physics/README.md)
@@ -70,12 +73,13 @@ describes the solver, memory, water and determinism in full.
   way. Store jobs in fields, because a closure made per call allocates.
 - Body, shape and joint state is struct-of-arrays in hxn typed buffers
   (`hxn.Float32Buffer`, `hxn.Int32Buffer`). Do not add per-body objects.
-- Stepping is deterministic for a given runtime, build and worker count.
+- Stepping is deterministic for a given runtime, compiled program and worker
+  count.
   Never write a compound assignment to a `Single` with a `Float` operand,
   such as `s /= f`. HashLink computes it in single precision, and hxcpp in
   double. Cast first: `s = (s : Float) / f`.
-- hxcpp builds compile with `-ffp-contract=off`, so hxcpp and HashLink round
-  each operation the same way.
+- hxcpp compiles with `-ffp-contract=off`, so hxcpp and HashLink round each
+  operation the same way.
 
 ## Checks
 
@@ -93,10 +97,11 @@ hxn build hl checks-simd.hxml
 Each program has a `<name>.hxml` for every runtime and a `<name>-simd.hxml`
 for Ash. `hxn check` with `ash --no-fma` compares Ash and hxcpp output
 exactly. CPPIA keeps `Single` in double precision, and wasm's math library
-differs from the native one: compare those with their own earlier output.
-Set `ASH_GC_TLAB=0` on Ash, or the allocation checks count only whole 32 KiB
-regions. Benchmarks in `bench/` run on Ash with `--preset game`, on the Mac
-and the NUC. Results go in the issue, not in code.
+differs from the native one, so compare the output of those runtimes with
+their own earlier output. On Ash, set `ASH_GC_TLAB=0`. Otherwise the
+allocation checks count only whole 32 KiB regions. Run the benchmarks in
+`bench/` on Ash with `--preset game`, on the Mac and on the NUC. Put the
+results in the issue, not in code.
 
 Follow the [hxnme agent rules](https://github.com/hx-n/hxnme/blob/main/AGENTS.md)
 and the [hxn conventions](https://github.com/hx-n/hxn/blob/main/docs/conventions.md).

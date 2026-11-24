@@ -1,12 +1,12 @@
 package hxn.me;
 
 /**
-	Gives systems a queue of events of type `T`, as a resource. Systems that
-	take `ResMut<Events<T>>` push events, and systems that take
+	`Events` gives systems a queue of events of type `T`, as a resource.
+	Systems that take `ResMut<Events<T>>` push events, and systems that take
 	`Res<Events<T>>` read them. The schedule clears each queue at the end of
-	the frame, after `Render`, so an event is readable for the rest of the
-	frame in which it is pushed. Order the readers after the writers with
-	`after` or `before`.
+	the frame, after `Render`. So an event stays readable until the end of
+	the frame in which a system pushes it. Order the readers after the
+	writers with `after` or `before`.
 **/
 class Events<T> {
 	final items:Array<T> = [];
@@ -23,11 +23,11 @@ class Events<T> {
 	public inline function push(event:T):Void
 		items.push(event);
 
-	/** The event at `index`, from 0. **/
+	/** Returns the event at `index`, from 0. **/
 	public inline function get(index:Int):T
 		return items[index];
 
-	/** The events in the order they were pushed. **/
+	/** Returns an iterator over the events, in the order that systems pushed them. **/
 	public inline function iterator():Iterator<T>
 		return items.iterator();
 

@@ -13,12 +13,13 @@ import hxn.window.KeyCode;
 import hxn.window.MouseElementState;
 
 /**
-	Posts window events before the window plugin publishes them, and prints
-	the actions and the pointer in each frame. Control comes from the
-	window's modifier state. In frame 4, the key in the place of W types "Z"
-	with Shift held, and "z" without it, as on an AZERTY keyboard, and the left button goes down and up within the
-	frame. In frame 5, two touches begin and the second moves: the pointer
-	follows the first. The effects that `watch` makes print each change of the signal of
+	`Script` posts window events before the window plugin publishes them,
+	and prints the actions and the pointer in each frame. Control comes from
+	the window's modifier state. In frame 4, the key in the place of W types
+	"Z" with Shift held and "z" without it, as on an AZERTY keyboard. In the
+	same frame, the left button goes down and comes up. In frame 5, two
+	touches begin and the second moves, and the pointer follows the first.
+	The effects that `watch` makes print each change of the signal of
 	`Jump`, and each frame in which the pointer or the devices changed.
 **/
 class Script {
@@ -93,8 +94,8 @@ class Script {
 			lifecycle.quit();
 	}
 
-	// A key event. `plain` is the key without modifiers, which some
-	// platforms report, as winit's `key_without_modifiers`.
+	// Returns a key event. `plain` is the key without modifiers, as winit's
+	// `key_without_modifiers`, which some platforms report.
 	static function key(code:KeyCode, state:MouseElementState, text = "", plain = ""):Event {
 		var supplement:hxn.window.KeySupplement = plain == "" ? Unavailable : Supplement(Character(plain), Some(text));
 		return KeyboardInput(0, Input(Code(code), Character(text), text == "" ? None : Some(text), Standard, state, false, supplement), false);

@@ -3,8 +3,8 @@ package hxn.me.render2d;
 /**
 	`Sdf` holds the signed distance functions of the 2D shapes, for shaders
 	that `@:import` it. Each function returns the distance from `p` to the
-	shape's edge: negative inside, positive outside. The functions come from
-	Ashui's `Sdf.hx`, which ports them from Blinc.
+	shape's edge, which is negative inside and positive outside. The
+	functions come from Ashui's `Sdf.hx`, which ports them from Blinc.
 **/
 class Sdf implements hxn.gpu.Shader {
 	static var SRC = {
@@ -12,9 +12,9 @@ class Sdf implements hxn.gpu.Shader {
 			Returns the distance to a rectangle centered on the origin, with half
 			size `half`. Each corner has its radius in `radii` and its shape in
 			`shapes`, both top left, top right, bottom right and bottom left,
-			with y up. A shape is the `n` of `CornerShape`: 1 round, 2 squircle,
-			0 bevel, -1 scoop, 100 or more square, -100 or less notch. The
-			distance changes by one pixel for each pixel, so borders have the
+			with y up. Each shape is the `n` of `CornerShape`: 1 round, 2
+			squircle, 0 bevel, -1 scoop, 100 or more square, -100 or less notch.
+			The distance changes by one pixel for each pixel, so borders have the
 			same width at every shape.
 		**/
 		function shapedBox(p:Vec2, half:Vec2, radii:Vec4, shapes:Vec4):Float {
@@ -34,22 +34,22 @@ class Sdf implements hxn.gpu.Shader {
 			}
 			r = min(r, min(half.x, half.y));
 			var qa = q + vec2(r, r);
-			// The rectangle with square corners.
+			// `box` is the distance to the rectangle with square corners.
 			var box = length(max(q, vec2(0., 0.))) + min(max(q.x, q.y), 0.);
 			var d = box;
 			if (r <= 0. || n >= 100.) {
 				d = box;
 			} else if (n <= -100.) {
-				// The rectangle less the square beyond the corner's step.
+				// Notches remove the square beyond the corner's step from the rectangle.
 				var cut = length(max(-qa, vec2(0., 0.))) + min(max(-qa.x, -qa.y), 0.);
 				d = max(box, -cut);
 			} else if (abs(n - 1.) < 0.01) {
 				d = length(max(qa, vec2(0., 0.))) + min(max(qa.x, qa.y), 0.) - r;
 			} else if (n < 0.) {
-				// The rectangle less a superellipse centered on the corner's tip.
+				// Negative shapes remove a superellipse centered on the corner's tip from the rectangle.
 				d = max(box, -superellipse(-q, r, n));
 			} else if (abs(n) < 0.01) {
-				// The rectangle cut by the line across the corner.
+				// Bevels cut the rectangle along the line across the corner.
 				d = max(box, (qa.x + qa.y - r) * 0.70710678);
 			} else {
 				d = max(box, superellipse(qa, r, n));
@@ -60,8 +60,8 @@ class Sdf implements hxn.gpu.Shader {
 		/**
 			Returns the signed distance from `v`, at least 0 on both axes, to a
 			quarter superellipse of radius `r` and exponent `2^|n|` about the
-			origin. The norm is divided by the length of its gradient, so the
-			distance changes by one pixel for each pixel.
+			origin. The function divides the norm by the length of its gradient,
+			so the distance changes by one pixel for each pixel.
 		**/
 		function superellipse(v:Vec2, r:Float, n:Float):Float {
 			var e = pow(2., min(abs(n), 5.));

@@ -1,10 +1,10 @@
 package hxn.me;
 
 /**
-	The state of the app, a kernel resource. The host sets `suspended`,
-	`visible` and `focused` from the platform. While the app is suspended,
-	the loop runs no phase. Systems call `quit` to stop the app after the
-	current frame.
+	`Lifecycle` holds the state of the app. It is a kernel resource. The host
+	sets `suspended`, `visible` and `focused` from the platform. While the
+	app is suspended, the loop runs no phase. Systems call `quit` to stop the
+	app after the current frame.
 **/
 class Lifecycle {
 	/** False after a system calls `quit`, or after the platform closes the app. **/

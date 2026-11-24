@@ -1,9 +1,9 @@
 # Third-party notices
 
-hxnme-2d depends on the code listed below, and its checks use the font
-listed below. Original license and notice texts are kept under `licenses/`.
-These terms apply to their respective code and fonts, and do not change the
-license of this project.
+hxnme-2d depends on the code in the table below, and its checks use the
+font in the same table. The directory `licenses/` holds the original
+license and notice texts. Each license applies only to its own code or
+font, and does not change the license of this project.
 
 When you redistribute an app built with hxnme, keep the notices of the
 dependencies it includes. hxn-text keeps the notices of the libraries it

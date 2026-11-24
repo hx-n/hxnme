@@ -31,19 +31,20 @@ private typedef System = {
 }
 
 /**
-	Generates `hxn.me.Schedule` from the systems of an app. Systems are static functions with `@:system`. The systems come from the classes that
-	the app passes, from each plugin class, and from the classes that a plugin
-	class lists with `@:systems`. Each phase gets one method that calls its
+	`Scheduler` generates `hxn.me.Schedule` from the systems of an app.
+	Systems are static functions with `@:system`. The systems come from the
+	classes that the app passes, from each plugin class, and from the classes
+	that a plugin class lists with `@:systems`. Each phase gets one method that calls its
 	systems directly, in an order that obeys every `before` and `after`.
 	Where no constraint applies, the systems of the plugins come first, in
 	plugin order. The systems of the app follow, in the order that the app
 	passes their classes. The systems of one class keep their declaration order.
 **/
 class Scheduler {
-	// The phases of hxn.me.Phase, in the order they run.
+	// Lists the phases of hxn.me.Phase, in the order that they run.
 	static final PHASES = ["Start", "Begin", "Fixed", "Update", "Render"];
 
-	// The resources that every schedule has, and the public fields that hold them.
+	// Lists the resources that every schedule has, and the public fields that hold them.
 	static final KERNEL = [
 		{key: "hxn.me.Time", field: "time"},
 		{key: "hxn.me.Lifecycle", field: "lifecycle"},
@@ -52,7 +53,7 @@ class Scheduler {
 
 	static var generated = false;
 
-	/** The expression that `hxn.me.App.run(classes)` becomes. **/
+	/** Returns the expression that `hxn.me.App.run(classes)` becomes. **/
 	public static function run(classes:Array<Expr>):Expr {
 		var schedule = schedule(classes);
 		var host = Registry.provider("hxn.me.Host");
@@ -65,7 +66,7 @@ class Scheduler {
 		};
 	}
 
-	/** The expression that `hxn.me.App.schedule(classes)` becomes. **/
+	/** Returns the expression that `hxn.me.App.schedule(classes)` becomes. **/
 	public static function schedule(classes:Array<Expr>):Expr {
 		if (generated)
 			Context.error("the app calls hxn.me.App.run or hxn.me.App.schedule once", Context.currentPos());
@@ -89,7 +90,7 @@ class Scheduler {
 		return macro new hxn.me.Schedule();
 	}
 
-	/** The path of the class that `expr` refers to, typed where `expr` appears. **/
+	/** Returns the path of the class that `expr` refers to. It types `expr` where `expr` appears. **/
 	public static function classOf(expr:Expr, message:String):String {
 		return switch Context.typeExpr(expr).expr {
 			case TTypeExpr(TClassDecl(c)): path(c.get());
@@ -177,7 +178,7 @@ class Scheduler {
 		}
 	}
 
-	/** The string that `expr` holds. `key` identifies it in the error. **/
+	/** Returns the string that `expr` holds. `key` identifies it in the error. **/
 	public static function text(expr:Expr, key:String):String {
 		return switch expr.expr {
 			case EConst(CString(value)): value;

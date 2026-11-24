@@ -18,14 +18,18 @@ import hxn.text.TextOptions;
 	for each logical pixel.
 **/
 class Typesetter {
-	/** The number of device pixels for each logical pixel, at which glyphs are rasterized. The plugin sets it from `Display` in each frame. **/
+	/**
+		`scale` gives the number of device pixels for each logical pixel. Glyphs
+		are rasterized at this scale. The plugin sets it from `Display` in each
+		frame.
+	**/
 	public var scale(default, null) = 1.0;
 
 	var engine:Null<TextEngine>;
 	final coverage = new Atlas(Coverage);
 	final color = new Atlas(Color);
 
-	// Atlas textures that a larger atlas replaced in this frame. Draws earlier in the frame still use them.
+	// Holds the atlas textures that a larger atlas replaced in this frame, because draws earlier in the frame still use them.
 	final retired:Array<Texture> = [];
 
 	public function new() {}
@@ -106,7 +110,7 @@ class Typesetter {
 		var current = atlas.texture;
 		var resized = current == null || current.width != update.width || current.height != update.height;
 		if (resized && !(update.full && update.patchWidth == update.width && update.patchHeight == update.height)) {
-			// Partial patches cannot fill a new texture, so ask for the whole atlas.
+			// Partial patches cannot fill a new texture, so this asks for the whole atlas.
 			update = engine.atlas(atlas.kind, 0);
 			atlas.revision = update.revision;
 		}

@@ -15,10 +15,10 @@ import hxn.me.physics.collision.ManifoldClipper.ClipWorkspace;
 class ContactManifoldPool {
 	public var count:Int = 0;
 
-	/** The most contacts the pool holds; more in one step are dropped. */
+	/** Sets the most contacts that the pool holds. The pool drops any more in one step. */
 	public var maxContacts:Int;
 
-	/** Contacts the storage holds now. It doubles toward `maxContacts` when a step needs more. */
+	/** Counts the contacts that the storage holds now. It doubles toward `maxContacts` when a step needs more. */
 	public var capacity(default, null):Int = 0;
 
 	public var bodyA:Int32Buffer;
@@ -52,7 +52,7 @@ class ContactManifoldPool {
 	var hashMask:Int;
 	var epoch:Int = 1;
 
-	/** Storage starts at `initialCapacity` contacts, or `maxContacts` if fewer. */
+	/** Creates a pool whose storage starts at `initialCapacity` contacts, or at `maxContacts` if that is fewer. */
 	public function new(maxContacts:Int = 8192, initialCapacity:Int = 256) {
 		this.maxContacts = (maxContacts + 3) & ~3;
 		allocate(Std.int(Math.min(this.maxContacts, (Std.int(Math.max(4, initialCapacity)) + 3) & ~3)));
@@ -107,13 +107,13 @@ class ContactManifoldPool {
 		hashIndex = new Int32Buffer(hashCapacity);
 		for (i in 0...hashCapacity)
 			hashStamp[i] = 0;
-		// The last step's contacts are looked up by the new table too.
+		// The new table also looks up the contacts of the last step.
 		if (old > 0)
 			for (i in 0...keepPrevious)
 				insertPrevious(i);
 	}
 
-	/** Makes room for `n` contacts, up to `maxContacts`; returns whether there is. */
+	/** Makes room for `n` contacts, up to `maxContacts`. Returns whether the room is there. */
 	public function reserve(n:Int):Bool {
 		if (n <= capacity)
 			return true;
@@ -261,7 +261,7 @@ class ContactManifoldPool {
 		tangentImpulse2[i] = 0;
 	}
 
-	/** Visits the contacts and their warm starts for `WorldSnapshot`. The lookup epoch is left as it is: it only has to stay ahead of every stamp. */
+	/** Visits the contacts and their warm starts for `WorldSnapshot`. The lookup epoch stays as it is, because it only has to stay ahead of every stamp. */
 	@:noCompletion public function visitState(s:hxn.me.physics.core.WorldSnapshot):Void {
 		var live = count;
 		var saved = s.int(count);
@@ -286,8 +286,8 @@ class ContactManifoldPool {
 	}
 }
 
-// GJK simplex: up to four Minkowski-difference vertices W = A - B, each with the
-// A and B support points that produced it so witness points can be rebuilt.
+// `GjkSimplex` holds up to four Minkowski-difference vertices W = A - B. Each vertex keeps the
+// A and B support points that produced it, so the witness points can be rebuilt.
 private class GjkSimplex {
 	public var n:Int = 0;
 	public var wx:Float64Buffer;
@@ -299,9 +299,9 @@ private class GjkSimplex {
 	public var bx:Float64Buffer;
 	public var by:Float64Buffer;
 	public var bz:Float64Buffer;
-	// Barycentric weights of the closest point, indexed like the vertices.
+	// Holds the barycentric weights of the closest point, indexed like the vertices.
 	public var lam:Float64Buffer;
-	// Scratch weights for tetrahedron faces and degenerate-triangle edges.
+	// Holds scratch weights for tetrahedron faces and for the edges of degenerate triangles.
 	public var faceLam:Float64Buffer;
 	public var edgeLam:Float64Buffer;
 	public var bestLam:Float64Buffer;
@@ -363,28 +363,28 @@ private class GjkSimplex {
 @:allow(hxn.me.physics.collision.NarrowPhase)
 class NarrowPhaseWorkspace {
 	var simplex:GjkSimplex;
-	// Output of NarrowPhase.support.
+	// `NarrowPhase.support` writes its output here.
 	var supportX:Float = 0.0;
 	var supportY:Float = 0.0;
 	var supportZ:Float = 0.0;
 
-	// Closest core points on A and on B left by NarrowPhase.separation.
+	// `NarrowPhase.separation` leaves the closest core points on A and on B here.
 	public var witnessAX(default, null):Float = 0.0;
 	public var witnessAY(default, null):Float = 0.0;
 	public var witnessAZ(default, null):Float = 0.0;
 	public var witnessBX(default, null):Float = 0.0;
 	public var witnessBY(default, null):Float = 0.0;
 	public var witnessBZ(default, null):Float = 0.0;
-	// Unit normal from B toward A left by NarrowPhase.separation.
+	// `NarrowPhase.separation` leaves the unit normal from B toward A here.
 	public var separationX(default, null):Float = 0.0;
 	public var separationY(default, null):Float = 0.0;
 	public var separationZ(default, null):Float = 0.0;
 
-	// Closest point of A - B from the last NarrowPhase.closestPoints call.
+	// Holds the closest point of A - B from the last call to `NarrowPhase.closestPoints`.
 	var closestX:Float = 0.0;
 	var closestY:Float = 0.0;
 	var closestZ:Float = 0.0;
-	// Contact normal and single-point fallback handed to the manifold pool.
+	// Holds the contact normal and the single-point fallback that go to the manifold pool.
 	var normal:Vec3;
 	var point:Vec3;
 	var epa:Epa;
@@ -399,7 +399,7 @@ class NarrowPhaseWorkspace {
 	}
 }
 
-/** The two posed shapes EPA expands between, giving support points of A - B without a closure. */
+/** `EpaPair` holds the two posed shapes that EPA expands between, and gives support points of A - B without a closure. */
 @:allow(hxn.me.physics.collision.NarrowPhase)
 class EpaPair {
 	var pool:VertexPool;
@@ -421,7 +421,7 @@ class EpaPair {
 	var qbw = 1.0;
 	var ws:NarrowPhaseWorkspace;
 
-	/** W = A - B of the last support point, whether or not it was new. */
+	/** Holds W = A - B of the last support point, whether or not it was new. */
 	public var lastX(default, null) = 0.0;
 
 	public var lastY(default, null) = 0.0;
@@ -429,7 +429,7 @@ class EpaPair {
 
 	public function new() {}
 
-	/** Adds the support point of A - B along (dx, dy, dz) to `epa`; returns whether it was new. */
+	/** Adds the support point of A - B along (dx, dy, dz) to `epa`. Returns whether it was new. */
 	public function support(epa:Epa, dx:Float, dy:Float, dz:Float):Bool {
 		NarrowPhase.support(pool, sA, pax, pay, paz, qax, qay, qaz, qaw, dx, dy, dz, ws);
 		var ax = ws.supportX, ay = ws.supportY, az = ws.supportZ;
@@ -445,7 +445,7 @@ class DistanceResult {
 	public var distance:Single;
 	public var pointA:Vec3;
 	public var pointB:Vec3;
-	// Points from B toward A when the core shapes are separated.
+	// The normal points from B toward A when the core shapes are separated.
 	public var normal:Vec3;
 
 	public function new(distance:Single, pointA:Vec3, pointB:Vec3, normal:Vec3) {
@@ -458,7 +458,7 @@ class DistanceResult {
 
 @:allow(hxn.me.physics.collision.EpaPair)
 class NarrowPhase {
-	// Evaluates world-space core support point for any 2D or 3D shape
+	// Evaluates the world-space core support point of any 2D or 3D shape.
 	static inline function worldSupport(pool:VertexPool, def:ShapeDef, pos:Vec3, rot:Quat, worldDir:Vec3):Vec3 {
 		var localDir = Quat.invRotate(rot, worldDir);
 		var localPt = def.getLocalSupport(pool, localDir);
@@ -466,8 +466,8 @@ class NarrowPhase {
 	}
 
 	/**
-	 * World-space core support point of `def` at pose (p, q) along world
-	 * direction d, written to the workspace's support fields.
+	 * Finds the world-space core support point of `def` at pose (p, q) along
+	 * world direction d, and writes it to the support fields of the workspace.
 	 */
 	static function support(pool:VertexPool, def:ShapeDef, px:Float, py:Float, pz:Float, qx:Float, qy:Float, qz:Float, qw:Float, dx:Float, dy:Float, dz:Float,
 			ws:NarrowPhaseWorkspace):Void {
@@ -522,7 +522,7 @@ class NarrowPhase {
 		dst[3] = src[3];
 	}
 
-	// Squared length of the point sum(l[i] * W[i]).
+	// Returns the squared length of the point sum(l[i] * W[i]).
 	static function weightedSq(s:GjkSimplex, l:Float64Buffer):Float {
 		var x = 0.0, y = 0.0, z = 0.0;
 		for (i in 0...s.n) {
@@ -533,7 +533,7 @@ class NarrowPhase {
 		return x * x + y * y + z * z;
 	}
 
-	// Closest point to the origin on segment W[i0]W[i1].
+	// Finds the closest point to the origin on segment W[i0]W[i1].
 	static function segment(s:GjkSimplex, i0:Int, i1:Int, l:Float64Buffer):Void {
 		clear(l);
 		var px = s.wx[i0], py = s.wy[i0], pz = s.wz[i0];
@@ -554,7 +554,7 @@ class NarrowPhase {
 		}
 	}
 
-	// Closest point to the origin on triangle W[i0]W[i1]W[i2], by Voronoi region.
+	// Finds the closest point to the origin on triangle W[i0]W[i1]W[i2], by Voronoi region.
 	static function triangle(s:GjkSimplex, i0:Int, i1:Int, i2:Int, l:Float64Buffer):Void {
 		clear(l);
 		var ax = s.wx[i0], ay = s.wy[i0], az = s.wz[i0];
@@ -611,7 +611,7 @@ class NarrowPhase {
 			return;
 		}
 
-		// va + vb + vc is |ab x ac|^2; near zero the triangle is a sliver, so use its best edge.
+		// va + vb + vc is |ab x ac|^2. Near zero, the triangle is a sliver, so use its best edge.
 		var sum = va + vb + vc;
 		var abab = abx * abx + aby * aby + abz * abz;
 		var acac = acx * acx + acy * acy + acz * acz;
@@ -645,7 +645,7 @@ class NarrowPhase {
 		l[i2] = w;
 	}
 
-	// (W[j] - W[i]) x (W[k] - W[i]) . (W[m] - W[i]); an index of -1 stands for the origin.
+	// Returns (W[j] - W[i]) x (W[k] - W[i]) . (W[m] - W[i]). The index -1 stands for the origin.
 	static function det(s:GjkSimplex, i:Int, j:Int, k:Int, m:Int):Float {
 		var ix = i < 0 ? 0.0 : s.wx[i],
 			iy = i < 0 ? 0.0 : s.wy[i],
@@ -662,8 +662,9 @@ class NarrowPhase {
 		return (jy * kz - jz * ky) * mx + (jz * kx - jx * kz) * my + (jx * ky - jy * kx) * mz;
 	}
 
-	// Closest point to the origin on tetrahedron W[0..3]. Each face is searched when the
-	// origin lies on the far side of it from the opposite vertex; if none, the origin is inside.
+	// Finds the closest point to the origin on tetrahedron W[0..3]. Each face is searched when the
+	// origin lies on its far side from the opposite vertex. If no face is searched, the origin is
+	// inside.
 	static function tetrahedron(s:GjkSimplex, l:Float64Buffer):Void {
 		var vol = det(s, 0, 1, 2, 3);
 		var e1 = (s.wx[1]
@@ -678,14 +679,14 @@ class NarrowPhase {
 			- s.wx[0]) * (s.wx[3] - s.wx[0])
 			+ (s.wy[3] - s.wy[0]) * (s.wy[3] - s.wy[0])
 			+ (s.wz[3] - s.wz[0]) * (s.wz[3] - s.wz[0]);
-		// Flat tetrahedra (e.g. two depth-0 shapes on one plane) have no reliable face sides.
+		// Flat tetrahedra (for example, two depth-0 shapes on one plane) have no reliable face sides.
 		var flat = vol * vol <= 1e-12 * e1 * e2 * e3;
 
 		var f = s.faceLam;
 		var best = Math.POSITIVE_INFINITY;
 		var inside = true;
 
-		// Faces (i, j, k) with opposite vertex m.
+		// Each face (i, j, k) has the opposite vertex m.
 		for (face in 0...4) {
 			var i = 0, j = 1, k = 2, m = 3;
 			switch (face) {
@@ -817,12 +818,13 @@ class NarrowPhase {
 		return new DistanceResult(distance, new Vec3(ax, ay, az), new Vec3(bx, by, bz), normal);
 	}
 
-	// Unified GJK Distance + Minkowski Skin Collision Detector
+	// The collision tests below combine the GJK distance between the core shapes with the rounding
+	// skin of each shape.
 
 	/**
-	 * GJK between the core shapes. Returns the squared distance, zero when the
-	 * cores overlap; the closest point of A - B is left in the workspace and the
-	 * simplex holds the witness points.
+	 * Runs GJK between the core shapes. Returns the squared distance, which is
+	 * zero when the cores overlap. The closest point of A - B stays in the
+	 * workspace, and the simplex holds the witness points.
 	 */
 	static function closestPoints(pool:VertexPool, sA:ShapeDef, posA:Vec3, rotA:Quat, sB:ShapeDef, posB:Vec3, rotB:Quat, ws:NarrowPhaseWorkspace):Float {
 		var s = ws.simplex;
@@ -839,7 +841,7 @@ class NarrowPhase {
 			qbz:Float = rotB.z,
 			qbw:Float = rotB.w;
 
-		// Initial search direction between centers
+		// The first search direction runs between the centers.
 		var dx = pbx - pax, dy = pby - pay, dz = pbz - paz;
 		if (dx * dx + dy * dy + dz * dz < 1e-8) {
 			dx = 0.0;
@@ -857,7 +859,7 @@ class NarrowPhase {
 		var vv = vx * vx + vy * vy + vz * vz;
 
 		for (iter in 0...32) {
-			// Origin reached: the core shapes overlap.
+			// The simplex reached the origin, so the core shapes overlap.
 			if (vv <= 1e-12) {
 				vv = 0.0;
 				break;
@@ -871,7 +873,7 @@ class NarrowPhase {
 			var wky:Float = aky - bky;
 			var wkz:Float = akz - bkz;
 
-			// No support point gets meaningfully closer than v: v is the closest point.
+			// If no support point gets meaningfully closer than v, v is the closest point.
 			if (vv - (vx * wkx + vy * wky + vz * wkz) <= 1e-6 * vv)
 				break;
 
@@ -938,9 +940,9 @@ class NarrowPhase {
 	}
 
 	/**
-	 * Distance between the core shapes, without rounding radii; the unit
-	 * normal from B toward A and the closest core points are left in the
-	 * workspace's separation and witness fields.
+	 * Returns the distance between the core shapes, without rounding radii.
+	 * The unit normal from B toward A and the closest core points stay in the
+	 * separation and witness fields of the workspace.
 	 */
 	public static function separation(pool:VertexPool, sA:ShapeDef, posA:Vec3, rotA:Quat, sB:ShapeDef, posB:Vec3, rotB:Quat, ws:NarrowPhaseWorkspace):Float {
 		var distance = Math.sqrt(closestPoints(pool, sA, posA, rotA, sB, posB, rotB, ws));
@@ -983,7 +985,7 @@ class NarrowPhase {
 		return distance;
 	}
 
-	/** True when the rounded shapes overlap; used for sensors, which need no manifold. */
+	/** Returns true when the rounded shapes overlap. Sensors use it, because they need no manifold. */
 	public static function overlapPair(pool:VertexPool, sA:ShapeDef, posA:Vec3, rotA:Quat, sB:ShapeDef, posB:Vec3, rotB:Quat, ws:NarrowPhaseWorkspace):Bool {
 		var vv = closestPoints(pool, sA, posA, rotA, sB, posB, rotB, ws);
 		var radius = sA.radius + sB.radius;
@@ -1068,7 +1070,7 @@ class NarrowPhase {
 				} else {
 					var center = Vec3.sub(Vec3.add(posB, Quat.rotate(rotB, new Vec3(0, 0, sB.localZ))),
 						Vec3.add(posA, Quat.rotate(rotA, new Vec3(0, 0, sA.localZ))));
-					// EPA failure is rare; this fallback keeps its object arithmetic.
+					// EPA fails rarely, so this fallback keeps its object arithmetic.
 					if (planar)
 						center.z = 0.0;
 					var fallback = Vec3.normalize(center);

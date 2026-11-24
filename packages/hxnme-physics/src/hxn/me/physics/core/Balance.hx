@@ -7,28 +7,29 @@ import hxn.me.math.Vec3;
 import hxn.me.physics.core.Handles;
 
 /**
- * How well a set of bodies, such as a character's, is balanced: where its
- * centre of mass is and how fast it moves, the support polygon its contacts
- * with the ground make, how far inside that polygon the centre of mass
- * stands, and the capture point, where it would have to step to stop.
+ * `Balance` measures how well a set of bodies, such as a character, is
+ * balanced. It finds where the center of mass is and how fast it moves, the
+ * support polygon that the set's contacts with the ground make, how far
+ * inside that polygon the center of mass stands, and the capture point,
+ * where the set must step to stop.
  *
  * "Up" is against gravity. The support polygon is the convex hull, seen from
  * above, of the points where something outside the set pushes a body of the
- * set upward; a planar set has a support interval along X instead. Distances
- * to it are signed: positive inside, negative outside. Call `update` after
- * each step. Each body asleep keeps the support it had; one already asleep the
- * first time it is measured is woken, so its support is known from the next
- * step: that is the only way measuring changes the simulation. Allocates
- * nothing after construction.
+ * set upward. Planar sets have a support interval along X instead. Distances
+ * to the support are signed: positive inside, negative outside. Call
+ * `update` after each step. Each sleeping body keeps the support it had. If
+ * a body is already asleep the first time it is measured, `Balance` wakes
+ * it, so its support is known from the next step. That is the only way
+ * measuring changes the simulation. Allocates nothing after construction.
  */
 class Balance {
-	/** Contact points considered at most; further points are ignored. */
+	/** Sets the most contact points that `Balance` considers. It ignores any more points. */
 	public static inline var MAX_POINTS = 64;
 
 	/** Each contact counts as support when its normal is within this cosine of up. */
 	public static inline var SUPPORT_COSINE = 0.5;
 
-	/** Contacts separated by more than this are not touching. */
+	/** Sets the separation beyond which contacts are not touching. */
 	public static inline var TOUCH = 0.005;
 
 	public var world(default, null):World;
@@ -42,25 +43,25 @@ class Balance {
 	public var velY(default, null):Float = 0.0;
 	public var velZ(default, null):Float = 0.0;
 
-	/** Whether anything outside the set holds it up. */
+	/** Is true when something outside the set holds it up. */
 	public var grounded(default, null):Bool = false;
 
-	/** Height of the centre of mass above the support, along up. */
+	/** Holds the height of the center of mass above the support, along up. */
 	public var height(default, null):Float = 0.0;
 
-	/** Signed distance from the centre of mass, seen from above, to the edge of the support; negative infinity when not grounded. */
+	/** Holds the signed distance from the center of mass, seen from above, to the edge of the support. It is negative infinity when the set is not grounded. */
 	public var margin(default, null):Float = Math.NEGATIVE_INFINITY;
 
-	/** Where the centre of mass would come to rest over a point foot: centre of mass + horizontal velocity · √(height / g). */
+	/** Holds the point where the center of mass comes to rest over a point foot: center of mass + horizontal velocity · √(height / g). */
 	public var captureX(default, null):Float = 0.0;
 
 	public var captureY(default, null):Float = 0.0;
 	public var captureZ(default, null):Float = 0.0;
 
-	/** Signed distance from the capture point to the edge of the support. */
+	/** Holds the signed distance from the capture point to the edge of the support. */
 	public var captureMargin(default, null):Float = Math.NEGATIVE_INFINITY;
 
-	/** Corners of the support polygon (two ends of the interval when planar) in world space, anticlockwise seen from above. */
+	/** Counts the corners of the support polygon, or the two ends of the interval when planar. `supportX`..`supportZ` hold them in world space, anticlockwise seen from above. */
 	public var supportCount(default, null):Int = 0;
 
 	public var supportX(default, null):Float32Buffer;
@@ -73,12 +74,14 @@ class Balance {
 	var centroidX:Float32Buffer;
 	var centroidY:Float32Buffer;
 	var centroidZ:Float32Buffer;
-	// Index + 1 of each body of the set by slot, 0 for others, to tell the set's contacts from others.
+	// Holds index + 1 of each body of the set, by slot, and 0 for other bodies. This tells the set's
+	// contacts from other contacts.
 	var member:Int32Buffer;
 
-	/** The bodies `member` has room for: bodies made after the world grew are not in the set. */
+	/** Counts the bodies that `member` has room for. Bodies made after the world grew are not in the set. */
 	var memberRoom = 0;
-	// Support points last seen under each body (body index, world position), kept for bodies that sleep, since sleeping bodies keep no contacts.
+	// Holds the support points last seen under each body (body index, world position). Sleeping
+	// bodies keep no contacts, so these points stand in for theirs.
 	var keptBody:Int32Buffer;
 	var keptX:Float32Buffer;
 	var keptY:Float32Buffer;
@@ -88,14 +91,14 @@ class Balance {
 	var newX:Float32Buffer;
 	var newY:Float32Buffer;
 	var newZ:Float32Buffer;
-	// Whether each body has been seen awake, so its support is known.
+	// Marks each body that was seen awake, so its support is known.
 	var seen:Int32Buffer;
-	// Support points in plane coordinates, sorted, then the hull's indices.
+	// These buffers hold the support points in plane coordinates, sorted, then the indices of the hull.
 	var pu:Float32Buffer;
 	var pv:Float32Buffer;
 	var hull:Int32Buffer;
 	var hullCount = 0;
-	// Up and two directions across it.
+	// These fields hold the up direction and two directions across it.
 	var ux = 0.0;
 	var uy = 1.0;
 	var uz = 0.0;
@@ -106,7 +109,7 @@ class Balance {
 	var by = 0.0;
 	var bz = -1.0;
 
-	/** Measures `bodies` in `world`; `planar` gives a support interval along X for a planar set. */
+	/** Measures `bodies` in `world`. With `planar`, a planar set gets a support interval along X. */
 	public function new(world:World, bodies:Array<BodyId>, planar:Bool = false) {
 		this.world = world;
 		this.bodies = bodies.copy();
@@ -153,7 +156,7 @@ class Balance {
 	/** Measures the bodies as the last step left them. */
 	public function update():Void {
 		var w = world;
-		// Up is against gravity; two directions across it make the plane seen from above.
+		// Up is against gravity. Two directions across it make the plane seen from above.
 		var g = w.gravity, gl = Math.sqrt(g.x * g.x + g.y * g.y + g.z * g.z);
 		if (gl > 0.0) {
 			ux = -g.x / gl;
@@ -181,7 +184,8 @@ class Balance {
 		by = uz * ax - ux * az;
 		bz = ux * ay - uy * ax;
 
-		// Centre of mass, and its velocity: each body's centroid moves with its velocity plus its spin about the point that velocity is for.
+		// Finds the center of mass and its velocity. Each body's centroid moves with its velocity plus
+		// its spin about the point that the velocity is for.
 		var mx = 0.0, my = 0.0, mz = 0.0, vx = 0.0, vy = 0.0, vz = 0.0;
 		for (i in 0...bodies.length) {
 			var s = slots[i], m:Float = mass[i];
@@ -221,9 +225,10 @@ class Balance {
 		velY = vy / total;
 		velZ = vz / total;
 
-		// Support points: where something outside the set pushes a body of the set upward. Each sleeping body keeps no
-		// contacts but has not moved, so it keeps the points it had; one asleep since before it was first seen is woken
-		// once, so its contacts are found at the next step.
+		// The support points are where something outside the set pushes a body of the set upward.
+		// Each sleeping body keeps no contacts but has not moved, so it keeps the points it had. If a
+		// body was asleep since before it was first seen, it is woken once, so the next step finds
+		// its contacts.
 		var n = 0;
 		for (i in 0...bodies.length) {
 			var s = slots[i];
@@ -252,7 +257,7 @@ class Balance {
 			var inA = a < memberRoom && member[a] != 0, inB = b < memberRoom && member[b] != 0;
 			if (inA == inB || c.penetration[k] < -TOUCH)
 				continue;
-			// The normal points from A to B; the set's body must be pushed up.
+			// The normal points from A to B. The set's body must be pushed up.
 			var up = (c.normalX[k] * ux + c.normalY[k] * uy + c.normalZ[k] * uz) * (inB ? 1.0 : -1.0);
 			if (up < SUPPORT_COSINE || n >= MAX_POINTS)
 				continue;
@@ -290,7 +295,8 @@ class Balance {
 		}
 		level /= n;
 		height = comX * ux + comY * uy + comZ * uz - level;
-		// The capture point: the centre of mass carried on by its velocity across the plane for √(height / g).
+		// The capture point is the center of mass carried on by its velocity across the plane for
+		// √(height / g).
 		var reach = gl > 0.0 && height > 0.0 ? Math.sqrt(height / gl) : 0.0;
 		var vu = velX * ax + velY * ay + velZ * az,
 			vv = planar ? 0.0 : velX * bx + velY * by + velZ * bz;
@@ -311,9 +317,9 @@ class Balance {
 		captureMargin = distance(capU, capV);
 	}
 
-	/** The support polygon of the first `n` points: their convex hull, or for a planar set the interval they span. Sorts the points in place. */
+	/** Builds the support polygon of the first `n` points: their convex hull, or for a planar set the interval they span. Sorts the points in place. */
 	function buildHull(n:Int):Void {
-		// Insertion sort by u, then v: few points, and no allocation.
+		// Sorts by u, then v, with an insertion sort, because there are few points and it allocates nothing.
 		for (i in 1...n) {
 			var u:Float = pu[i], v:Float = pv[i], j = i - 1;
 			while (j >= 0 && (pu[j] > u || pu[j] == u && pv[j] > v)) {
@@ -330,7 +336,7 @@ class Balance {
 			hullCount = n == 1 ? 1 : 2;
 			return;
 		}
-		// Andrew's monotone chain, dropping points on an edge.
+		// Builds the hull with Andrew's monotone chain, and drops points on an edge.
 		var k = 0;
 		for (i in 0...n) {
 			while (k >= 2 && cross(hull[k - 2], hull[k - 1], i) <= 1e-12)
@@ -351,7 +357,7 @@ class Balance {
 		return (pu[a] - pu[o]) * (pv[b] - pv[o]) - (pv[a] - pv[o]) * (pu[b] - pu[o]);
 	}
 
-	/** Signed distance from (u, v) to the edge of the support: positive inside. */
+	/** Returns the signed distance from (u, v) to the edge of the support, positive inside. */
 	function distance(u:Float, v:Float):Float {
 		if (planar) {
 			var lo:Float = pu[hull[0]], hi:Float = pu[hull[hullCount - 1]];
@@ -361,7 +367,8 @@ class Balance {
 			return -Math.sqrt((u - pu[hull[0]]) * (u - pu[hull[0]]) + (v - pv[hull[0]]) * (v - pv[hull[0]]));
 		if (hullCount == 2)
 			return -segment(u, v, hull[0], hull[1]);
-		// Inside a convex anticlockwise polygon, every edge has the point on its left; the margin is the nearest edge.
+		// Inside a convex anticlockwise polygon, every edge has the point on its left. The margin is the distance to the
+		// nearest edge.
 		var inside = true, nearest = Math.POSITIVE_INFINITY, outside = Math.POSITIVE_INFINITY;
 		for (e in 0...hullCount) {
 			var a = hull[e], b = hull[(e + 1) % hullCount];
@@ -387,7 +394,7 @@ class Balance {
 		return Math.sqrt(du * du + dv * dv);
 	}
 
-	/** A JSON snapshot of the measures. Equal states give equal text. */
+	/** Returns a JSON snapshot of the measures. Equal states give equal text. */
 	public function describe():String {
 		inline function num(v:Float):String
 			return Math.isFinite(v) ? Diagnostics.number(v) : "null";

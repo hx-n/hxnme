@@ -11,9 +11,9 @@ import hxn.file.Storage;
 #end
 
 /**
-	`Assets` is the kernel resource that loads the app's assets with
-	hxn-assets. The app declares its assets as fields of type `AssetRef<T>` on
-	a class built with `@:build(hxn.me.Assets.build())`:
+	`Assets` loads the app's assets with hxn-assets. It is a kernel resource.
+	The app declares its assets as fields of type `AssetRef<T>` on a class
+	built with `@:build(hxn.me.Assets.build())`:
 
 	```haxe
 	@:build(hxn.me.Assets.build())
@@ -26,10 +26,10 @@ import hxn.file.Storage;
 	`load(GameAssets.Sheet)` returns a handle when the asset is ready. Loads
 	of one asset share one value. When the last handle to it is released, the
 	value closes and its bytes are unloaded. Fields of other types are
-	hxn-assets fields, such as data that is decoded at compile time.
+	hxn-assets fields, such as data that hxn-assets decodes at compile time.
 **/
 class Assets {
-	/** The build macro for a class of asset declarations. It runs hxn-assets' macro on the class too. **/
+	/** Builds a class of asset declarations. It also runs hxn-assets' macro on the class. **/
 	public static macro function build():Array<haxe.macro.Expr.Field>
 		return hxn.me.macro.AssetFields.build();
 
@@ -59,7 +59,7 @@ class Assets {
 		Loads the bundled file at `path` and decodes it as `type`. Decoders use
 		it, through `AssetContext`, for files that an asset lists, such as the
 		image of an atlas. If the app declares assets, the file must be one of
-		them, because only declared files are bundled.
+		them, because hxn-assets bundles only declared files.
 	**/
 	public function loadFile<T>(path:String, type:AssetType<T>):Future<Asset<T>>
 		return open("\n" + path, path, type, () -> files().read(path), () -> {});

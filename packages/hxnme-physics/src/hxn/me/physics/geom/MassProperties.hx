@@ -2,7 +2,7 @@ package hxn.me.physics.geom;
 
 import hxn.me.math.Vec3;
 
-/** Mass, centroid, and inertia about the shape's local origin. */
+/** `MassProperties` holds a shape's mass, centroid, and inertia about its local origin. */
 class MassProperties {
 	public var mass:Single = 0.0;
 	public var ixx:Single = 0.0;
@@ -34,7 +34,7 @@ class MassProperties {
 		return result;
 	}
 
-	/** Point skin is a disk when planar and a spherocylinder when extruded. */
+	/** Computes the mass properties of a point shape. Its skin is a disk when planar and a spherocylinder when extruded. */
 	public static function point(radius:Single, depth:Single, localZ:Single, density:Single):MassProperties {
 		if (radius <= 0.0 || depth < 0.0 || density <= 0.0)
 			return new MassProperties();
@@ -45,7 +45,7 @@ class MassProperties {
 		return fromMoments(m, 0.0, 0.0, m * localZ, radial, radial, m * localZ * localZ, 0.0, 0.0, 0.0);
 	}
 
-	/** Polygon skin is collision-only; mass uses the core prism. */
+	/** Computes the mass properties of a polygon. Its skin is collision-only, so the mass uses the core prism. */
 	public static function polygon(pool:VertexPool, offset:Int, count:Int, depth:Single, localZ:Single, density:Single):MassProperties {
 		var result = new MassProperties();
 		if (count < 3 || density <= 0.0 || depth < 0.0)
@@ -90,7 +90,7 @@ class MassProperties {
 		return result;
 	}
 
-	/** Planar capsule or 3D round-ended plate. */
+	/** Computes the mass properties of a planar capsule or a 3D round-ended plate. */
 	public static function capsule(pool:VertexPool, offset:Int, radius:Single, depth:Single, localZ:Single, density:Single):MassProperties {
 		var result = new MassProperties();
 		if (radius <= 0.0 || density <= 0.0 || depth < 0.0)
@@ -127,7 +127,7 @@ class MassProperties {
 		return result;
 	}
 
-	/** Minkowski sum of an XY segment, a Z interval, and a radius sphere. */
+	/** Computes the mass properties of the Minkowski sum of an XY segment, a Z interval, and a sphere of the radius. */
 	static function roundedPlate(ax:Float, ay:Float, bx:Float, by:Float, radius:Float, depth:Float, localZ:Float, density:Float):MassProperties {
 		var dx = bx - ax, dy = by - ay;
 		var length = Math.sqrt(dx * dx + dy * dy);
@@ -156,7 +156,7 @@ class MassProperties {
 		return fromMoments(m, m * cx, m * cy, m * localZ, xx, yy, z2 + m * localZ * localZ, xy, m * cx * localZ, m * cy * localZ);
 	}
 
-	/** Hull skin is collision-only; integrate the outward core surface. */
+	/** Computes the mass properties of a hull. Its skin is collision-only, so the mass integrates over the outward core surface. */
 	public static function hull(pool:VertexPool, offset:Int, count:Int, localZ:Single, density:Single):MassProperties {
 		if (density <= 0.0)
 			return new MassProperties();

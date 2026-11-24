@@ -5,9 +5,9 @@ import hxn.Float64Buffer;
 import hxn.Int32Buffer;
 
 /**
- * Shape pairs reported by one step, each with the two shapes' user values.
- * Pairs are ordered by shape slot, then generation, so the order is the same
- * however the step was solved.
+ * `ShapePairEvents` lists the shape pairs that one step reports, each with
+ * the user values of the two shapes. Pairs are ordered by shape slot, then
+ * generation, so the order is the same however the step was solved.
  */
 @:allow(hxn.me.physics.core.WorldEvents)
 @:allow(hxn.me.physics.core.World)
@@ -103,7 +103,7 @@ class ShapePairEvents {
 	}
 }
 
-/** Fast new contacts from one step, at most one per shape pair: the fastest approach. */
+/** `ImpactEvents` lists the fast new contacts from one step, at most one per shape pair: the one with the fastest approach. */
 @:allow(hxn.me.physics.core.WorldEvents)
 @:allow(hxn.me.physics.core.World)
 class ImpactEvents extends ShapePairEvents {
@@ -118,7 +118,7 @@ class ImpactEvents extends ShapePairEvents {
 		normals = new Float64Buffer(48);
 	}
 
-	/** Approach speed along the contact normal, positive, just before the contact was solved. */
+	/** Returns the approach speed along the contact normal, positive, just before the contact was solved. */
 	public inline function speed(i:Int):Float
 		return speeds[i];
 
@@ -131,7 +131,7 @@ class ImpactEvents extends ShapePairEvents {
 	public inline function pointZ(i:Int):Float
 		return points[i * 3 + 2];
 
-	/** Contact normal pointing from shape A toward shape B. */
+	/** Returns the contact normal, which points from shape A toward shape B. */
 	public inline function normalX(i:Int):Float
 		return normals[i * 3];
 
@@ -227,31 +227,33 @@ class ImpactEvents extends ShapePairEvents {
 }
 
 /**
- * What happened during the last `World.step`. The buffers are refilled by each
- * step, so read them after stepping and before stepping again.
+ * `WorldEvents` reports what happened during the last `World.step`. Each
+ * step refills the buffers, so read them after stepping and before the next
+ * step.
  */
 @:allow(hxn.me.physics.core.World)
 @:allow(hxn.me.physics.core.ShapePairEvents)
 class WorldEvents {
-	/** Sensor shapes that began overlapping another shape. Shape A is a sensor. */
+	/** Lists the sensor shapes that began to overlap another shape. Shape A is a sensor. */
 	public var sensorBegins(default, null):ShapePairEvents;
 
-	/** Sensor overlaps that ended, including overlaps whose shape was destroyed or disabled. */
+	/** Lists the sensor overlaps that ended, including overlaps whose shape was destroyed or disabled. */
 	public var sensorEnds(default, null):ShapePairEvents;
 
-	/** Solid shape pairs that began touching. */
+	/** Lists the solid shape pairs that began touching. */
 	public var contactBegins(default, null):ShapePairEvents;
 
-	/** Solid shape pairs that stopped touching, including pairs whose shape was destroyed or disabled. */
+	/** Lists the solid shape pairs that stopped touching, including pairs whose shape was destroyed or disabled. */
 	public var contactEnds(default, null):ShapePairEvents;
 
-	/** New contacts that arrived faster than `impactThreshold`. */
+	/** Lists the new contacts that arrived faster than `impactThreshold`. */
 	public var impacts(default, null):ImpactEvents;
 
-	/** Approach speed, in metres per second, a new contact needs to be reported as an impact. */
+	/** Sets the approach speed, in meters per second, that a new contact needs for the step to report it as an impact. */
 	public var impactThreshold:Float = 1.0;
 
-	// Touching and overlapping pairs at the end of the previous step, and the ones being gathered now.
+	// These fields hold the touching and overlapping pairs at the end of the previous step, and the
+	// pairs that the current step gathers.
 	var touching:ShapePairEvents;
 	var touchingNext:ShapePairEvents;
 	var overlapping:ShapePairEvents;
@@ -337,7 +339,7 @@ class WorldEvents {
 		impacts.sortFastest();
 	}
 
-	/** Visits last step's touching and overlapping sets, which the next step's begins and ends are found against, for `WorldSnapshot`. */
+	/** Visits the touching and overlapping sets of the last step for `WorldSnapshot`. The next step finds its begins and ends against these sets. */
 	@:noCompletion public function visitState(s:WorldSnapshot):Void {
 		impactThreshold = s.float(impactThreshold);
 		touching.visitState(s);

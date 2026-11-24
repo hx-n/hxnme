@@ -1,12 +1,13 @@
 package hxn.me.input;
 
 /**
-	The state of one set of actions, behind `Input<A>`. Each binding is an
-	integer: its kind times 65536, plus the code of the key, the button or
-	the axis. For a shortcut, the code is its index in `shortcuts`, where each
-	shortcut is a list of parts: physical keys, modifiers of the window's
-	modifier state, and characters that held keys type. The shortcut is down
-	while every part is. The input plugin updates every state in `Begin`.
+	`InputState` holds the state of one set of actions, behind `Input<A>`.
+	Each binding is an integer: its kind times 65536, plus the code of the
+	key, the button or the axis. For a shortcut, the code is its index in
+	`shortcuts`, where each shortcut is a list of parts: physical keys,
+	modifiers of the window's modifier state, and characters that held keys
+	type. The shortcut is down while every part is. The input plugin updates
+	every state in `Begin`.
 **/
 class InputState {
 	public static inline final KEY = 1;
@@ -17,23 +18,25 @@ class InputState {
 	public static inline final KEY_POSITIVE = 6;
 	public static inline final SHORTCUT = 7;
 
-	// The button codes of `@:buttons(Confirm)` and `@:buttons(Cancel)`, which
-	// stand for a different button on each gamepad family.
+	// `CONFIRM` and `CANCEL` are the button codes of `@:buttons(Confirm)` and
+	// `@:buttons(Cancel)`. Each stands for a different button on each gamepad
+	// family.
 	public static inline final CONFIRM = 100;
 	public static inline final CANCEL = 101;
 
-	// Each state of the app, so that the input plugin can update them.
+	// `all` lists each state of the app, so that the input plugin can update them.
 	@:allow(hxn.me.input)
 	static final all:Array<InputState> = [];
 
-	// The number of signals that code asked for. While it is 0, no signal
-	// work runs. It is here, and not in InputSystems, because `Input.create`
-	// loads this class in the macro context, where hxn-window's natives cannot be.
+	// `watched` counts the signals that code asked for. While it is 0, no
+	// signal work runs. It lives here, and not in InputSystems, because
+	// `Input.create` loads this class in the macro context, which cannot load
+	// hxn-window's natives.
 	@:allow(hxn.me.input)
 	static var watched = 0;
 
-	// The equality of a signal that carries a changing object: it never holds,
-	// so each `set` reaches the readers.
+	// `never` is the equality test of a signal that carries a changing object.
+	// It always returns false, so each `set` reaches the readers.
 	@:allow(hxn.me.input)
 	static function never<T>(a:T, b:T):Bool
 		return false;
@@ -94,7 +97,8 @@ class InputState {
 		}
 	}
 
-	// The positional button that `code` stands for on a gamepad of `family`.
+	// Returns the positional button that `code` stands for on a gamepad of
+	// `family`.
 	static inline function button(code:Int, family:GamepadFamily):Int {
 		return switch code {
 			case CONFIRM: Gamepads.confirm(family);
@@ -104,9 +108,9 @@ class InputState {
 	}
 
 	/**
-		The label of the first gamepad button bound to `action`, on the
-		connected pad's family, or an empty string for an action that has
-		no gamepad button. Prompts use it, such as "Press A to jump".
+		Returns the label of the first gamepad button bound to `action`, on the
+		connected pad's family, or an empty string for an action that has no
+		gamepad button. Prompts use it, such as "Press A to jump".
 	**/
 	public function labelOf(action:Int):String {
 		for (binding in bindings[action])
@@ -115,7 +119,7 @@ class InputState {
 		return "";
 	}
 
-	// True while every part of the shortcut is down.
+	// Returns true while every part of the shortcut is down.
 	static function held(parts:Array<Int>, devices:Devices):Bool {
 		for (part in parts) {
 			var value = part & 0xFFFF;

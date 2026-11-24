@@ -15,13 +15,13 @@ class ParallelIslandSolver {
 	public var minConstraintsPerIsland(default, null):Int;
 	public var minPairsPerWorker(default, null):Int;
 
-	// The jobs, kept in fields so that a substep starts them without making
+	// These fields hold the jobs, so a substep starts them without making
 	// closures, and the arguments of a solve.
 	var laneJob:Int->Void;
 	var collideJob:Int->Void;
 	var solveJobs = 0;
 	var solveIterations = 0;
-	// Collision jobs: each worker tests one contiguous slice of the broadphase pairs.
+	// In the collision jobs, each worker tests one contiguous slice of the broadphase pairs.
 	var pairScratch:Array<PairScratch> = [];
 	var pairContacts:Array<ContactManifoldPool> = [];
 	var pairStart:Array<Int> = [];
@@ -49,7 +49,7 @@ class ParallelIslandSolver {
 		collideJob = collideSlice;
 	}
 
-	/** Makes the partition for the world's present capacities; it is rebuilt every substep. */
+	/** Makes the partition for the world's present capacities. It is rebuilt every substep. */
 	public function resize():Void
 		partition = new IslandPartition(world.bodyCapacity, world.contacts.capacity, world.joints.capacity);
 
@@ -57,7 +57,7 @@ class ParallelIslandSolver {
 		return world.contacts.count + world.joints.count >= minConstraintsPerIsland * 2.0;
 	}
 
-	/** Partitions the colored contacts by island, or returns null when the substep should stay serial. */
+	/** Partitions the colored contacts by island, or returns null when the substep stays serial. */
 	public function plan():Null<IslandPartition> {
 		if (world.islands.islandCount < 2
 			|| world.contacts.count + world.joints.count < minConstraintsPerIsland * 1.0 * world.islands.islandCount)
@@ -75,14 +75,14 @@ class ParallelIslandSolver {
 			}
 		solveJobs = Std.int(Math.min(workerCount, partition.activeCount));
 		solveIterations = iterations;
-		// Each task owns its dynamic-body writes; shared supports are read-only.
+		// Each task owns its dynamic-body writes. Shared supports are read-only.
 		pool.run(solveJobs, laneJob);
 	}
 
 	/**
 	 * Tests this segment's broadphase pairs on the workers when there are
-	 * enough of them, then merges the contacts in pair order. Returns false,
-	 * leaving the pairs untested, when the segment should stay serial.
+	 * enough of them, then merges the contacts in pair order. Returns false and
+	 * leaves the pairs untested when the segment stays serial.
 	 */
 	public function collidePairs():Bool {
 		var pairs = world.broadPhase.pairCount;

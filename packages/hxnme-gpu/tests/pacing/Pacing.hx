@@ -6,11 +6,11 @@ import hxn.me.Time;
 import hxn.me.gpu.Gpu;
 
 /**
-	The check presents frames with vsync and records how long each frame
+	`Pacing` presents frames with vsync and records how long each frame
 	takes, after the first frames settle. The mean frame time must be within
-	a tenth of the display's refresh period, and few frames may take more
-	than one and a half periods. A host that also waited on its own timer
-	would miss refreshes, and its frames would take two periods.
+	a tenth of the display's refresh period, and fewer than one frame in twenty
+	can take more than one and a half periods. If the host also waits on its own
+	timer, it misses refreshes, and its frames take two periods.
 **/
 class Pacing {
 	static inline final SETTLE = 30;

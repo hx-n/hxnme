@@ -56,7 +56,7 @@ class SphericalSolver {
 	var driveImpulseX:Float32Buffer;
 	var driveImpulseY:Float32Buffer;
 	var driveImpulseZ:Float32Buffer;
-	// Axes the drive impulses above were last solved along.
+	// These buffers hold the axes along which the drive impulses above were last solved.
 	var driveAxis0X:Float32Buffer;
 	var driveAxis0Y:Float32Buffer;
 	var driveAxis0Z:Float32Buffer;
@@ -148,7 +148,7 @@ class SphericalSolver {
 		driveAxis2Z = new Float32Buffer(capacity);
 	}
 
-	/** Room for `to` joints, keeping the first `from`. */
+	/** Makes room for `to` joints, and keeps the first `from`. */
 	public function grow(from:Int, to:Int):Void {
 		localAxisAX = Grow.floats(localAxisAX, from, to);
 		localAxisAY = Grow.floats(localAxisAY, from, to);
@@ -248,10 +248,11 @@ class SphericalSolver {
 	}
 
 	/**
-	 * Reflects the joint's frames through the plane the diagonal reflection
-	 * (ex, ey, ez) fixes, in each body's frame, as `HingeSolver.mirror` does;
-	 * the neutral and target relative rotations reflect with them, so swing and
-	 * twist keep their limits as the bodies' relative turn mirrors.
+	 * Reflects the joint's frames through the plane that the diagonal
+	 * reflection (ex, ey, ez) fixes, in each body's frame, as
+	 * `HingeSolver.mirror` does. The neutral and target relative rotations
+	 * reflect with them, so swing and twist keep their limits as the relative
+	 * turn of the bodies mirrors.
 	 */
 	public function mirror(id:Int, ex:Float, ey:Float, ez:Float):Void {
 		localAxisAX[id] *= -ex;
@@ -431,7 +432,8 @@ class SphericalSolver {
 			var wx = gain * ex * scale,
 				wy = gain * ey * scale,
 				wz = gain * ez * scale;
-			// Last step's impulse as a world vector, so it can warm start along this step's axes.
+			// Converts the impulse of the last step to a world vector, so it can warm start along the axes
+			// of this step.
 			var ix:Float = driveImpulseX[id],
 				iy:Float = driveImpulseY[id],
 				iz:Float = driveImpulseZ[id];
@@ -531,8 +533,8 @@ class SphericalSolver {
 	}
 
 	/**
-	 * Eigenvectors of the joint's combined world inverse inertia, by cyclic
-	 * Jacobi, into the drive axes. Along them the three drive rows do not
+	 * Writes the eigenvectors of the joint's combined world inverse inertia to
+	 * the drive axes, by cyclic Jacobi. Along these axes the three drive rows do not
 	 * disturb one another, so the sequential solve converges for long, thin
 	 * bodies whose inertia differs greatly between axes.
 	 */
@@ -626,14 +628,15 @@ class SphericalSolver {
 	inline function driveRow(rows:JointRows, id:Int, x:Float, y:Float, z:Float, gainError:Float, damping:Float, store:Float32Buffer):Void {
 		var k = rows.angular(x, y, z);
 		var mass = k > 0.0 ? 1.0 / k : 0.0;
-		// Solved exactly toward speed stiffness * error / damping; with no damping the push is limited by the torque alone.
+		// Solves exactly toward speed stiffness * error / damping. With no damping, only the torque
+		// limits the push.
 		if (damping > 0.0)
 			rows.set(mass * gainError / damping, mass, 0.0, Math.NEGATIVE_INFINITY, Math.POSITIVE_INFINITY, store, id);
 		else
 			rows.set(mass * gainError, 0.0, 0.0, Math.NEGATIVE_INFINITY, Math.POSITIVE_INFINITY, store, id);
 	}
 
-	/** Visits settings and warm starts for `WorldSnapshot`; the world-space axes are rebuilt every substep. */
+	/** Visits settings and warm starts for `WorldSnapshot`. Each substep rebuilds the world-space axes. */
 	@:noCompletion public function visitState(s:hxn.me.physics.core.WorldSnapshot, joints:Int):Void {
 		s.floats(localAxisAX, joints);
 		s.floats(localAxisAY, joints);

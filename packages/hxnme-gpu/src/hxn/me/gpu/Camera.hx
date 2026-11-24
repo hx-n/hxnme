@@ -5,10 +5,10 @@ import hxn.gpu.Descriptors.Color;
 /**
 	`Camera` sets what part of the world a renderer shows, for 2D and 3D
 	alike. The world has y up. The camera sits at `x`, `y`, `z`, turned by the
-	quaternion `rotation`, and looks along its -z. `projection` maps what it
+	quaternion `rx`, `ry`, `rz`, `rw`, and looks along its -z. `projection` maps what it
 	sees onto its view. The view is the part of the target that `viewport`
-	sets, as parts of the target's width and height. The target is `target`,
-	or the frame when `target` is null.
+	sets, as parts of the target's width and height. The camera draws into
+	`target`, or into the frame when `target` is null.
 
 	Each renderer draws its content once for each enabled camera, in the
 	order of `order`, and only the content whose layer bits share a bit with
@@ -44,8 +44,8 @@ class Camera {
 
 	/**
 		When true, renderers test and write depth for what the camera shows, so
-		nearer content hides farther content whatever order it is drawn in, such
-		as planes that intersect. When false, later content draws over earlier
+		nearer content hides farther content in any drawing order, such as
+		planes that intersect. When false, later content draws over earlier
 		content.
 	**/
 	public var depth = false;
@@ -87,12 +87,14 @@ class Camera {
 			out[i] = m[i];
 	}
 
-	// The world-to-camera matrix, column-major: the inverse rotation after moving the camera to the origin.
+	// Returns the world-to-camera matrix, column-major. It moves the camera
+	// to the origin, then applies the inverse rotation.
 	function view():Array<Float> {
 		var xx = rx * rx, yy = ry * ry, zz = rz * rz;
 		var xy = rx * ry, xz = rx * rz, yz = ry * rz;
 		var wx = rw * rx, wy = rw * ry, wz = rw * rz;
-		// The rotation's rows, which are the columns of its inverse, column after column.
+		// `r` holds the rotation's rows, which are the columns of its
+		// inverse, column after column.
 		var r = [
 			1 - 2 * (yy + zz), 2 * (xy - wz), 2 * (xz + wy),
 			2 * (xy + wz), 1 - 2 * (xx + zz), 2 * (yz - wx),

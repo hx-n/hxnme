@@ -6,7 +6,7 @@ import hxn.me.math.Vec3;
 import hxn.me.physics.collision.ManifoldClipper.ClipWorkspace;
 import hxn.me.physics.collision.NarrowPhase.NarrowPhaseWorkspace;
 
-/** Per-thread inputs and workspaces for testing candidate pairs; overwritten for each pair. */
+/** `PairScratch` holds the per-thread inputs and workspaces for testing candidate pairs. Each pair overwrites them. */
 class PairScratch {
 	public var shapeA:ShapeDef = new ShapeDef(ShapeKind.Point);
 	public var shapeB:ShapeDef = new ShapeDef(ShapeKind.Point);

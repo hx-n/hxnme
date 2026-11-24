@@ -12,17 +12,17 @@ import hxn.me.render2d.Typesetter;
 import hxn.text.Font;
 
 /**
-	Loads an atlas and a font through `Assets`, draws two regions of the atlas
-	through a screen camera into a render target, and checks their pixels. The
-	atlas image is magenta outside its regions, so a region that samples the
-	wrong part of the image shows magenta.
+	`Loads` loads an atlas and a font through `Assets`, draws two regions of
+	the atlas through a screen camera into a render target, and checks their
+	pixels. The atlas image is magenta outside its regions, so any region that
+	samples the wrong part of the image shows magenta.
 **/
 class Loads {
 	static final target = new RenderTarget(64, 96);
 	static var atlas:Null<Asset<ArtSheetAtlas>>;
 	static var font:Null<Asset<Font>>;
 	static var shown = -1;
-	// A sprite of the store whose shadow is white and to its right, so it shows on the black target.
+	// Holds a sprite of the store whose shadow is white and to its right, so the shadow shows on the black target.
 	static var kept:Null<hxn.me.render2d.Sprite>;
 	static final beside = new hxn.me.render2d.Shadow(12, 0, 0, 0xFFFFFF, 1);
 	static var reading = false;
@@ -50,11 +50,11 @@ class Loads {
 			return;
 		// The atlas has a property for each region, from its file at compile time.
 		var sheet = atlas.value;
-		// Regions are placed by their pivot: the center, unless the atlas gives another.
+		// Each region is placed by its pivot, which is the center unless the atlas gives another.
 		draw.region(sheet.red, 10, 10);
 		draw.region(sheet.feet, 10, 90);
 		draw.regionSlice(sheet.panel, 24, 4, 36, 40, 0xFFFFFF, 1, 0, 2);
-		// White silhouettes of the red region, sharp and blurred, so they show on the black target.
+		// Draws white silhouettes of the red region, sharp and blurred, so they show on the black target.
 		draw.shadowOf(sheet.red, 10, 54, 0, 0, 0, 0xFFFFFF, 1);
 		draw.shadowOf(sheet.red, 52, 54, 0, 0, 4, 0xFFFFFF, 1);
 		var store:hxn.me.render2d.Sprites = sprites;

@@ -1,6 +1,6 @@
 package hxn.me;
 
-/** The phases of a schedule. The generated `hxn.me.Schedule` implements it. **/
+/** `Phases` declares the methods that run the phases of a schedule. The generated `hxn.me.Schedule` implements it. **/
 interface Phases {
 	function start():Void;
 	function begin():Void;

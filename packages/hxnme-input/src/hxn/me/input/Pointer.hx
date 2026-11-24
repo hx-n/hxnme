@@ -1,12 +1,13 @@
 package hxn.me.input;
 
 /**
-	The pointer, as a resource: the mouse cursor, or the primary touch on a
-	touch screen, which is the first finger down while no other is. The
-	position is in physical pixels of the window. The input plugin updates
-	it in `Begin`. winit 0.30, under hxn-window, reports the mouse and touches
-	as separate events, so the pointer joins them. Each touch, with its phase,
-	force and id as winit reports them, is in `Events<hxn.window.Event>`.
+	`Pointer` follows the mouse cursor, or the primary touch on a touch
+	screen, as a resource. The primary touch is the first finger down while
+	no other is. The position is in physical pixels of the window. The input
+	plugin updates it in `Begin`. winit 0.30, under hxn-window, reports the
+	mouse and touches as separate events, so the pointer joins them. Each
+	touch, with its phase, force and id as winit reports them, is in
+	`Events<hxn.window.Event>`.
 **/
 class Pointer {
 	/** The horizontal position. **/
@@ -27,7 +28,7 @@ class Pointer {
 	/** The number of touches on the screen. **/
 	public var touches(default, null) = 0;
 
-	// The id of the primary touch, while `pressedByTouch` is true.
+	// `primary` holds the id of the primary touch while `pressedByTouch` is true.
 	var primary:haxe.Int64 = 0;
 	var pressedByTouch = false;
 
@@ -41,8 +42,8 @@ class Pointer {
 		changes, such as a UI. The plugin sets it in `Begin` of each frame in
 		which the pointer moved, went down or up, or a touch began or ended.
 		The value is always this object, so setting it allocates nothing, and
-		effects read the fields of the value. The signal is created the first
-		time it is asked for.
+		effects read the fields of the value. This method creates the signal
+		on its first call.
 	**/
 	public function signal():hxn.Signal<Pointer> {
 		if (stream == null) {
@@ -85,7 +86,7 @@ class Pointer {
 		changed = true;
 	}
 
-	// Applies one touch event: the primary touch moves and presses the
+	// Applies one touch event. The primary touch moves and presses the
 	// pointer, and every touch counts in `touches`.
 	@:allow(hxn.me.input)
 	function touched(phase:hxn.window.TouchPhase, x:Float, y:Float, id:haxe.Int64):Void {

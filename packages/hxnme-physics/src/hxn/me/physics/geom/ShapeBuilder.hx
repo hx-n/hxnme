@@ -54,7 +54,7 @@ class ShapeBuilder {
 		}
 	}
 
-	/** Build a convex XY polygon in either winding order. */
+	/** Builds a convex XY polygon in either winding order. */
 	public static function makePolygon(pool:VertexPool, vertices:Array<Vec3>, depth:Float = 0.0, radius:Float = 0.01, localZ:Float = 0.0,
 			density:Float = 1.0):ShapeDef {
 		validate(radius, depth, localZ, density);
@@ -75,13 +75,14 @@ class ShapeBuilder {
 		return def;
 	}
 
-	// depth == 0.0 -> 2D Circle | depth > 0.0 -> 3D Cylinder/Pill
+	// When depth == 0.0, this makes a 2D circle. When depth > 0.0, it makes a 3D cylinder or pill.
 	public static inline function makeCircle(radius:Float, depth:Float = 0.0, localZ:Float = 0.0, density:Float = 1.0):ShapeDef {
 		validate(radius, depth, localZ, density);
 		return new ShapeDef(ShapeKind.Point, 0, 0, depth, radius, localZ, density);
 	}
 
-	// depth == 0.0 -> 2D Capsule/Segment | depth > 0.0 -> 3D Rounded Wall/Plate
+	// When depth == 0.0, this makes a 2D capsule or segment. When depth > 0.0, it makes a 3D
+	// rounded wall or plate.
 	public static function makeSegment(pool:VertexPool, ax:Float, ay:Float, bx:Float, by:Float, depth:Float = 0.0, radius:Float = 0.05, localZ:Float = 0.0,
 			density:Float = 1.0):ShapeDef {
 		validate(radius, depth, localZ, density);
@@ -104,7 +105,7 @@ class ShapeBuilder {
 		return makeSegment(pool, ax, ay, bx, by, depth, radius, localZ, density);
 	}
 
-	// depth == 0.0 -> 2D Rectangle | depth > 0.0 -> 3D Box
+	// When depth == 0.0, this makes a 2D rectangle. When depth > 0.0, it makes a 3D box.
 	public static function makeBox(pool:VertexPool, halfW:Float, halfH:Float, depth:Float = 0.0, radius:Float = 0.01, localZ:Float = 0.0,
 			density:Float = 1.0):ShapeDef {
 		validate(radius, depth, localZ, density);

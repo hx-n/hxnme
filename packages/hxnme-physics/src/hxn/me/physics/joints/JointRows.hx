@@ -11,28 +11,32 @@ import hxn.me.physics.joints.JointSimd4;
 #end
 
 /**
- * Scalar constraint rows for every active joint, prepared once per substep.
+ * `JointRows` holds the scalar constraint rows of every active joint, and
+ * prepares them once per substep.
  *
- * Each joint kind turns its geometry into rows during `prepare`; iterations
- * then solve rows without touching body poses or inertia again. Each row updates
+ * During `prepare`, each joint kind turns its geometry into rows. The
+ * iterations then solve the rows without reading body poses or inertia
+ * again. Each row updates
  * its accumulated impulse as
  *
  *     impulse = clamp(impulse + target - gain * speed - decay * impulse, lower, upper)
  *
- * where speed is the relative velocity along the row's Jacobian. Rows of one
- * joint are contiguous and solved in the order the kind emitted them.
+ * where speed is the relative velocity along the row's Jacobian. The rows of
+ * one joint are contiguous, and they are solved in the order that the kind
+ * emitted them.
  *
- * Joints are colored so no dynamic body appears twice in a color. With SIMD,
- * every batchable joint of a color is solved in a batch of four whose rows
- * are copied lane by lane into a packed buffer, the last batch padded with
- * empty lanes; the rest are solved one by one. With an island partition the
- * batches are formed within each island, so a worker solves its island's own
- * batches, and every joint takes the same arithmetic as in a serial solve.
+ * Joints are colored so that no dynamic body appears twice in a color. With SIMD,
+ * every batchable joint of a color is solved in a batch of four. The rows of
+ * each batch are copied lane by lane into a packed buffer, and empty lanes
+ * pad the last batch. The other joints are solved one by one. With an island
+ * partition, the batches are formed within each island. Each worker then
+ * solves the batches of its own island, and every joint takes the same
+ * arithmetic as in a serial solve.
  */
 @:allow(hxn.me.physics.joints.JointSimd4)
 class JointRows {
-	// Each row's linear direction is shared by both bodies; its angular Jacobian
-	// and inverse-inertia response are stored per body, negated for A.
+	// Both bodies share the linear direction of each row. The angular Jacobian and the
+	// inverse-inertia response are stored for each body, negated for A.
 	static inline var DIR = 0;
 	static inline var NEG_INV_MASS_A = 3;
 	static inline var INV_MASS_B = 6;
@@ -46,11 +50,12 @@ class JointRows {
 	static inline var LOWER = 24;
 	static inline var UPPER = 25;
 	static inline var IMPULSE = 26;
-	// The target for the relax pass: velocity targets keep theirs, position corrections none.
+	// Holds the target for the relax pass. Velocity targets keep their target, and position
+	// corrections have none.
 	static inline var RELAX_TARGET = 27;
 	static inline var ROW_BYTES = FIELDS * 4;
 
-	/** Most rows any joint kind emits. */
+	/** Sets the most rows that any joint kind emits. */
 	public static inline var MAX_PER_JOINT = 8;
 
 	/** Marks the first of three rows whose impulses are clamped together by length. */
@@ -58,7 +63,7 @@ class JointRows {
 
 	static inline var FIELDS = 28;
 
-	/** Float32Bytes of one packed level: every field for four lanes. */
+	/** Sets the bytes of one packed level in a `Float32Bytes`: every field for four lanes. */
 	static inline var LEVEL_BYTES = FIELDS * 16;
 
 	static inline var COLORS = 24;
@@ -70,7 +75,7 @@ class JointRows {
 
 	public var count(default, null):Int = 0;
 
-	/** Four-joint batches solved together in the current substep. */
+	/** Counts the four-joint batches solved together in the current substep. */
 	public var packedBatches(get, never):Int;
 
 	inline function get_packedBatches():Int
@@ -85,13 +90,14 @@ class JointRows {
 	var storeIndex:Int32Buffer;
 	var jointStart:Int32Buffer;
 	var jointCount:Int32Buffer;
-	// Joints with rows this substep, in emission order, and whether each has a norm block.
+	// Lists the joints with rows in this substep, in emission order, and whether each has a norm
+	// block.
 	var emitted:Int32Buffer;
 	var emittedCount:Int = 0;
 	var hasBlock:Int32Buffer;
-	// Color schedule, built on the first solve of a substep.
+	// The color schedule is built on the first solve of a substep.
 	var scheduled:Bool = false;
-	// Set once batches are solved from the packed buffer, which then holds their impulses.
+	// Is true once batches are solved from the packed buffer, which then holds their impulses.
 	var packedSolved:Bool = false;
 	var usedColors:Int32Buffer;
 	var jointColor:Int32Buffer;
@@ -108,7 +114,8 @@ class JointRows {
 	var batchLevels:Int32Buffer;
 	var packed:Float32Bytes;
 	var packedLevels:Int = 0;
-	// The island partition batches are formed within, or null for one group; each joint's group; each (color, group)'s batches.
+	// These fields hold the island partition that batches are formed within, or null for one
+	// group, then the group of each joint, then the batches of each (color, group).
 	var partition:Null<hxn.me.physics.island.IslandPartition>;
 	var jointGroup:Int32Buffer;
 	var groupBatchStart:Int32Buffer;
@@ -120,7 +127,7 @@ class JointRows {
 	var workerSimd:Array<JointSimd4> = [];
 	#end
 
-	// Body data of the joint currently being prepared.
+	// Holds the body data of the joint that is being prepared.
 	var a:Int;
 	var b:Int;
 	var writeA:Int;
@@ -266,7 +273,7 @@ class JointRows {
 
 	/**
 	 * Adds a row along linear direction `d` at lever arms `rA` and `rB` from the
-	 * bodies' centers of mass. Returns the row's inverse effective mass; finish
+	 * bodies' centers of mass. Returns the row's inverse effective mass. Finish
 	 * the row with `set`.
 	 */
 	public function linear(dx:Float, dy:Float, dz:Float, rax:Float, ray:Float, raz:Float, rbx:Float, rby:Float, rbz:Float):Float {
@@ -279,7 +286,7 @@ class JointRows {
 		return addRow(dx, dy, dz, jax, jay, jaz, jbx, jby, jbz);
 	}
 
-	/** Adds a purely angular row about `axis`; returns its inverse effective mass. */
+	/** Adds a purely angular row about `axis`. Returns its inverse effective mass. */
 	public function angular(x:Float, y:Float, z:Float):Float {
 		return addRow(0.0, 0.0, 0.0, x, y, z, x, y, z);
 	}
@@ -350,8 +357,9 @@ class JointRows {
 	}
 
 	/**
-	 * Shorthand for the common equality row: impulse += -mass * (speed + bias + gamma * impulse).
-	 * Each rigid row's bias only corrects position, so it relaxes without it; a soft row's is its spring.
+	 * Sets up the common equality row: impulse += -mass * (speed + bias + gamma * impulse).
+	 * The bias of each rigid row only corrects position, so the relax pass drops it. The bias of a
+	 * soft row is its spring.
 	 */
 	public inline function setEquality(mass:Float, bias:Float, gamma:Float, store:Float32Buffer, index:Int):Void {
 		set(-mass * bias, mass, mass * gamma, Math.NEGATIVE_INFINITY, Math.POSITIVE_INFINITY, store, index);
@@ -483,7 +491,7 @@ class JointRows {
 		}
 	}
 
-	/** Solves every joint once, color by color; four-joint batches use SIMD where available. */
+	/** Solves every joint once, color by color. Four-joint batches use SIMD where it is available. */
 	public function solveAll():Void {
 		if (!scheduled)
 			schedule();
@@ -534,7 +542,7 @@ class JointRows {
 			if (batchable(id))
 				colorCounts[color]++;
 		}
-		// Each joint's group: its island task, or one group for all.
+		// Each joint's group is its island task, or one group for all.
 		var p = partition;
 		groups = p == null ? 1 : p.activeCount;
 		for (i in 0...emittedCount)
@@ -560,7 +568,8 @@ class JointRows {
 			if (batchable(id))
 				groupBatchCount[jointColor[id] * groups + jointGroup[id]]++;
 		}
-		// Every batchable joint goes in a batch of its color and group, the last padded with empty lanes; the rest are solved alone.
+		// Every batchable joint goes in a batch of its color and group, and empty lanes pad the last
+		// batch. The other joints are solved alone.
 		batchTotal = 0;
 		for (color in 0...COLORS) {
 			batchOffset[color] = batchTotal;
@@ -625,7 +634,7 @@ class JointRows {
 		#end
 	}
 
-	/** Copies batched rows into lanes; levels past a joint's last row stay zero and change nothing. */
+	/** Copies batched rows into lanes. Levels past a joint's last row stay zero and change nothing. */
 	function pack(levels:Int):Void {
 		if (levels > packedLevels) {
 			while (packedLevels < levels)
@@ -691,7 +700,7 @@ class JointRows {
 		return r + 1;
 	}
 
-	/** All three candidates use the velocities from before the block, then share one length clamp. */
+	/** Solves a norm block. All three candidates use the velocities from before the block, then share one length clamp. */
 	function solveNormBlock(r:Int):Void {
 		var rows = this.rows;
 		var b0 = r * ROW_BYTES, b1 = b0 + ROW_BYTES, b2 = b1 + ROW_BYTES;

@@ -7,9 +7,9 @@ import haxe.macro.Printer;
 import sys.io.File;
 
 /**
-	Writes the classes that hxnme generates to a file, if the app compiles with
-	`-D hxnme_dump`. The value of the define is the file path. If it has no
-	value, the file is `hxnme-generated.hx`. The file contains each class that
+	`Dump` writes the classes that hxnme generates to a file when the app
+	compiles with `-D hxnme_dump`. The value of the define is the file path.
+	If the define has no value, the file is `hxnme-generated.hx`. The file contains each class that
 	hxnme generated so far, in the order that hxnme generated them.
 **/
 class Dump {

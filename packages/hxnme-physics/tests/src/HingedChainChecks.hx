@@ -32,7 +32,7 @@ class HingedChainChecks {
 				throw 'Chain gained energy: spatial=$spatial collide=$collide frame=$frame energy=$energy';
 			rise = Math.max(rise, energy - previous); peak = Math.max(peak, energy); previous = energy;
 		}
-		// Finite solver sweeps allow small stepwise energy errors; the release-energy bound is separate.
+		// Finite solver sweeps allow small stepwise energy errors. The release-energy bound is separate.
 		if (rise > chain.scale * (collide ? 0.0001 : 0.002)) throw 'Chain energy rose by $rise in one step';
 		for (b in chain.bodies) {
 			if (w.posY[b] >= 10 || w.islands.isAwake[b] != 0 || w.velX[b] != 0 || w.velY[b] != 0

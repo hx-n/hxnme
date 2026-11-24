@@ -10,9 +10,9 @@ class Slice implements hxn.gpu.Shader {
 			Returns the image coordinate, from 0 to 1, of the point `p` of a box
 			`size` large, both in pixels from its top left corner. `borders`
 			holds the left, top, right and bottom borders in pixels, and
-			`fractions` the same borders as fractions of the image. Each axis
-			maps in three pieces: the borders keep their size, and the middle
-			stretches. Borders wider than the box shrink to fit it.
+			`fractions` holds the same borders as fractions of the image. Each
+			axis maps in three pieces: the borders keep their size, and the
+			middle stretches. Borders wider than the box shrink to fit it.
 		**/
 		function sliceUv(p:Vec2, size:Vec2, borders:Vec4, fractions:Vec4):Vec2 {
 			var eps = vec2(0.0001, 0.0001);

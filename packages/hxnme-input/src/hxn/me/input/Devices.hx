@@ -6,9 +6,10 @@ import hxn.window.KeyCode;
 import hxn.window.MouseButton;
 
 /**
-	The state of the keyboard, the mouse buttons and the first connected
-	gamepad, as a resource. The input plugin updates it in `Begin`. Systems
-	read it to query a key or a button directly, without an action.
+	`Devices` holds the state of the keyboard, the mouse buttons and the
+	first connected gamepad, as a resource. The input plugin updates it in
+	`Begin`. Systems read it to query a key or a button directly, without an
+	action.
 
 	The window reports keys and mouse buttons only as events, so the plugin
 	keeps their state here. The gamepad state is the snapshot that
@@ -17,22 +18,25 @@ import hxn.window.MouseButton;
 **/
 class Devices {
 	final keys:Array<Bool> = [for (_ in 0...256) false];
-	// The character that each held key typed when it went down, or 0.
+	// `characters` holds the character that each held key typed when it went
+	// down, or 0.
 	final characters:Array<Int> = [for (_ in 0...256) 0];
 	final buttons:Array<Bool> = [for (_ in 0...8) false];
-	// The keys and buttons that went down or came up in this frame.
+	// These arrays mark the keys and buttons that went down or came up in
+	// this frame.
 	final pressedKeys:Array<Bool> = [for (_ in 0...256) false];
 	final releasedKeys:Array<Bool> = [for (_ in 0...256) false];
 	final pressedButtons:Array<Bool> = [for (_ in 0...8) false];
 	final releasedButtons:Array<Bool> = [for (_ in 0...8) false];
-	// The modifiers that the window reports: 1 shift, 2 control, 4 alt, 8 super.
+	// `modifiers` holds the modifiers that the window reports, as bits: 1 is
+	// Shift, 2 Control, 4 Alt and 8 Super.
 	var modifiers = 0;
 	@:allow(hxn.me.input)
 	final pad = haxe.io.Bytes.alloc(176);
 	var connected = false;
 	var sequence = -1;
-	// The gamepad buttons that went down or came up in this frame, from the
-	// events that `drain` reads.
+	// These arrays mark the gamepad buttons that went down or came up in this
+	// frame, from the events that `drain` reads.
 	final padPressed:Array<Bool> = [for (_ in 0...17) false];
 	final padReleased:Array<Bool> = [for (_ in 0...17) false];
 
@@ -49,8 +53,8 @@ class Devices {
 		which a key, a mouse button or a gamepad value changed, or a gamepad
 		connected or disconnected. The value is always this object, so setting
 		it allocates nothing, and effects read it, for example
-		`devices.key(ControlLeft) && devices.key(KeyS)`. The signal is created
-		the first time it is asked for.
+		`devices.key(ControlLeft) && devices.key(KeyS)`. This method creates
+		the signal on its first call.
 	**/
 	public function signal():hxn.Signal<Devices> {
 		if (stream == null) {
@@ -82,7 +86,7 @@ class Devices {
 		if (stream != null && changed)
 			stream.set(this);
 
-	/** True while `code` is down. **/
+	/** Returns true while `code` is down. **/
 	public inline function key(code:KeyCode):Bool
 		return keys[(code : Int)];
 
@@ -110,7 +114,8 @@ class Devices {
 	inline function get_superKey():Bool
 		return modifiers & 8 != 0;
 
-	// True while a held key typed `character` when it went down.
+	// Returns true while a held key is down that typed `character` when it
+	// went down.
 	function typing(character:Int):Bool {
 		for (typed in characters)
 			if (typed == character)
@@ -118,31 +123,31 @@ class Devices {
 		return false;
 	}
 
-	/** True while the mouse button `button` is down. **/
+	/** Returns true while the mouse button `button` is down. **/
 	public function mouse(button:MouseButton):Bool
 		return buttons[mouseIndex(button)];
 
-	/** True if `code` went down in this frame, even if it came up again. **/
+	/** Returns true if `code` went down in this frame, even if it came up again. **/
 	public inline function keyPressed(code:KeyCode):Bool
 		return pressedKeys[(code : Int)];
 
-	/** True if `code` came up in this frame. **/
+	/** Returns true if `code` came up in this frame. **/
 	public inline function keyReleased(code:KeyCode):Bool
 		return releasedKeys[(code : Int)];
 
-	/** True if `button` went down in this frame, even if it came up again. **/
+	/** Returns true if `button` went down in this frame, even if it came up again. **/
 	public function mousePressed(button:MouseButton):Bool
 		return pressedButtons[mouseIndex(button)];
 
-	/** True if `button` came up in this frame. **/
+	/** Returns true if `button` came up in this frame. **/
 	public function mouseReleased(button:MouseButton):Bool
 		return releasedButtons[mouseIndex(button)];
 
-	/** The value of `button` on the first gamepad, from 0 to 1. **/
+	/** Returns the value of `button` on the first gamepad, from 0 to 1. **/
 	public inline function gamepadButton(button:GamepadButton):Float
 		return pad.getDouble((button : Int) * 8);
 
-	/** The value of `axis` on the first gamepad, from -1 to 1. **/
+	/** Returns the value of `axis` on the first gamepad, from -1 to 1. **/
 	public inline function gamepadAxis(axis:GamepadAxis):Float
 		return pad.getDouble(136 + (axis : Int) * 8);
 
@@ -198,8 +203,8 @@ class Devices {
 		setModifiers(0);
 	}
 
-	// Records that the first gamepad connected or disconnected. A
-	// disconnected pad reads as zero.
+	// Records that the first gamepad connected or disconnected. After a
+	// disconnect, the pad state reads as zero.
 	@:allow(hxn.me.input)
 	function connect(on:Bool, family:GamepadFamily):Void {
 		if (on == connected)
@@ -218,11 +223,11 @@ class Devices {
 		if (button >= 0 && button < padPressed.length)
 			(pressed ? padPressed : padReleased)[button] = true;
 
-	/** True if the gamepad's `button` went down in this frame, even if it came up again. **/
+	/** Returns true if the gamepad's `button` went down in this frame, even if it came up again. **/
 	public inline function gamepadPressed(button:GamepadButton):Bool
 		return padPressed[(button : Int)];
 
-	/** True if the gamepad's `button` came up in this frame. **/
+	/** Returns true if the gamepad's `button` came up in this frame. **/
 	public inline function gamepadReleased(button:GamepadButton):Bool
 		return padReleased[(button : Int)];
 

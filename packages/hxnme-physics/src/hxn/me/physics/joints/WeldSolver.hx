@@ -36,7 +36,7 @@ class WeldSolver {
 		angularImpulseZ = new Float32Buffer(capacity);
 	}
 
-	/** Room for `to` joints, keeping the first `from`. */
+	/** Makes room for `to` joints, and keeps the first `from`. */
 	public function grow(from:Int, to:Int):Void {
 		relativeX = Grow.floats(relativeX, from, to);
 		relativeY = Grow.floats(relativeY, from, to);

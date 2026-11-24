@@ -10,7 +10,7 @@ import hxn.window.MouseElementState;
 import hxn.window.PhysicalKey;
 
 class InputSystems {
-	// The resources that `publish` sets the signals from, in one batch.
+	// `publish` sets the signals from these resources, in one batch.
 	static var devices:Null<Devices>;
 	static var pointer:Null<Pointer>;
 	static final publishAll:() -> Void = publish;
@@ -39,7 +39,8 @@ class InputSystems {
 					pointer.touched(phase, x, y, id);
 				case Focused(false):
 					// winit sends synthetic releases on Windows, Linux and the web,
-					// and none on macOS, so release here on every platform.
+					// and none on macOS, so the plugin releases every key and button
+					// here on every platform.
 					devices.releaseAll();
 					pointer.press(false);
 				case _:
@@ -62,15 +63,15 @@ class InputSystems {
 			state.publish();
 	}
 
-	// The first connected gamepad. Its state comes from `snapshot`, and its
-	// connections from `drain`, which reads events without making objects.
+	// `pad` is the first connected gamepad. Its state comes from `snapshot`,
+	// and its connections come from `drain`, which reads events without
+	// making objects.
 	static var pad:Null<Gamepad>;
 	static var padId = -1;
 	static final records = haxe.io.Bytes.alloc(32 * 32);
 
-	// The character of a key, or 0 for a key that does not type one
-	// character. winit's key without modifiers, where the platform gives it,
-	// is the key without Shift; elsewhere the logical key is lowercased.
+	// Returns the character of a key, or 0 for a key that does not type one
+	// character. It lowercases A to Z.
 	static function character(key:hxn.window.Key):Int {
 		return switch key {
 			case Character(text) if (text.length == 1):
@@ -111,7 +112,8 @@ class InputSystems {
 			devices.snapshotted();
 	}
 
-	// The kinds of `Gamepad.drain` records, in the order of `GamepadEvent`.
+	// These constants are the kinds of `Gamepad.drain` records, in the order
+	// of `GamepadEvent`.
 	static inline final CONNECTED = 1;
 	static inline final DISCONNECTED = 2;
 	static inline final BUTTON = 3;

@@ -7,21 +7,21 @@ import haxe.io.Path;
 import haxe.macro.Type;
 
 /**
-	The build macro behind `hxn.me.Assets.build()`. It reads the fields of
-	type `AssetRef<T>`, gives hxn-assets each one as a dynamic asset, so
-	hxn-assets lists and bundles it, and then makes each field an `AssetRef`
-	that `Assets.load` takes.
+	`AssetFields` implements the build macro of `hxn.me.Assets.build()`. It
+	reads the fields of type `AssetRef<T>`, and gives hxn-assets each one as a
+	dynamic asset, so that hxn-assets lists and bundles it. Then it makes each
+	field an `AssetRef` that `Assets.load` takes.
 
 	The asset type of an engine type comes from `@:assetType(expr)` on the
-	field, or else on the class of `T`. A type without it is data, which
+	field, or else on the class of `T`. Each type without it is data, which
 	hxn-assets decodes as it decodes a dynamic field of that type.
 **/
 class AssetFields {
-	// For the full name of an engine type, the function that gives an `AssetRef` field of that type a more exact type, such as an atlas with its regions as properties.
+	// Maps the full name of an engine type to the function that gives each `AssetRef` field of that type a more exact type, such as an atlas with its regions as properties.
 	static final refiners = new Map<String, (file:String, owner:ClassType, field:String, pos:Position) -> Null<ComplexType>>();
-	// The endings of the names of refined types: each is the declaring class's name, the field's name and one of these.
+	// Holds the endings of the names of refined types. Each refined type's name is the declaring class's name, the field's name and one of these endings.
 	static final suffixes:Array<String> = [];
-	// Refined types that the not-found hook asked for, which it returns instead of defining them.
+	// Holds the refined types that the not-found hook asked for. The hook returns these types instead of defining them.
 	static final requested = new Map<String, Null<TypeDefinition>>();
 
 	/**
@@ -42,9 +42,10 @@ class AssetFields {
 
 	/**
 		Defines `type`, which a refiner made, and returns the type for the
-		field to use. The type itself is defined as its name with `Data` added,
-		and its name becomes an alias of it. The field uses the first, because
-		the class's build may run while the compiler looks for the alias.
+		field to use. It defines the type under its name with `Data` added, and
+		makes the original name an alias of it. The field uses the `Data` type,
+		because the build macro of the class can run while the compiler looks
+		for the alias.
 	**/
 	public static function define(type:TypeDefinition):ComplexType {
 		var name = type.name;
@@ -61,11 +62,11 @@ class AssetFields {
 	}
 
 	/**
-		Lets code name a refined type, such as `GameAssetsSheetAtlas`, before
-		anything builds the class that declares it. When the compiler cannot
-		find such a name, this builds each class that the name can start with,
-		and returns the type that the build made. The kernel's
-		`extraParams.hxml` calls it.
+		Lets code refer to a refined type, such as `GameAssetsSheetAtlas`,
+		before anything builds the class that declares it. When the compiler
+		cannot find such a name, the hook builds each class that the name can
+		start with, and returns the type that the build macro made. The
+		kernel's `extraParams.hxml` calls it.
 	**/
 	public static function install():Void
 		Context.onTypeNotFound(notFound);
@@ -200,7 +201,7 @@ class AssetFields {
 		}
 	}
 
-	// The directory of the app's bundled files, as hxn-assets reads it.
+	// Returns the directory of the app's bundled files, as hxn-assets reads it.
 	static function assetDirectory():String {
 		var selected = Context.definedValue("hxn_assets_dir");
 		return selected == null ? "assets" : selected;

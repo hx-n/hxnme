@@ -51,8 +51,9 @@ class World {
 	public var toi(default, null):TimeOfImpact;
 	public var isBullet:Int32Buffer;
 
-	// De-Interleaved 32-bit Single SoA Buffers (4-wide SIMD aligned)
-	// SoA slots stay stable; count is the high-water mark and activeBodyCount is the live count.
+	// Body state is struct-of-arrays: one 32-bit Single buffer for each component, aligned for
+	// 4-wide SIMD. Slots stay stable. `bodyCount` is the high-water mark, and `activeBodyCount`
+	// is the number of live bodies.
 	public var bodyCount:Int = 0;
 	public var activeBodyCount(default, null):Int = 0;
 	public var bodyCapacity:Int;
@@ -65,7 +66,7 @@ class World {
 	var bodyNextFree:Int32Buffer;
 	var bodyFreeHead:Int = -1;
 	var kinematicPending:Int32Buffer;
-	// Pose at the start of the step a kinematic target is consumed in.
+	// These buffers hold each kinematic body's pose at the start of the step that consumes its target.
 	var kinematicStartX:Float32Buffer;
 	var kinematicStartY:Float32Buffer;
 	var kinematicStartZ:Float32Buffer;
@@ -73,7 +74,8 @@ class World {
 	var kinematicStartQy:Float32Buffer;
 	var kinematicStartQz:Float32Buffer;
 	var kinematicStartQw:Float32Buffer;
-	// Motion a kinematic body took through its target in the step it last moved, kept for a switch to dynamic.
+	// These buffers hold the motion that each kinematic body took toward its target in the step it
+	// last moved. Each switch to dynamic keeps this motion.
 	var kinematicVelX:Float32Buffer;
 	var kinematicVelY:Float32Buffer;
 	var kinematicVelZ:Float32Buffer;
@@ -83,13 +85,13 @@ class World {
 	var kinematicMovedStep:Int32Buffer;
 	var stepCount = 0;
 
-	/** Steps taken since the world was created. */
+	/** Counts the steps taken since the world was created. */
 	public var steps(get, never):Int;
 
 	inline function get_steps():Int
 		return stepCount;
 
-	/** Kinematic target poses by body slot. Write them, then call `commitKinematicTarget`. */
+	/** Holds the kinematic target pose of each body, by slot. To set a target, write its pose here, then call `commitKinematicTarget`. */
 	public var targetX(default, null):Float32Buffer;
 
 	public var targetY(default, null):Float32Buffer;
@@ -105,7 +107,7 @@ class World {
 	public var bodyType:Int32Buffer;
 	public var bodyDoF:Int32Buffer;
 
-	// Field declarations:
+	// These buffers hold the position and rotation of each body, by slot.
 	public var posX:Float32Buffer;
 	public var posY:Float32Buffer;
 	public var posZ:Float32Buffer;
@@ -116,9 +118,9 @@ class World {
 	public var rotW:Float32Buffer;
 
 	/**
-	 * Each body's pose before the most recent step, kept while
-	 * `keepPreviousPoses` is on, for drawing between steps. Each teleport sets it
-	 * to the new pose, so a cut is never drawn halfway.
+	 * Holds each body's pose from before the most recent step while
+	 * `keepPreviousPoses` is on, for drawing between steps. Each teleport sets
+	 * it to the new pose, so a cut is never drawn halfway.
 	 */
 	public var prevPosX(default, null):Float32Buffer;
 
@@ -129,7 +131,7 @@ class World {
 	public var prevRotZ(default, null):Float32Buffer;
 	public var prevRotW(default, null):Float32Buffer;
 
-	/** Record each body's pose at the start of every step into `prevPosX`..`prevRotW`. Costs one copy per moving body per step. */
+	/** When true, each step first records each body's pose into `prevPosX`..`prevRotW`. This costs one copy per moving body per step. */
 	public var keepPreviousPoses = false;
 
 	public var velX:Float32Buffer;
@@ -165,8 +167,8 @@ class World {
 
 	public var firstShape:Int32Buffer;
 
-	// Shape SoA Buffers
-	// Shape slots follow the same high-water and active-count convention.
+	// Shape state is struct-of-arrays too. `shapeCount` and `activeShapeCount` follow the same
+	// high-water and live-count convention as the body slots.
 	public var shapeCount:Int = 0;
 	public var activeShapeCount(default, null):Int = 0;
 
@@ -184,7 +186,7 @@ class World {
 	public var shapeSensor(default, null):Int32Buffer;
 
 	var shapeUserData:Int32Buffer;
-	// Set once a reshaped shape has its own vertex block instead of its descriptor's.
+	// Marks each reshaped shape that has its own vertex block instead of the block of its descriptor.
 	var shapeVertexPrivate:Int32Buffer;
 
 	public var shapeNext:Int32Buffer;
@@ -205,38 +207,41 @@ class World {
 	public var clipWorkspace:ClipWorkspace;
 	public var narrowWorkspace(default, null):NarrowPhaseWorkspace;
 
-	// Pair inputs and workspaces for the calling thread.
+	// Holds the pair inputs and workspaces for the calling thread.
 	var pairScratch:PairScratch = new PairScratch();
 
-	/** Sensor overlaps, contact begins and ends, and impacts from the last step. */
+	/** Holds the sensor overlaps, contact begins and ends, and impacts from the last step. */
 	public var events(default, null):WorldEvents = new WorldEvents();
 
-	// Awake flags as the broadphase saw them when it last found pairs.
+	// Holds the awake flags as the broadphase saw them when it last found pairs.
 	var pairAwake:Int32Buffer;
 	var overlapScratch:Int32Buffer;
-	// Lane constants for SIMD body integration, owned per world so worlds can step on separate threads.
+	// Holds the lane constants for SIMD body integration. Each world owns its own, so worlds can
+	// step on separate threads.
 	var integrationConstants = new Float32Bytes(80);
 	var correctionVelocities:Float32Buffer;
 
 	public var gravity:Vec3 = new Vec3(0.0, -9.81, 0.0);
 
 	/**
-	 * Joint sweeps per solver iteration. Loads pass one joint per sweep, so a
-	 * long jointed chain carrying weight, such as a standing character, needs
-	 * more than one to settle. One is cheaper and suits loose chains; any
-	 * positive value is safe.
+	 * Sets the number of joint sweeps in each solver iteration. Each sweep
+	 * passes a load along one joint, so a long jointed chain that carries
+	 * weight, such as a standing character, needs more than one sweep to
+	 * settle. One sweep is cheaper and suits loose chains. Any positive value
+	 * is safe.
 	 */
 	public var jointSweeps:Int = 2;
 
-	/** Counts the calls that change collider geometry: attaching, destroying and reshaping shapes. Snapshots taken before one cannot be restored after it. */
+	/** Counts the calls that change collider geometry: attaching, destroying and reshaping shapes. Snapshots taken before such a call cannot be restored after it. */
 	public var structureVersion(default, null):Int = 0;
 
 	/**
-	 * Starts a pool of Ash workers that solves large islands. Any positive
-	 * `minPairsPerWorker` also splits a segment's collision tests across the
-	 * workers once there are at least that many candidate pairs per worker;
-	 * zero keeps collision on the calling thread. Needs Ash 0.1.2 or later:
-	 * earlier worker pools can hang when woken this often.
+	 * Starts a pool of Ash workers that solves large islands. If
+	 * `minPairsPerWorker` is positive, the workers also share the collision
+	 * tests of a segment once there are at least that many candidate pairs per
+	 * worker. Zero keeps collision on the calling thread. Needs Ash 0.1.2 or
+	 * later, because earlier worker pools can hang when the world wakes them
+	 * this often.
 	 */
 	public function enableParallelIslands(workers:Int = 4, minConstraintsPerIsland:Int = 128, minPairsPerWorker:Int = 64):Void {
 		if (workers < 2 || minConstraintsPerIsland < 1 || minPairsPerWorker < 0)
@@ -261,8 +266,10 @@ class World {
 		shapeCapacity = sCap;
 
 		verts = new VertexPool(sCap * 8);
-		// The limits on overlapping pairs and on contacts grow with the world, and their storage only as far as a step needs, so a crowded
-		// scene is not silently missing collisions. The pair count a world can have is computed in floating point: sCap * sCap overflows an Int.
+		// The limits on overlapping pairs and on contacts grow with the world, and their storage grows
+		// only as far as a step needs, so a crowded scene does not drop collisions unnoticed. The limit
+		// functions work in floating point, because the pair count that a world can have,
+		// sCap * sCap, overflows an Int.
 		var pairLimit = pairLimitFor(sCap);
 		broadPhase = new BroadPhase(sCap * 2, pairLimit);
 		contacts = new ContactManifoldPool(contactLimitFor(sCap, pairLimit));
@@ -379,9 +386,13 @@ class World {
 	}
 
 	/**
-	 * Makes room for at least this many bodies, shapes and joints, keeping everything: handles stay valid, and a world grown mid-run
-	 * goes on exactly as one made this large would. Creating a body, shape or joint past the room calls this with twice as much, up to
-	 * the 1,048,576 a handle's index can hold. Call it between steps; it replaces the world's buffers, so none should be held across it.
+	 * Makes room for at least this many bodies, shapes and joints, and keeps
+	 * everything. Handles stay valid, and a world grown mid-run continues
+	 * exactly as a world made this large from the start. When a new body,
+	 * shape or joint does not fit, the world calls this with twice the room,
+	 * up to the 1,048,576 that a handle's index can hold. Call it only between
+	 * steps. It replaces the world's buffers, so do not keep a buffer across
+	 * the call.
 	 */
 	public function reserve(bodies:Int, shapes:Int, jointRoom:Int = 0):Void {
 		var limit = 1 << 20;
@@ -513,7 +524,7 @@ class World {
 		capacityRevision++;
 	}
 
-	/** Gives the room a snapshot did not cover, in a world larger than the one it was taken from, the values a new world has. */
+	/** Sets the room that a snapshot did not cover to the values of a new world. That room exists when the world is larger than the world the snapshot was taken from. */
 	@:allow(hxn.me.physics.core.WorldSnapshot)
 	function afterRestore(savedBodies:Int, savedShapes:Int, savedJoints:Int):Void {
 		if (shapeCapacity > savedShapes) {
@@ -526,7 +537,7 @@ class World {
 		joints.clearTails(savedBodies, savedJoints);
 	}
 
-	/** Bumped each time `reserve` replaces the world's buffers, for code that sized something by `bodyCapacity` or `shapeCapacity`. */
+	/** Increments each time `reserve` replaces the world's buffers, so code that sized something by `bodyCapacity` or `shapeCapacity` can detect the change. */
 	public var capacityRevision(default, null) = 0;
 
 	static function pairLimitFor(sCap:Int):Int
@@ -537,7 +548,7 @@ class World {
 		return Std.int(Math.min(1 << 24, Math.min(pairLimit, possible) * 4));
 	}
 
-	// Validate a public handle before using its slot to index SoA buffers.
+	// Validates a public handle before its slot indexes the SoA buffers.
 	public inline function bodySlot(body:BodyId):Int {
 		var value:Int = body;
 		var slot = value & INDEX_MASK;
@@ -775,7 +786,8 @@ class World {
 		if (kind == ShapeKind.Polygon || kind == ShapeKind.Hull) {
 			var def = pairScratch.shapeA;
 			def.assign(kind, offset, count, shapeDepth[sId], shapeRadius[sId], shapeLocalZ[sId], shapeDensity[sId]);
-			// Each polygon keeping its winding only moves its faces; anything else is rebuilt.
+			// When a polygon keeps its winding, `refreshPolygon` only moves its faces. Otherwise the
+			// shape gets a new topology.
 			if (!ManifoldClipper.refreshPolygon(verts, def, shapeTopology[sId]))
 				shapeTopology[sId] = ManifoldClipper.buildTopology(verts, def);
 		}
@@ -785,9 +797,10 @@ class World {
 
 	/**
 	 * Gives a shape new geometry from `def`, on a body of any type, keeping its
-	 * handle, material, filtering, sensor flag and user data. Its contacts are
-	 * dropped, so the next step finds them afresh. Each dynamic body's mass,
-	 * inertia and centre follow the new geometry; its velocities are kept.
+	 * handle, material, filtering, sensor flag and user data. The call drops
+	 * the shape's contacts, and the next step finds them again. If the body is
+	 * dynamic, its mass, inertia and center follow the new geometry, and its
+	 * velocities stay the same.
 	 */
 	public function reshapeShape(shape:ShapeId, def:ShapeDef):Void {
 		var sId = shapeSlot(shape);
@@ -816,7 +829,7 @@ class World {
 				wakeBodySlot(contacts.bodyB[c]);
 			}
 		}
-		// Manifold points are in the old geometry's terms.
+		// Drop the contacts, because their manifold points are relative to the old geometry.
 		contacts.removeShape(sId);
 		var owned = def.vertCount > 0 && verts.hasLiveBlock(def.vertOffset) ? 1 : 0;
 		if (owned != 0)
@@ -850,14 +863,14 @@ class World {
 		joints.setAnchors(joint, localA, localB);
 	}
 
-	/** Mirrors a hinge's or spherical joint's frames; see `JointPool.mirrorFrames`. */
+	/** Mirrors the frames of a hinge or spherical joint, as `JointPool.mirrorFrames` describes. */
 	public function mirrorJoint(joint:JointId, ex:Float, ey:Float, ez:Float):Void {
 		joints.mirrorFrames(joint, ex, ey, ez);
 	}
 
 	/**
 	 * Makes a shape a sensor, or a solid collider again. Each sensor reports
-	 * overlaps through `events` but never pushes on anything; ray and shape
+	 * overlaps through `events` but never pushes on anything. Ray and shape
 	 * casts and time-of-impact checks pass through it.
 	 */
 	public function setShapeSensor(shape:ShapeId, sensor:Bool):Void {
@@ -882,7 +895,7 @@ class World {
 		return shapeSensor[shapeSlot(shape)] != 0;
 	}
 
-	/** Stores a value with the shape, such as a bone or slot index; events report it for both shapes. */
+	/** Stores a value with the shape, such as a bone or slot index. Events report the value of both shapes. */
 	public function setShapeUserData(shape:ShapeId, value:Int):Void {
 		shapeUserData[shapeSlot(shape)] = value;
 	}
@@ -997,8 +1010,8 @@ class World {
 	}
 
 	/**
-	 * Tests broadphase pair `i` and appends its contacts to `out`; returns
-	 * whether any were added. Reads world state only, so worker threads can
+	 * Tests broadphase pair `i` and appends its contacts to `out`. Returns
+	 * whether it added any. It reads world state only, so worker threads can
 	 * call it with their own scratch and output.
 	 */
 	function collideOne(i:Int, scratch:PairScratch, out:ContactManifoldPool):Bool {
@@ -1119,11 +1132,11 @@ class World {
 		bodyFreeHead = slot;
 	}
 
-	/** Whether a body's shapes give it volume, which makes it a 3D body when dynamic. */
 	/**
-	 * Returns a body's velocity over the last step, by slot: its velocity, or for a
-	 * kinematic body that followed a target in that step, the motion the
-	 * target gave it, which `velX` and the rest no longer hold after the step.
+	 * Returns a body's velocity over the last step, by slot. For a kinematic
+	 * body that followed a target in that step, this is the motion that the
+	 * target gave it, which `velX` and the other velocity buffers no longer
+	 * hold after the step. For any other body, it is the body's velocity.
 	 */
 	public inline function stepVelocityX(slot:Int):Float
 		return movedKinematic(slot) ? kinematicVelX[slot] : velX[slot];
@@ -1147,8 +1160,8 @@ class World {
 		return bodyType[slot] == BodyType.Kinematic && kinematicMovedStep[slot] == stepCount && stepCount > 0;
 
 	/**
-	 * The mass a body's shapes give it, whatever its type, with their centroid
-	 * in the body's frame written to `centroid`. Kinematic and static bodies
+	 * Returns the mass that a body's shapes give it, whatever its type, and
+	 * writes their centroid in the body's frame to `centroid`. Kinematic and static bodies
 	 * keep no mass for the solver, but balance and similar measures need it.
 	 * Allocates.
 	 */
@@ -1176,11 +1189,12 @@ class World {
 		return mass;
 	}
 
+	/** Returns whether a body's shapes give it volume, which makes it a 3D body when it is dynamic. */
 	public function hasVolume(body:BodyId):Bool {
 		return shapesHaveVolume(bodySlot(body));
 	}
 
-	/** Any shape with depth, a hull, or shapes at different local Z make a body volumetric. */
+	/** Returns whether a body is volumetric. Any shape with depth, any hull, or shapes at different local Z make it volumetric. */
 	function shapesHaveVolume(bId:Int):Bool {
 		var sId = firstShape[bId];
 		if (sId == -1)
@@ -1249,7 +1263,7 @@ class World {
 		localCenterX[bId] = cx;
 		localCenterY[bId] = cy;
 		localCenterZ[bId] = cz;
-		// Each shape contributes inertia about the body origin; move the sum to its center of mass.
+		// Each shape adds inertia about the body origin. Move the sum to the center of mass.
 		var inertia = new Mat3(ixx
 			- mass * (cy * cy + cz * cz), iyy
 			- mass * (cx * cx + cz * cz), izz
@@ -1305,7 +1319,7 @@ class World {
 		var mxy:Float = invInertiaXY[bId],
 			mxz:Float = invInertiaXZ[bId],
 			myz:Float = invInertiaYZ[bId];
-		// World tensor R M R^T.
+		// Computes the world inertia tensor R M R^T.
 		var t00 = r00 * mxx + r01 * mxy + r02 * mxz,
 			t01 = r00 * mxy + r01 * myy + r02 * myz,
 			t02 = r00 * mxz + r01 * myz + r02 * mzz;
@@ -1340,9 +1354,9 @@ class World {
 	}
 
 	/**
-	 * Refits each shape's broadphase box. Core vertices are rotated once and
-	 * bounded; local Z offset and extrusion depth move along the body's rotated
-	 * Z axis, and the rounding radius pads every side.
+	 * Refits each shape's broadphase box. The core vertices are rotated once
+	 * and bounded. The local Z offset and the extrusion depth move along the
+	 * rotated Z axis of the body, and the rounding radius pads every side.
 	 */
 	function updateShapeAABBs(bId:Int, force:Bool = false):Void {
 		var px:Float = posX[bId], py:Float = posY[bId], pz:Float = posZ[bId];
@@ -1409,7 +1423,7 @@ class World {
 		}
 	}
 
-	/** Substeps a step is split into; gravity is added at the start of each. */
+	/** Sets the number of substeps in each step. Each substep adds gravity at its start. */
 	public static inline var SUBSTEPS = 4;
 
 	public function step(dt:Single):Void {
@@ -1425,7 +1439,8 @@ class World {
 		events.beginStep();
 		toi.beginStep();
 		prepareKinematicTargets(dt);
-		// Direct velocity writes are common while constructing scenes; treat them as a wake request.
+		// Code that builds a scene often writes velocities directly. Treat such a write as a request to
+		// wake the body.
 		for (position in 0...activeBodyCount) {
 			var i = activeBodyIds[position];
 			if (bodyType[i] == BodyType.Dynamic
@@ -1460,11 +1475,12 @@ class World {
 	}
 
 	/**
-	 * One substep, in the order of Box2D's soft step: gravity, then a solve
-	 * whose bias pushes overlaps apart, then the poses move, then a relax pass
-	 * without bias takes that push back out of the velocities, so resting
-	 * contacts carry no velocity into the next substep. Restitution comes last,
-	 * from the approach speed measured before the solve.
+	 * Runs one substep in the order of the Box2D soft step. Gravity comes
+	 * first. Then a solve with bias pushes overlaps apart, and the poses move.
+	 * Then a relax pass without bias takes that push back out of the
+	 * velocities, so resting contacts carry no velocity into the next substep.
+	 * Restitution comes last, from the approach speed measured before the
+	 * solve.
 	 */
 	function stepSegment(h:Single):Void {
 		SimdBatch.integrateVelocities(bodyCount, velX, velY, velZ, invMassX, invMassY, invMassZ, gravity.x, gravity.y, gravity.z, h, islands.integrationMask,
@@ -1475,7 +1491,7 @@ class World {
 		broadPhase.findPairs(activeShapeCount, shapeProxy, shapeBody, bodyType, shapeCategoryBits, shapeMaskBits, shapeGroupIndex, islands.isAwake,
 			activeShapeIds);
 		contacts.beginStep();
-		// Workers fill their own buffers and merge them in pair order, matching a serial pass.
+		// Workers fill their own buffers and merge them in pair order, so the result matches a serial pass.
 		if (parallelIslands == null || !parallelIslands.collidePairs()) {
 			for (i in 0...broadPhase.pairCount) {
 				if (collideOne(i, pairScratch, contacts))
@@ -1618,7 +1634,7 @@ class World {
 		correctionVelocities.blit(stride * 5, angVelZ, 0, count);
 	}
 
-	/** Position corrections move loop bodies without becoming their next-step velocity. */
+	/** Restores the velocities of loop bodies, so a position correction moves them without becoming their velocity in the next step. */
 	function restoreCorrectionVelocities():Void {
 		var stride = bodyCapacity, mask = joints.splitVelocity;
 		for (p in 0...activeBodyCount) {
@@ -1661,7 +1677,7 @@ class World {
 	/**
 	 * Returns a body's pose a fraction `alpha` of the way from before the most recent
 	 * step (0) to now (1), for drawing between fixed steps. Needs
-	 * `keepPreviousPoses`; without it the previous pose may be stale.
+	 * `keepPreviousPoses`. Without it, the previous pose can be stale.
 	 */
 	public function getInterpolatedTransform(body:BodyId, alpha:Float):BodyTransform {
 		var slot = bodySlot(body);
@@ -1694,28 +1710,28 @@ class World {
 	}
 
 	/**
-	 * A JSON snapshot of the world: every body with its type, sleep state,
-	 * pose, velocities and shapes; every joint; and the contact count. Bodies
-	 * come in slot order and numbers are rounded to four decimals, so equal
-	 * worlds give equal text.
-	 */
-	/**
-	 * What is wrong with the world, as findings with stable codes and paths:
+	 * Reports what is wrong with the world, as findings with stable codes and paths:
 	 * non-finite or skewed poses, dynamic bodies with no mass or only
 	 * sensors, bodies far from the origin or fallen out of the world, joints
 	 * that hold nothing, shapes with no extent, and capacities nearly full.
-	 * Sound worlds report nothing. Allocates only the report; pass a report
-	 * to clear and reuse it without allocating on a sound world.
+	 * Sound worlds report nothing. Only the report allocates. To clear and
+	 * reuse a report without allocating on a sound world, pass it in.
 	 */
 	public function validate(?report:hxn.me.physics.diagnostics.Diagnostics):hxn.me.physics.diagnostics.Diagnostics {
 		return WorldValidation.world(this, report);
 	}
 
+	/**
+	 * Returns a JSON snapshot of the world: every body with its type, sleep
+	 * state, pose, velocities and shapes, then every joint, then the contact
+	 * count. Bodies come in slot order and numbers are rounded to four
+	 * decimals, so equal worlds give equal text.
+	 */
 	public function describe():String {
 		return WorldDescription.world(this);
 	}
 
-	/** The JSON entry `describe` gives for one body. */
+	/** Returns the JSON entry that `describe` gives for one body. */
 	public function describeBody(body:BodyId):String {
 		return WorldDescription.body(this, bodySlot(body));
 	}
@@ -1745,7 +1761,7 @@ class World {
 	/**
 	 * Uses the pose in `targetX`..`targetQw` at `slot` as the kinematic target
 	 * for the next step, like `setKinematicTarget` without building objects.
-	 * Normalises the rotation. Any pose that is not finite, or a zero rotation,
+	 * Normalizes the rotation. Any pose that is not finite, or a zero rotation,
 	 * throws and leaves the body with no pending target.
 	 */
 	public function commitKinematicTarget(slot:Int):Void {
@@ -1803,7 +1819,8 @@ class World {
 			velX[slot] = vx;
 			velY[slot] = vy;
 			velZ[slot] = vz;
-			// Angular velocity that turns the current rotation into the target over dt, the short way round.
+			// Finds the angular velocity that turns the current rotation into the target over dt, by the
+			// shorter way.
 			var dot = ax * targetQx[slot] + ay * targetQy[slot] + az * targetQz[slot] + aw * targetQw[slot];
 			var sign = dot < 0.0 ? -1.0 : 1.0;
 			var tx = targetQx[slot] * sign,
@@ -1895,14 +1912,14 @@ class World {
 	}
 
 	/**
-	 * Changes a body between static, kinematic and dynamic, keeping its pose.
-	 * Mass and degrees of freedom are recomputed from its shapes, its contacts
-	 * are rebuilt on the next step, and touching or jointed bodies wake. A
-	 * kinematic body that followed a target in the last step keeps that motion
-	 * as a dynamic body; any other switch leaves the body at rest. Set
-	 * `velX`..`angVelZ` afterwards to choose the motion yourself.
-	 * Each joint with no dynamic body applies no impulse until one of its bodies
-	 * is dynamic.
+	 * Changes a body between static, kinematic and dynamic, and keeps its
+	 * pose. The world recomputes the mass and degrees of freedom from its
+	 * shapes, rebuilds its contacts on the next step, and wakes touching or
+	 * jointed bodies. If a kinematic body followed a target in the last step,
+	 * it keeps that motion as a dynamic body. Any other switch leaves the body
+	 * at rest. To choose the motion yourself, set `velX`..`angVelZ`
+	 * afterwards. Each joint with no dynamic body applies no impulse until one
+	 * of its bodies is dynamic.
 	 */
 	public function setBodyType(body:BodyId, type:BodyType):Void {
 		var slot = bodySlot(body);
@@ -1945,9 +1962,9 @@ class World {
 	}
 
 	/**
-	 * Changes a dynamic body's velocities as an impulse (newton-seconds) at a
-	 * world point would, and wakes it. Static and kinematic bodies are left as
-	 * they are.
+	 * Applies an impulse (newton-seconds) at a world point to a dynamic body's
+	 * velocities, and wakes the body. Static and kinematic bodies stay as they
+	 * are.
 	 */
 	public function applyImpulse(body:BodyId, impulse:Vec3, point:Vec3):Void {
 		var s = bodySlot(body);

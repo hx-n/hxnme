@@ -1,9 +1,9 @@
 # hxnme-input
 
-Input for hxnme apps, in `hxn.me.input`. The plugin maps keys, mouse
-buttons and gamepads to typed actions, and tracks the pointer of the mouse
-or of a touch screen. It reads the events that the window plugin publishes,
-so it requires [hxnme-window](../hxnme-window).
+hxnme-input maps keys, mouse buttons and gamepads to typed actions in
+hxnme apps, and tracks the pointer of the mouse or of a touch screen. Its
+package is `hxn.me.input`. The plugin reads the events that the window
+plugin publishes, so it requires [hxnme-window](../hxnme-window).
 
 List both plugins in the app's `hxnme.toml`:
 
@@ -66,30 +66,30 @@ class Movement {
 | `released(action)` | True if the action came up in this frame. |
 | `value(action)` | The value, from -1 to 1. Keys and buttons give 1 while they are down, and a gamepad axis gives its position. |
 
-Each action is down while its value is at least 0.5 from 0. If more than one
-binding is active, the value with the largest size wins. Keys of
-`@:keyAxis` add up, so both keys down give 0. Shortcuts do not hide their
-keys from other actions: while `Control` and `S` are down, an action bound
-to `@:keys(KeyS)` is down too.
+Each action is down while its value is at least 0.5 from 0. If more than
+one binding is active, the value with the largest size wins. The two keys
+of `@:keyAxis` add up, so the value is 0 while both are down. Shortcuts do
+not hide their keys from other actions. While `Control` and `S` are down,
+an action bound to `@:keys(KeyS)` is down too.
 
 Keys match by position or by character, as `KeyboardEvent.code` and
 `KeyboardEvent.key` do in a browser. `@:keys` and `@:keyAxis` match the key
-in that place, so WASD stays in place on any keyboard layout. In a
+by its position, so WASD stays in place on any keyboard layout. In a
 `@:shortcut`, letters and digits match the key that types them, so
-`@:shortcut(Control, KeyZ)` is the key marked Z on an AZERTY keyboard too.
+`@:shortcut(Control, KeyZ)` uses the key marked Z on an AZERTY keyboard too.
 Other keys of a shortcut, such as `Space`, match by position.
 
 The bindings become a table at compile time, so the actions need no lookup
-at run time. Names that are not a key, a button or an axis are compile errors at the
-metadata, and so is a set without `@:actions`.
+at run time. Each name that is not a key, a button or an axis is a compile
+error at the metadata. Each set without `@:actions` is also a compile error.
 
 ## Gamepads
 
 hxn-window reports every supported gamepad with the same positional
-buttons, the W3C standard layout that gilrs and the SDL controller database
-map each pad to. So `@:buttons(South)` is the bottom face button on Xbox,
-PlayStation, Nintendo and Steam pads alike, and an app writes no mapping of
-its own.
+buttons. These buttons follow the W3C standard layout, which gilrs and the
+SDL controller database map each pad to. As a result, `@:buttons(South)` is
+the bottom face button on Xbox, PlayStation, Nintendo and Steam pads alike.
+The app writes no mapping of its own.
 
 | Family | Vendor | `South` | `East` | `West` | `North` |
 |---|---|---|---|---|---|
@@ -99,47 +99,49 @@ its own.
 | `Steam` | 0x28DE | A | B | X | Y |
 | `Generic` | other | South | East | West | North |
 
-`devices.gamepadFamily` is the family of the connected pad, from the USB
-vendor id that hxn-window reports. `Gamepads.label(family, button)` is the
-label that a button carries on that family, for button prompts, and
-`input.gamepadLabel(action)` is the label of the action's first gamepad
-button on the connected pad:
+`devices.gamepadFamily` holds the family of the connected pad, from the USB
+vendor id that hxn-window reports. For button prompts,
+`Gamepads.label(family, button)` returns the label that a button carries on
+that family. `input.gamepadLabel(action)` returns the label of the action's
+first gamepad button on the connected pad:
 
 ```haxe
 hint.text = 'Press ${input.gamepadLabel(Jump)} to jump'; // "A", "Cross" or "B"
 ```
 
 `@:buttons(Confirm)` and `@:buttons(Cancel)` follow each family's
-convention: `Confirm` is `East` on Nintendo pads, where A sits, and `South`
-on the others, and `Cancel` is the other of the two. Menus bind these, and
+convention. `Confirm` is `East` on Nintendo pads, where A sits, and `South`
+on the others. `Cancel` is the other of the two. Menus bind these, and
 gameplay binds positions.
 
 ## Devices and the pointer
 
 The resource `Devices` holds the state of each key, each mouse button and
-the first connected gamepad, for systems that read a key without an action:
-`devices.key(KeyW)`, `devices.mouse(Right)`, `devices.gamepadAxis(LeftY)`,
-`devices.gamepadPressed(South)`.
+the first connected gamepad. Systems read it to get a key without an
+action, for example `devices.key(KeyW)`, `devices.mouse(Right)`,
+`devices.gamepadAxis(LeftY)` and `devices.gamepadPressed(South)`.
 `keyPressed`, `keyReleased`, `mousePressed` and `mouseReleased` report what
 went down or came up in the frame. `shift`, `control`, `alt` and `superKey`
 are the modifiers that the window reports. When the window loses the focus,
 the plugin releases every key and button.
 
-hxn-window passes on winit's events, which report changes and never the
-current state, as a browser does. So the plugin keeps the state of keys and
-mouse buttons, and nothing more. The rest is winit's own: the modifiers
-come from `ModifiersChanged`, the character of a key from its logical key,
-and `pressed` and `released` from the state in each event. So a click
-within one frame is not lost. The gamepad state is the snapshot that
-`hxn.window.Gamepad.snapshot` copies once a frame.
+hxn-window passes on winit's events. As in a browser, these events report
+changes and never the current state. The plugin therefore keeps the state
+of keys and mouse buttons, and nothing more. The rest comes from winit. The
+modifiers come from `ModifiersChanged`, and the character of a key comes
+from its logical key. `pressed` and `released` come from the state in each
+event, so the plugin does not lose a click within one frame. The gamepad
+state is the snapshot that `hxn.window.Gamepad.snapshot` copies once a
+frame.
 
-The resource `Pointer` is the mouse cursor, or the primary touch on a touch
-screen, which is the first finger down while no other is: `x` and `y` in
-physical pixels of the window, and `down`, `pressed`, `released` and
-`touches`, the number of fingers down. winit 0.30 reports the mouse and
-touches as separate events, so the pointer joins them. For each finger, with
-its phase, its force and its id as winit reports them, read the `Touch`
-events in `Res<hxn.me.Events<hxn.window.Event>>`.
+The resource `Pointer` follows the mouse cursor, or the primary touch on a
+touch screen. The primary touch is the first finger down while no other
+finger is down. `Pointer` has `x` and `y` in physical pixels of the window,
+`down`, `pressed`, `released`, and `touches`, the number of fingers down.
+winit 0.30 reports the mouse and touches as separate events, so the pointer
+joins them. To get each finger, with its phase, its force and its id as
+winit reports them, read the `Touch` events in
+`Res<hxn.me.Events<hxn.window.Event>>`.
 
 The plugin's system reads the events in `Begin`, after the window plugin
 publishes them. Systems in `Fixed`, `Update` and `Render` read the state of
@@ -157,8 +159,8 @@ the input as `hxn.Signal` values:
 | `devices.signal()` | The `Devices`. | Keys, mouse buttons or gamepad values change, or a gamepad connects or disconnects. |
 
 The signals of `Pointer` and `Devices` carry the same object in every
-frame, so they carry the stream of input as it changes, and setting them
-allocates nothing. Effects read the current fields of the value:
+frame. As a result, they carry the stream of input as it changes, and
+setting them allocates nothing. Effects read the current fields of the value:
 
 ```haxe
 @:system(Start)
@@ -175,7 +177,7 @@ static function watch(input:Res<Input<Action>>, devices:Res<Devices>) {
 ```
 
 For keys held together, `@:shortcut` on an action is shorter, and players
-can rebind it. The devices signal serves code that reads the keys
+can rebind it. The devices signal is for code that reads the keys
 themselves.
 
 The plugin creates each signal the first time that code asks for it. It

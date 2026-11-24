@@ -7,7 +7,7 @@ import hxn.gpu.Texture;
 import hxn.gpu.TextureFormat;
 
 /**
-	`Gpu` is the resource that holds the app's GPU device. The plugin opens the
+	`Gpu` holds the app's GPU device, as a resource. The plugin opens the
 	device on the app's window in the first frame. Opening the device takes
 	some frames. Until it is open, `device` is null and the plugin draws no
 	frame. In each frame that the plugin draws, `frame` is the texture of the

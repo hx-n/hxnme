@@ -5,11 +5,11 @@ import hxn.Float64Buffer;
 import hxn.Int32Buffer;
 
 /**
- * Everything about a world that decides how it steps next: bodies, shapes'
- * settings, joints and their warm starts and drives, contacts, the
- * broadphase tree, sleep state, kinematic targets, and last step's event
- * sets. Restoring a snapshot and stepping gives exactly the result stepping
- * on from where it was taken would have.
+ * `WorldSnapshot` holds everything about a world that decides how it steps
+ * next: bodies, shape settings, joints with their warm starts and drives,
+ * contacts, the broadphase tree, sleep state, kinematic targets, and the
+ * event sets of the last step. Restoring a snapshot and stepping gives
+ * exactly the result of stepping on from the moment the snapshot was taken.
  *
  * ```haxe
  * var start = new WorldSnapshot();
@@ -18,15 +18,15 @@ import hxn.Int32Buffer;
  * start.restore(world);   // back to the moment of saving
  * ```
  *
- * The first save allocates the snapshot's storage; later saves of the same
- * world, and every restore, copy into what is there. Each snapshot can also be
+ * The first save allocates the snapshot's storage. Later saves of the same
+ * world, and every restore, copy into that storage. Each snapshot can also be
  * restored into another world built by the same calls, which is how many
  * copies of one environment start from one state.
  *
- * Collider geometry is not copied: a snapshot taken before a shape was
- * attached, destroyed or reshaped cannot be restored after it, and `restore`
- * throws. The world's island workers, if any, must be the same on both
- * sides, since they change the order contacts are solved in.
+ * Collider geometry is not copied. If a shape was attached, destroyed or
+ * reshaped after a snapshot was taken, the snapshot cannot be restored, and
+ * `restore` throws. The world's island workers, if any, must be the same on
+ * both sides, because they change the order in which contacts are solved.
  */
 @:allow(hxn.me.physics.core.World)
 @:allow(hxn.me.physics.core.WorldEvents)
@@ -40,18 +40,19 @@ import hxn.Int32Buffer;
 @:allow(hxn.me.physics.joints.WeldSolver)
 @:allow(hxn.me.physics.joints.SphericalSolver)
 class WorldSnapshot {
-	/** Whether the snapshot holds a state. */
+	/** Is true when the snapshot holds a state. */
 	public var saved(default, null) = false;
 
-	/** The world's `structureVersion` when it was saved. */
+	/** Holds the world's `structureVersion` at the time of the save. */
 	public var structureVersion(default, null):Int = 0;
 
 	var restoring = false;
 	var bodyCapacity = 0;
 	var shapeCapacity = 0;
 	var jointCapacity = 0;
-	// One pool per element type. The k-th buffer of a type sits at offset[k] in its pool and holds length[k]
-	// entries; saving lays the buffers out in visiting order, so a later save of the same world reuses the space.
+	// Each element type has one pool. The k-th buffer of a type sits at offset[k] in its pool and
+	// holds length[k] entries. Saving lays the buffers out in visiting order, so a later save of the
+	// same world reuses the space.
 	var scalars = new Float64Buffer(64);
 	var scalarAt = 0;
 	var intPool = new Int32Buffer(0);
@@ -78,7 +79,7 @@ class WorldSnapshot {
 
 	public function new() {}
 
-	/** Takes the world's state. */
+	/** Saves the world's state. */
 	public function save(world:World):Void {
 		restoring = false;
 		begin();
@@ -100,7 +101,8 @@ class WorldSnapshot {
 			throw 'Nothing has been saved in this snapshot';
 		if (world.structureVersion != structureVersion)
 			throw 'The world\'s shapes changed since this snapshot was saved (structure ${world.structureVersion}, snapshot $structureVersion)';
-		// Each world with less room than the one saved is given it; one with more keeps it, and the room the snapshot did not cover is made as new.
+		// If the world has less room than the saved world, it gets that room. If it has more, it keeps
+		// it, and the room that the snapshot did not cover is reset as new.
 		world.reserve(bodyCapacity, shapeCapacity, jointCapacity);
 		restoring = true;
 		begin();
@@ -108,7 +110,7 @@ class WorldSnapshot {
 		world.afterRestore(bodyCapacity, shapeCapacity, jointCapacity);
 	}
 
-	/** A JSON summary: whether it holds a state, the structure it was saved from, and how much it stores. */
+	/** Returns a JSON summary: whether it holds a state, the structure it was saved from, and how much it stores. */
 	public function describe():String {
 		var stored = intUsed * 4 + singleUsed * 4 + doubleUsed * 8 + floatUsed * 4;
 		return '{"saved":$saved,"structureVersion":$structureVersion,"bodyCapacity":$bodyCapacity,"shapeCapacity":$shapeCapacity,'
@@ -123,8 +125,8 @@ class WorldSnapshot {
 		floatAt = 0;
 	}
 
-	// The calls below are shared by saving and restoring: each owner visits its state in a fixed order, and a value
-	// passes through `int`/`float`/`bool` so the same line stores it or brings it back.
+	// Saving and restoring share the calls below. Each owner visits its state in a fixed order, and
+	// a value passes through `int`/`float`/`bool`, so the same line stores it or brings it back.
 
 	function int(v:Int):Int
 		return Std.int(float(v));
@@ -142,7 +144,7 @@ class WorldSnapshot {
 		return v;
 	}
 
-	/** How many entries of a range to visit: the saved count when saving, and when restoring whichever of the saved and live counts is larger, so entries past a shrunken count are cleared. */
+	/** Returns how many entries of a range to visit. Saving visits the saved count. Restoring visits the larger of the saved and live counts, so it clears the entries past a shrunken count. */
 	inline function span(live:Int, restored:Int):Int
 		return restoring && live > restored ? live : restored;
 
@@ -266,7 +268,7 @@ class WorldSnapshot {
 		return grown;
 	}
 
-	/** Saves or restores a growable int array: restoring returns a larger array when the saved one does not fit. */
+	/** Saves or restores a growable int array. Restoring returns a larger array when the saved array does not fit. */
 	function growingInts(a:Int32Buffer, n:Int):Int32Buffer {
 		if (restoring && intLength[intAt] > a.length) {
 			var grown = new Int32Buffer(intLength[intAt]);

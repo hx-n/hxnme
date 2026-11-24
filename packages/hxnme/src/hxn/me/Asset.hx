@@ -1,13 +1,13 @@
 package hxn.me;
 
 /**
-	`Asset` is a handle to a loaded asset. `Assets.load` returns one for each
-	load, and every handle to one address and type shares one value. Call
-	`release` when the handle is no longer needed. After the last handle is
-	released, the value closes.
+	`Asset` gives access to the value of a loaded asset. `Assets.load` returns
+	one handle for each load, and every handle to one address and type shares
+	one value. When the app no longer needs the handle, call `release`. After
+	the app releases the last handle, the value closes.
 **/
 class Asset<T> {
-	/** The path of the file that the asset was loaded from. **/
+	/** The path of the file that `Assets` loaded the asset from. **/
 	public final path:String;
 
 	var entry:Null<AssetEntry>;
@@ -26,7 +26,7 @@ class Asset<T> {
 		return entry.value;
 	}
 
-	/** Returns whether the handle was released. **/
+	/** Returns whether the app released the handle. **/
 	public var released(get, never):Bool;
 
 	function get_released():Bool

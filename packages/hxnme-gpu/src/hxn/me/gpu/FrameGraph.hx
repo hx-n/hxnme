@@ -5,16 +5,17 @@ import hxn.gpu.Texture;
 
 /**
 	`FrameGraph` holds the passes that draw each frame, in the order that they
-	run. Plugins and the app add each pass one time. The graph then runs the
+	run. Plugins and the app add each pass once. The graph then runs the
 	pass in every frame while it is enabled, so drawing a frame makes no new
 	pass objects. The graph records all passes of a frame into one command
 	encoder and submits them together.
 **/
 class FrameGraph {
 	final passes:Array<Pass> = [];
-	// The frame's depth texture, made when a pass with depth draws into the frame.
+	// `frameDepth` holds the frame's depth texture. The graph makes it when a
+	// pass with depth draws into the frame.
 	var frameDepth:Null<Texture>;
-	// The depth textures cleared in this frame.
+	// `cleared` lists the depth textures that the graph cleared in this frame.
 	final cleared:Array<Texture> = [];
 
 	public function new() {}

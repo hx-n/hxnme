@@ -1,9 +1,9 @@
 package hxn.me.input;
 
 /**
-	The family of a gamepad, from the USB vendor id that hxn-window reports.
-	The family decides the labels that the gamepad's buttons carry, and
-	which button confirms and which cancels. Bindings stay positional:
+	`GamepadFamily` groups gamepads by the USB vendor id that hxn-window
+	reports. The family decides the labels that the gamepad's buttons carry,
+	and which button confirms and which cancels. Bindings stay positional, so
 	`South` is the bottom face button on every family.
 **/
 enum abstract GamepadFamily(Int) {
@@ -22,7 +22,7 @@ enum abstract GamepadFamily(Int) {
 	/** Valve Steam controllers and the Steam Deck. **/
 	var Steam;
 
-	/** The family of the vendor id `vendor`, as hxn-window's `Gamepad.vendorId` reports it. **/
+	/** Returns the family of the vendor id `vendor`, as hxn-window's `Gamepad.vendorId` reports it. **/
 	public static function ofVendor(vendor:Int):GamepadFamily {
 		return switch vendor {
 			case 0x045E: Xbox;

@@ -3,12 +3,14 @@ package hxn.me.input;
 import hxn.window.GamepadButton;
 
 /**
-	The labels of gamepad buttons for each family, and the buttons that
-	confirm and cancel. Use the labels in prompts, such as "Press A to jump",
-	and bind actions to positions, such as `@:buttons(South)`.
+	`Gamepads` returns the labels of gamepad buttons for each family, and the
+	buttons that confirm and cancel. Use the labels in prompts, such as
+	"Press A to jump", and bind actions to positions, such as
+	`@:buttons(South)`.
 **/
 class Gamepads {
-	// The labels of each button, in the order of `hxn.window.GamepadButton`.
+	// Each array lists one family's labels for the buttons, in the order of
+	// `hxn.window.GamepadButton`.
 	static final XBOX = ["A", "B", "X", "Y", "LB", "RB", "LT", "RT", "View", "Menu", "LS", "RS", "Up", "Down", "Left", "Right", "Xbox"];
 	static final PLAYSTATION = [
 		"Cross", "Circle", "Square", "Triangle", "L1", "R1", "L2", "R2", "Create", "Options", "L3", "R3", "Up", "Down", "Left", "Right", "PS"
@@ -20,7 +22,7 @@ class Gamepads {
 		"Right Stick", "Up", "Down", "Left", "Right", "Guide"
 	];
 
-	/** The label that `button` carries on a gamepad of `family`. **/
+	/** Returns the label that `button` carries on a gamepad of `family`. **/
 	public static function label(family:GamepadFamily, button:GamepadButton):String {
 		var labels = switch family {
 			case Xbox: XBOX;
@@ -34,13 +36,13 @@ class Gamepads {
 	}
 
 	/**
-		The button that confirms on a gamepad of `family`: `East` on Nintendo
-		pads, where A sits, and `South` on the others.
+		Returns the button that confirms on a gamepad of `family`. That is
+		`East` on Nintendo pads, where A sits, and `South` on the others.
 	**/
 	public static function confirm(family:GamepadFamily):GamepadButton
 		return family == Nintendo ? East : South;
 
-	/** The button that cancels on a gamepad of `family`: the other one of `confirm`. **/
+	/** Returns the button that cancels on a gamepad of `family`, which is the other one of `confirm`. **/
 	public static function cancel(family:GamepadFamily):GamepadButton
 		return family == Nintendo ? South : East;
 }

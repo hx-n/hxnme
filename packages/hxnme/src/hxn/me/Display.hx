@@ -1,10 +1,10 @@
 package hxn.me;
 
 /**
-	The surface that the app draws to, a kernel resource. The host sets it
-	before `Start`, and again when the size or the scale changes. If the app
-	has no window, the values come from `display.width`, `display.height`
-	and `display.scale` in `hxnme.toml`.
+	`Display` describes the surface that the app draws to. It is a kernel
+	resource. The host sets it before `Start`, and again when the size or the
+	scale changes. If the app has no window, the values come from
+	`display.width`, `display.height` and `display.scale` in `hxnme.toml`.
 **/
 class Display {
 	/** The width in physical pixels. **/

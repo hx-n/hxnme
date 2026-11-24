@@ -85,7 +85,7 @@ class PrismaticSolver {
 		maxMotorForce = new Float32Buffer(capacity);
 	}
 
-	/** Room for `to` joints, keeping the first `from`. */
+	/** Makes room for `to` joints, and keeps the first `from`. */
 	public function grow(from:Int, to:Int):Void {
 		localAxisAX = Grow.floats(localAxisAX, from, to);
 		localAxisAY = Grow.floats(localAxisAY, from, to);
@@ -221,7 +221,7 @@ class PrismaticSolver {
 		limitState[id] = state;
 		var maxImpulse = maxMotorForce[id] * h;
 		motorImpulse[id] = Math.max(-maxImpulse, Math.min(maxImpulse, motorImpulse[id]));
-		// Each motor pushing into an active limit is left to the limit row.
+		// When a motor pushes into an active limit, the limit row handles it.
 		var blocked = state == 1 && motorSpeed[id] < 0.0 || state == -1 && motorSpeed[id] > 0.0;
 		if (blocked)
 			motorImpulse[id] = 0.0;
@@ -253,7 +253,7 @@ class PrismaticSolver {
 		outZ[id] = lz + qw * tz + qx * ty - qy * tx;
 	}
 
-	/** Visits settings and warm starts for `WorldSnapshot`; the world-space axes are rebuilt every substep. */
+	/** Visits settings and warm starts for `WorldSnapshot`. Each substep rebuilds the world-space axes. */
 	@:noCompletion public function visitState(s:hxn.me.physics.core.WorldSnapshot, joints:Int):Void {
 		s.floats(localAxisAX, joints);
 		s.floats(localAxisAY, joints);

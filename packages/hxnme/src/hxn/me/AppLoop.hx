@@ -1,17 +1,17 @@
 package hxn.me;
 
 /**
-	Runs the phases of a schedule, one frame at a time. The host calls `frame`
-	once for each frame. The first frame runs `Start`. Each frame then runs
-	`Begin`, advances `Time`, runs `Fixed` once for each fixed step that the
-	frame completes, and runs `Update` and `Render`. Then it clears the event
-	queues. `SNAP` rounds the number of
-	steps to a whole number when the frame is close to one. While the app is suspended, a
-	frame runs no phase and does not advance `Time`. `hxn.Loop.sync` delivers
-	the results of native libraries at the start of each frame.
+	`AppLoop` runs the phases of a schedule, one frame at a time. The host
+	calls `frame` once for each frame. The first frame runs `Start`. Each
+	frame then runs `Begin`, advances `Time`, runs `Fixed` once for each fixed
+	step that the frame completes, and runs `Update` and `Render`. Then it
+	clears the event queues. If the number of steps is close to a whole
+	number, `SNAP` rounds it to that number. While the app is suspended, a
+	frame runs no phase and does not advance `Time`. At the start of each
+	frame, `hxn.Loop.sync` delivers the results of native libraries.
 **/
 class AppLoop {
-	/** The most fixed steps in one frame. Slower frames drop the steps after these. **/
+	/** The largest number of fixed steps that one frame runs. Slower frames drop the steps after these. **/
 	public static inline final MAX_STEPS = 8;
 
 	/**
@@ -70,8 +70,9 @@ class AppLoop {
 			time.elapsed += delta;
 			time.frame++;
 			pending += delta;
-			// The steps this frame owes. Within SNAP of a whole number, the frame
-			// runs that number, and the difference stays in `pending`.
+			// `owed` is the number of steps that this frame owes. If it is within
+			// SNAP of a whole number, the frame runs that number of steps, and the
+			// difference stays in `pending`.
 			var owed = pending / time.step;
 			var whole = Math.round(owed);
 			var steps = Math.abs(owed - whole) <= SNAP ? whole : Math.floor(owed);

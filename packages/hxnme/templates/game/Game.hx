@@ -13,20 +13,21 @@ import hxn.me.render2d.Typesetter;
 import hxn.text.Font;
 
 /**
-	Move the player with WASD, the arrow keys or a gamepad's left stick, and
-	collect the gems. R or the gamepad's Start button starts again. The world
-	is 960 by 540 units with y up, and a screen camera draws the score over it.
+	`Game` holds the systems of a small game. The player moves with WASD, the
+	arrow keys or the left stick of a gamepad, and collects the gems. R or the
+	Start button of the gamepad starts the game again. The world is 960 by
+	540 units with y up, and a screen camera draws the score over it.
 **/
 class Game {
 	static inline final WIDTH = 960;
 	static inline final HEIGHT = 540;
 	static inline final SPEED = 320.0;
 	static inline final GEMS = 5;
-	// How near the player's center must come to a gem's center to collect it.
+	// The player collects a gem when the player's center comes this near to the gem's center.
 	static inline final REACH = 26.0;
-	// The layer of the score, which the screen camera draws over the world.
+	// The score is on this layer, which the screen camera draws over the world.
 	static inline final HUD = 2;
-	// Flattened silhouettes on the ground under the player and the gems.
+	// These shadows draw flattened silhouettes on the ground under the player and the gems.
 	static final ground = new Shadow(0, -14, 4, 0x000000, 0.45, 0.4);
 	static final gemGround = new Shadow(0, -10, 3, 0x000000, 0.35, 0.4);
 
@@ -36,7 +37,7 @@ class Game {
 	static var x = WIDTH / 2;
 	static var y = HEIGHT / 2;
 	static var score = 0;
-	// The centers of the gems.
+	// Holds the centers of the gems, as pairs of x and y.
 	static final gems:Array<Float> = [];
 
 	@:system(Start)
@@ -89,7 +90,7 @@ class Game {
 		d.rect(0, 0, WIDTH, HEIGHT, 0x1B2430);
 		if (sheet == null)
 			return;
-		// The atlas has a property for each region of sheet.json, placed by its center.
+		// The atlas has a property for each region of sheet.json. Each region has its pivot at its center.
 		var atlas = sheet.value;
 		for (i in 0...GEMS)
 			d.region(atlas.gem, gems[i * 2], gems[i * 2 + 1], gemGround);

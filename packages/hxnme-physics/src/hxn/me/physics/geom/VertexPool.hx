@@ -1,16 +1,16 @@
 package hxn.me.physics.geom;
 
-/** Contiguous SoA vertex storage shared by shape descriptors. */
 import hxn.me.math.Grow;
 import hxn.me.math.Vec3;
 import hxn.Float32Buffer;
 import hxn.Int32Buffer;
 
+/** `VertexPool` holds contiguous struct-of-arrays vertex storage that shape descriptors share. */
 class VertexPool {
 	public var vx:Float32Buffer;
 	public var vy:Float32Buffer;
 	public var vz:Float32Buffer;
-	public var count:Int = 0; // High-water mark; released builder blocks stay below it.
+	public var count:Int = 0; // Holds the high-water mark. Released builder blocks stay below it.
 	public var capacity:Int;
 
 	var blockOrder:Int32Buffer;
@@ -38,7 +38,7 @@ class VertexPool {
 			freeHead.push(-1);
 	}
 
-	/** Room for `cap` vertices, keeping every block where it is, so shapes' offsets stay valid. */
+	/** Makes room for `cap` vertices and keeps every block where it is, so the offsets of shapes stay valid. */
 	public function grow(cap:Int):Void {
 		cap = (cap + 3) & ~3;
 		if (cap <= capacity)

@@ -1,6 +1,6 @@
 # hxnme-2d
 
-hxnme-2d is the 2D renderer for [hxnme](../hxnme) apps. It draws sprites,
+hxnme-2d renders 2D content for [hxnme](../hxnme) apps. It draws sprites,
 shapes, nine-slices and text on the GPU with one instanced shader, as a pass
 in the frame graph of [hxnme-gpu](../hxnme-gpu). Its API is in the package
 `hxn.me.render2d`.
@@ -18,7 +18,8 @@ plugins = ["hxnme-window", "hxnme-gpu", "hxnme-2d"]
 
 ## Coordinates
 
-The renderer draws through the cameras of `hxnme-gpu`, which 3D also uses.
+The renderer draws through the cameras of `hxnme-gpu`, which 3D content
+also uses.
 The [hxnme-gpu README](../hxnme-gpu) describes how to add and move them.
 The world has y up, as in `hxnme-physics`. 2D content lies in the XY plane
 of the world, so sprites and physics bodies use the same coordinates.
@@ -73,7 +74,7 @@ static function draw(draw:ResMut<Draw>) {
 | Method | Effect |
 |---|---|
 | `rect(x, y, width, height, color, alpha, radius, border, borderColor, borderAlpha, corner)` | Adds a rectangle. `radius` is the radius of its corners, and `corner` is their `CornerShape`: `Round` (the default), `Squircle`, `Bevel`, `Scoop`, `Square` or `Notch`. If `border` is above 0, the rectangle has a border. |
-| `shadowOf(region, x, y, offsetX, offsetY, blur, color, alpha, squash, width, height)` | Adds the shadow of a region drawn with its pivot at `x`, `y`, on its own: its silhouette, moved by the offset and blurred. `squash` scales its height about the pivot, such as 0.4 for a shadow on the ground. Add it before the region. The shader samples the region's alpha, so any shape casts its own shadow. |
+| `shadowOf(region, x, y, offsetX, offsetY, blur, color, alpha, squash, width, height)` | Adds only the shadow of a region drawn with its pivot at `x`, `y`. The shadow is the region's silhouette, moved by the offset and blurred. `squash` scales its height about the pivot, such as 0.4 for a shadow on the ground. Add it before the region. The shader samples the region's alpha, so any shape casts its own shadow. |
 | `shadow(x, y, width, height, blur, color, alpha, radius, corner)` | Adds the shadow of a rectangle, blurred by `blur` as with CSS `box-shadow`. Add it before the shape that casts it, at the shadow's offset. The shadow is one instance, and the shader computes its blur for each pixel. |
 | `circle(x, y, radius, color, alpha, border, borderColor, borderAlpha)` | Adds a circle with its center at `x`, `y`. |
 | `ellipse(x, y, width, height, color, alpha)` | Adds an ellipse that fills the rectangle. |
@@ -91,7 +92,7 @@ slicing on the GPU.
 ## Clips
 
 `draw.clip` sets the clip of the content that you add next, and null
-removes it. Each `Clip` is a rectangle with a corner radius and a
+removes it. Each `Clip` holds a rectangle, a corner radius and a
 `CornerShape`, in the coordinates of the plane that the content lies on.
 Only the parts of the content inside the clip show. The GPU tests each
 pixel against the clip, so a clip adds no data to the instances. Changes to
@@ -141,8 +142,8 @@ for rectangles. `angle` turns the text about the center of its box.
 `text.width` and `text.height` give the size of the box in logical pixels.
 
 The first time that a `Text` is drawn or measured, it lays itself out. After
-`set` changes its string, or after the display's scale changes, it lays
-itself out again. Glyphs are rasterized at the display's scale, so they stay
+`set` changes its string, or after the display's scale or the glyph atlases
+change, it lays itself out again. Glyphs are rasterized at the display's scale, so they stay
 sharp through a camera that shows one world unit for each logical pixel.
 Color glyphs, such as emoji, keep their own colors. They ignore `color`
 and use only `alpha`.
@@ -174,14 +175,14 @@ static function walk(sprites:ResMut<Sprites>, time:Res<Time>) {
 | Method | Effect |
 |---|---|
 | `add(texture, x, y, width, height, color, alpha, angle, u0, v0, u1, v1)` | Adds a sprite with the arguments of `draw.sprite`, and returns its handle. |
-| `remove(sprite)` | Removes the sprite and makes its handle invalid. Later sprites can reuse its storage, but the old handle never becomes valid again. |
+| `remove(sprite)` | Removes the sprite and makes its handle invalid. Later sprites can reuse its storage. The old handle stays invalid until its slot is reused 2,048 times, when the slot's generation starts again. |
 | `exists(sprite)` | Returns whether the handle refers to a sprite in `Sprites`. |
 | `move(sprite, x, y)`, `resize(sprite, width, height)` | Set the sprite's corner and size. |
 | `turn(sprite, angle)` | Turns the sprite to `angle` radians about its center. |
 | `tint(sprite, color, alpha)` | Sets the color and alpha that multiply the texture. |
 | `region(sprite, u0, v0, u1, v1)` | Selects the part of the texture that the sprite shows. |
 | `xOf(sprite)`, `yOf(sprite)` | Return the sprite's corner. |
-| `addRegion(region, x, y, shadow, width, height, color, alpha, angle)` | Adds a region of an atlas as a sprite with its pivot at `x`, `y`, at its own size unless `width` and `height` are given. `move`, `xOf` and `yOf` then use the pivot. With a `Shadow`, the sprite casts it: `move`, `resize` and `remove` keep the shadow with the sprite, and shadows draw before the sprites of their layer. |
+| `addRegion(region, x, y, shadow, width, height, color, alpha, angle)` | Adds a region of an atlas as a sprite with its pivot at `x`, `y`, at its own size unless `width` and `height` are given. `move`, `xOf` and `yOf` then use the pivot. With a `Shadow`, the sprite casts that shadow. `move`, `resize` and `remove` keep the shadow with the sprite, and shadows draw before the sprites of their layer. |
 | `addText(text, x, y, color, alpha, angle)` | Adds a `Text` and returns its handle, which `move`, `turn`, `tint`, `xOf`, `yOf`, `exists` and `remove` take. |
 
 Text in `Sprites` keeps its glyph instances from frame to frame. The
@@ -193,16 +194,17 @@ frame.
 
 `sprites.layer`, `sprites.plane` and `sprites.clip` set the layer, the plane
 and the clip of the sprites that you add next, as in `Draw`. Sprites with
-the same texture, layer, plane and clip form a group, and each group draws with one instanced draw.
-Groups draw in the order that their first sprites were added, and before
-the contents of `Draw`. The sprites of one group draw in the order that
-they were added. `remove` changes that order, because it moves the last
-sprite of the group into the place of the removed sprite.
+the same texture, layer, plane and clip form a group, and each group draws
+with one instanced draw. Groups draw in the order that their first sprites
+were added, and before the contents of `Draw`. The sprites of one group
+draw in the order that they were added. `remove` changes that order,
+because it moves the last sprite of the group into the place of the
+removed sprite.
 
 ## Planes
 
-Each `Plane` is a surface for 2D content anywhere in the 3D world. Content
-drawn on a plane lies in the plane's own XY plane. The plane maps that
+Each `Plane` places 2D content anywhere in the 3D world. Content drawn on
+a plane lies in the plane's own XY plane. The plane maps that
 content into the world in three steps:
 
 1. It scales the content by `scale`.
@@ -258,7 +260,7 @@ draw.regionSlice(atlas.panel, 16, 16, 200, 80, 0xFFFFFF, 1, 0, 2);
 sprites.addRegion(atlas.tree, 120, 40);
 ```
 
-A `Shadow` holds how a region casts its shadow: its offset, blur, color,
+Each `Shadow` sets how a region casts its shadow: its offset, blur, color,
 alpha and `squash`, which scales the silhouette's height about the pivot.
 Make one for each style and keep it, so no frame allocates one:
 
@@ -279,11 +281,11 @@ The atlas file lists the image, relative to the file, and each region's
 corner and size in texture pixels, top left first. `slice` gives a region's
 nine-slice borders, left, top, right and bottom. `pivot` gives the point
 that `region`, `shadowOf` and `addRegion` place at `x`, `y` and turn about,
-as a fraction of the region from its top left: `[0.5, 1]` is the middle of
-its bottom edge. The atlas's `pivot` applies to every region, a region's
-own `pivot` replaces it, and the default is the center. The shader applies
-the pivot, so it works through cameras with y up and through screen
-cameras. Declare the image as well, because only declared files are
+as a fraction of the region from its top left. For example, `[0.5, 1]` is
+the middle of its bottom edge. The atlas's `pivot` applies to every region,
+and a region's own `pivot` replaces it. The default is the center. The
+shader applies the pivot, so it works through cameras with y up and through
+screen cameras. Declare the image as well, because only declared files are
 bundled:
 
 ```json
@@ -334,20 +336,20 @@ The check compares one pixel of each shape with the color that it expects.
 It also tests that:
 
 - The tilted camera shows the far side of a square as narrower than its near side.
-- A pixel near the corner of a squircle is inside it, and the same pixel near a round corner is outside.
-- A rectangle in a clip with rounded corners shows only inside the clip.
+- The pixel near the corner of a squircle is inside it, and the same pixel near a round corner is outside.
+- The rectangle in a clip with rounded corners shows only inside the clip.
 - The middle of a shadow is fully covered, and the blur covers its edge in part.
 - After one sprite moves and another is removed, each of the next three frames uploads only the changed parts. Later frames upload nothing.
-- The text changes from L to T after the first frame. The two text cameras show a T with its bar at the top, so the text was laid out again and is not mirrored. The top border of the nine-slice is at the top.
+- The text changes from L to T after the renderer fills each of its sets of buffers. The two text cameras show a T with its bar at the top, so the text was laid out again and is not mirrored. The top border of the nine-slice is at the top.
 - Text in `Sprites` that changes from L to T also shows a T, and uploads only its one new glyph.
 
 In `tests/assets`, the same command runs the asset check. It loads an atlas
 and a font through `Assets`, draws a region, a nine-slice region and the
 region's shadow, sharp and blurred, through the atlas's region properties.
-It tests their pixels, the font's layout, and that releasing the atlas closes
-its texture. In `tests`, `haxe asset-errors.hxml` compiles atlas
-declarations that are wrong, a misspelled region and two regions that become
-one property, and checks each compile error.
+It tests their pixels and the font's layout. It also tests that releasing
+the atlas closes its texture. In `tests`, `haxe asset-errors.hxml` compiles
+two wrong atlas declarations, one with a misspelled region and one with two
+regions that become one property, and checks each compile error.
 
-The checks use the font Noto Sans. Its license is listed in
-[third-party/NOTICES.md](third-party/NOTICES.md).
+The checks use the font Noto Sans.
+[third-party/NOTICES.md](third-party/NOTICES.md) lists its license.

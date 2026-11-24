@@ -8,10 +8,10 @@ import sys.FileSystem;
 import sys.io.File;
 
 /**
-	Gives each `AssetRef<Atlas>` field an atlas type with a property for each
-	region of its JSON file, read at compile time. The properties read the
-	regions by index, in the order of their names, as `RenderAssets.atlas`
-	adds them.
+	`AtlasNames` gives each `AssetRef<Atlas>` field an atlas type with a
+	property for each region of its JSON file, which it reads at compile time.
+	The properties read the regions by index, in the order of their names, as
+	`RenderAssets.atlas` adds them.
 **/
 class AtlasNames {
 	/** Registers the refiner with the kernel's asset macro. hxnme-2d's `extraParams.hxml` calls it. **/
@@ -57,7 +57,7 @@ class AtlasNames {
 		});
 	}
 
-	// Returns `name` as a Haxe identifier: other characters become `_`, and a leading digit gets one before it.
+	// Returns `name` as a Haxe identifier. Other characters become `_`, and a leading digit gets a `_` before it.
 	static function identifier(name:String):String {
 		var id = ~/[^A-Za-z0-9_]/g.replace(name, "_");
 		return ~/^[0-9]/.match(id) || id == "" ? "_" + id : id;

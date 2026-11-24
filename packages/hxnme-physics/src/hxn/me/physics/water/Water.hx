@@ -11,53 +11,56 @@ import hxn.me.physics.core.Handles.BodyId;
 import hxn.me.physics.core.Handles.BodyType;
 import hxn.me.physics.core.World;
 
-/** Settings for `Water`; any left out take their defaults. */
+/** `WaterOptions` sets up a `Water`. Each setting left out takes its default. */
 typedef WaterOptions = {
-	/** Height of the still surface; 0 by default. */
+	/** Sets the height of the still surface. The default is 0. */
 	?level:Float,
-	/** Mass a unit volume (area, for planar shapes): 1000 by default, water in kilograms a cubic metre. */
+	/** Sets the mass of a unit volume, or of a unit area for planar shapes. The default is 1000, the density of water in kilograms per cubic meter. */
 	?density:Float,
 	/**
-	 * Drag, per second. Each shape is pushed toward the current, at the
-	 * centre of its part under water, by `linearDrag` times the water's mass
-	 * it displaces times how fast the water passes that point: a floating
-	 * body's velocity closes on the current's at about `linearDrag` a second,
-	 * and a current turns a wheel by its paddles. 1 by default.
+	 * Sets the drag, per second. The water pushes each shape toward the
+	 * current, at the center of its submerged part. The push is `linearDrag`
+	 * times the mass of water that the shape displaces, times the speed of the
+	 * water past that point. The velocity of a floating body therefore closes
+	 * on the current's at about `linearDrag` a second, and a current turns a
+	 * wheel by its paddles. The default is 1.
 	 */
 	?linearDrag:Float,
-	/** How fast a body's spin dies away, per second, scaled by how much of it is under; 1 by default. */
+	/** Sets how fast a body's spin dies away, per second, scaled by the share of the body under water. The default is 1. */
 	?angularDrag:Float,
 	/**
-	 * Pressure drag on the faces the water runs into: each face under water
-	 * is pushed along its normal by half the water's density times this
-	 * coefficient times its area times the square of the water's speed into
-	 * it. About 1 for a blunt face; 0, the default, leaves it off.
+	 * Sets the pressure drag on the faces that the water runs into. The water
+	 * pushes each submerged face along its normal by half the water's density,
+	 * times this coefficient, times the area of the face, times the square of
+	 * the water's speed into the face. Blunt faces take about 1. The default,
+	 * 0, turns pressure drag off.
 	 */
 	?faceDrag:Float,
-	/** The water's velocity. */
+	/** Sets the velocity of the water. */
 	?current:Array<Float>,
-	/** The water's extent across the surface: min x, max x, min z, max z; unbounded by default. */
+	/** Sets the extent of the water across the surface as min x, max x, min z and max z. By default the water has no bounds. */
 	?bounds:Array<Float>,
 }
 
 /**
- * Models a body of water in a physics world: it floats the bodies in it by the
- * volume of their shapes under its surface, drags each shape toward its
- * current where it is under, presses on the faces the water runs into, and
- * damps their spin. Call `apply(dt)` before each `world.step(dt)`.
+ * `Water` floats the bodies of a physics world by the volume of their shapes
+ * under its surface. It also drags the submerged part of each shape toward
+ * its current, presses on the faces that the water runs into, and damps the
+ * spin of the bodies. Call `apply(dt)` before each `world.step(dt)`.
  *
- * Each shape's submerged volume and its centre are found by cutting the
- * shape at the surface: exactly for boxes, prisms and hulls, whose mass uses
- * their core, and for rounded shapes from a convex tessellation scaled to
- * their exact volume. Planar shapes (no depth) float by area. Each body
- * floating at rest is under by its density over the water's, as the mass
- * model and the cut agree. The surface may carry waves: a sum of
- * directional sine waves of fixed amplitude, length and speed, so the water
- * is a function of position and time and the world stays deterministic. On
- * waves each shape is cut at the surface's tangent plane under its centre.
- * Bodies count as in the water when their centre of mass is within its
- * bounds. Sleeping bodies on still water are left asleep. Allocates nothing
- * once each shape has been seen.
+ * To find each shape's submerged volume and its center, `Water` cuts the
+ * shape at the surface. The cut is exact for boxes, prisms and hulls, whose
+ * mass uses their core. Rounded shapes are cut as a convex tessellation
+ * scaled to their exact volume. Planar shapes (no depth) float by area. Each
+ * body that floats at rest has a submerged share equal to its density over
+ * the water's density, because the mass model and the cut agree. The
+ * surface can carry waves. The waves are a sum of directional sine waves of
+ * fixed amplitude, length and speed, so the water is a function of position
+ * and time and the world stays deterministic. On waves, each shape is cut at
+ * the tangent plane of the surface under its center. Bodies count as in the
+ * water when their center of mass is within its bounds. Sleeping bodies on
+ * still water stay asleep. Once it has seen each shape, `Water` allocates
+ * nothing.
  */
 class Water {
 	public final world:World;
@@ -74,13 +77,14 @@ class Water {
 	public var minZ:Float;
 	public var maxZ:Float;
 
-	/** How far across from its centre of mass a body's centre of buoyancy may lie and still let it sleep. */
+	/** Sets how far across from its center of mass a body's center of buoyancy can lie while the body can still sleep. */
 	public var restOffset = 1e-3;
 
-	/** Seconds the water has been applied for; the waves move with it. */
+	/** Counts the seconds for which the water was applied. The waves move with it. */
 	public var time(default, null) = 0.0;
 
-	// Waves: amplitude, wave number (2 pi over length), direction across the surface, angular frequency and phase.
+	// Each wave has an amplitude, a wave number (2 pi over length), a direction across the surface,
+	// an angular frequency and a phase.
 	final waves:Array<{
 		amplitude:Float,
 		number:Float,
@@ -90,32 +94,35 @@ class Water {
 		phase:Float
 	}> = [];
 
-	// Per shape slot: its cut-up form, built when first met and rebuilt when the world's colliders change.
+	// Holds the cut-up form of each shape slot. The form is built at first use and rebuilt when the
+	// world's colliders change.
 	final solids:Array<Null<Solid>> = [];
 	var builtFor = -1;
 
-	// Per body slot: the share of its volume under water at the last `apply`.
+	// Holds the share of each body's volume under water at the last `apply`, by body slot.
 	final fraction:Float32Buffer;
 	final wasIn:Int32Buffer;
 
-	/** Bodies that came into the water, and that left it, at the last `apply`. */
+	/** Lists the bodies that came into the water at the last `apply`. `left` lists the bodies that left it. */
 	public final entered:Array<BodyId> = [];
 
 	public final left:Array<BodyId> = [];
 
-	/** Bodies the water acted on at the last `apply`. */
+	/** Counts the bodies that the water acted on at the last `apply`. */
 	public var touching(default, null) = 0;
 
-	// Scratch for a shape's vertices in the world and their heights above the cutting plane.
+	// These scratch buffers hold a shape's vertices in the world and their heights above the cutting
+	// plane.
 	var wx:Float32Buffer;
 	var wy:Float32Buffer;
 	var wz:Float32Buffer;
 	var above:Float32Buffer;
 	var scratch = 64;
-	// Each cut shape of the body being applied: volume, centre and shape slot, five numbers each.
+	// Holds each cut shape of the current body as five numbers: volume, center and shape slot.
 	var cuts:Float32Buffer;
 	var cutRoom = 16;
-	// The body being pressed on, its step, and its velocity's lead to the step's average; the last placed shape's centre.
+	// These fields hold the body being pressed on, its step, and the lead of its velocity over the
+	// step's average, then the center of the last placed shape.
 	var pressed = 0;
 	var pressDt = 0.0;
 	var aheadX = 0.0;
@@ -123,11 +130,13 @@ class Water {
 	var aheadZ = 0.0;
 	var centreX = 0.0;
 	var centreY = 0.0;
-	// The drag on the body being applied, gathered by `row`: its response to the body's motion (six by six), its push, and room to solve.
+	// `row` gathers the drag on the current body here: its response to the body's motion (six by
+	// six), its push, and room to solve.
 	final dragMatrix = new Float32Buffer(36);
 	final dragImpulse = new Float32Buffer(6);
 	final dragSystem = new Float32Buffer(42);
-	// The part of a face under water, as a convex polygon of at most five corners, with a value at each to clip by; and room to clip into.
+	// Holds the submerged part of a face as a convex polygon of at most five corners, with a value at
+	// each corner to clip by, and room to clip into.
 	final polyX = new Float32Buffer(8);
 	final polyY = new Float32Buffer(8);
 	final polyZ = new Float32Buffer(8);
@@ -137,7 +146,7 @@ class Water {
 	final clipZ = new Float32Buffer(8);
 	final clipD = new Float32Buffer(8);
 	var polyCount = 0;
-	// Results of a cut: volume and the volume-weighted centre.
+	// Hold the results of a cut: the volume and the volume-weighted center.
 	var cutV = 0.0;
 	var cutX = 0.0;
 	var cutY = 0.0;
@@ -171,9 +180,9 @@ class Water {
 	}
 
 	/**
-	 * Adds a wave of `amplitude` (half its height), `length` from crest to
-	 * crest, travelling along (dx, dz) at `speed`; with no speed given, deep
-	 * water's, sqrt(g length / 2 pi).
+	 * Adds a wave of `amplitude` (half its height) and `length` from crest to
+	 * crest, which travels along (dx, dz) at `speed`. If no speed is given,
+	 * the wave moves at the speed of a deep-water wave, sqrt(g length / 2 pi).
 	 */
 	public function addWave(amplitude:Float, length:Float, dx:Float = 1.0, dz:Float = 0.0, ?speed:Float, phase:Float = 0.0):Void {
 		var l = Math.sqrt(dx * dx + dz * dz);
@@ -194,7 +203,7 @@ class Water {
 		});
 	}
 
-	/** The surface's height above (x, z) now. */
+	/** Returns the height of the surface above (x, z) now. */
 	public function heightAt(x:Float, z:Float):Float {
 		var h = level;
 		for (w in waves)
@@ -202,14 +211,14 @@ class Water {
 		return h;
 	}
 
-	/** How far (x, y, z) is under the surface; negative above it, and outside the water's bounds. */
+	/** Returns how far (x, y, z) is under the surface. The value is negative above the surface and outside the water's bounds. */
 	public function depthAt(x:Float, y:Float, z:Float):Float {
 		if (x < minX || x > maxX || z < minZ || z > maxZ)
 			return Math.NEGATIVE_INFINITY;
 		return heightAt(x, z) - y;
 	}
 
-	/** The share of `body`'s volume under water at the last `apply`, 0 to 1. */
+	/** Returns the share of `body`'s volume under water at the last `apply`, from 0 to 1. */
 	public function submerged(body:BodyId):Float {
 		return fraction[world.bodySlot(body)];
 	}
@@ -292,13 +301,14 @@ class Water {
 			touching++;
 			if (world.islands.isAwake[b] == 0)
 				world.wakeBodySlot(b);
-			// Buoyancy: the weight of the water displaced, upward against gravity, at the centre of buoyancy.
+			// Buoyancy is the weight of the displaced water. It acts upward against gravity, at the center of
+			// buoyancy.
 			var lift = density * volume,
 				ox = bx / volume,
 				oy = by / volume,
 				oz = bz / volume;
 			impulse(b, -gx * lift * dt, -gy * lift * dt, -gz * lift * dt, ox, oy, oz);
-			// Drag on each shape where it is under, then spin damping by the share under water.
+			// Apply drag to the submerged part of each shape, then damp the spin by the share under water.
 			var ahead = dt * (World.SUBSTEPS + 1) / (2 * World.SUBSTEPS);
 			pressed = b;
 			pressDt = dt;
@@ -331,8 +341,9 @@ class Water {
 			world.angVelX[b] = world.angVelX[b] * spin;
 			world.angVelY[b] = world.angVelY[b] * spin;
 			world.angVelZ[b] = world.angVelZ[b] * spin;
-			// Each body can sleep only where it would rest: buoyancy within a thousandth of its weight, and its centre of buoyancy under its
-			// centre of mass. Elsewhere it is still bobbing or turning, slowly enough to pass for asleep, so it is kept awake.
+			// Each body can sleep only where it is at rest: its buoyancy is within a thousandth of its
+			// weight, and its center of buoyancy is under its center of mass. Elsewhere it is still
+			// bobbing or turning, slowly enough to pass for asleep, so it stays awake.
 			var weight = world.invMassY[b] > 0 ? density * volume * world.invMassY[b] : 1.0;
 			var g2 = gx * gx + gy * gy + gz * gz;
 			var rx = ox - world.worldCenterX[b],
@@ -349,8 +360,9 @@ class Water {
 	}
 
 	/**
-	 * Drag of `h` (impulse per unit of speed) at world point (px, py, pz) of
-	 * body slot `pressed`, toward the current in every direction.
+	 * Adds a drag of `h` (impulse per unit of speed) at world point
+	 * (px, py, pz) of body slot `pressed`, toward the current in every
+	 * direction.
 	 */
 	function drag(h:Float, px:Float, py:Float, pz:Float):Void {
 		var w = world, b = pressed;
@@ -366,9 +378,10 @@ class Water {
 	}
 
 	/**
-	 * Adds to the body's drag a push along unit direction (nx, ny, nz) at
-	 * offset (rx, ry, rz) from its centre of mass, `h` times `s`, the water's
-	 * speed along that direction there, less the body's.
+	 * Adds a push to the body's drag along unit direction (nx, ny, nz), at
+	 * offset (rx, ry, rz) from its center of mass. The push is `h` times `s`,
+	 * where `s` is the water's speed along that direction at that point, less
+	 * the body's speed.
 	 */
 	inline function row(nx:Float, ny:Float, nz:Float, rx:Float, ry:Float, rz:Float, h:Float, s:Float):Void {
 		var j0 = nx, j1 = ny, j2 = nz, j3 = ry * nz - rz * ny, j4 = rz * nx - rx * nz, j5 = rx * ny - ry * nx;
@@ -387,10 +400,11 @@ class Water {
 	}
 
 	/**
-	 * Applies the drag gathered by `row` to body slot `pressed`, implicitly:
-	 * the change in velocity and spin d solves (1 + M^-1 H) d = M^-1 f, with H
-	 * the drag's response to the body's motion and f its push at the step's
-	 * start, so every push sees the others and none overshoots.
+	 * Applies the drag that `row` gathered to body slot `pressed`, implicitly.
+	 * The change d in velocity and spin solves (1 + M^-1 H) d = M^-1 f, where
+	 * H is the drag's response to the body's motion and f is its push at the
+	 * start of the step. Each push therefore sees the others, and none
+	 * overshoots.
 	 */
 	function settle():Void {
 		var w = world, b = pressed, h = dragMatrix, f = dragImpulse, a = dragSystem;
@@ -403,7 +417,7 @@ class Water {
 			i11:Float = w.invIyy[b],
 			i12:Float = w.invIyz[b],
 			i22:Float = w.invIzz[b];
-		// a = [1 + M^-1 H | M^-1 f], six rows of seven.
+		// Builds a = [1 + M^-1 H | M^-1 f], six rows of seven.
 		for (c in 0...7) {
 			var v0 = c < 6 ? h[c] : f[0],
 				v1 = c < 6 ? h[6 + c] : f[1],
@@ -420,7 +434,7 @@ class Water {
 		}
 		for (i in 0...6)
 			a[i * 7 + i] = a[i * 7 + i] + 1.0;
-		// Gaussian elimination with partial pivoting.
+		// Solves by Gaussian elimination with partial pivoting.
 		for (c in 0...6) {
 			var best = c, size = Math.abs(a[c * 7 + c]);
 			for (r in c + 1...6)
@@ -458,7 +472,7 @@ class Water {
 		w.angVelZ[b] = w.angVelZ[b] + a[41];
 	}
 
-	/** Pressure drag on the part under water of the triangle of placed points i, j, k, facing away from placed point `inner`. */
+	/** Applies pressure drag to the submerged part of the triangle of placed points i, j, k, which faces away from placed point `inner`. */
 	function face(i:Int, j:Int, k:Int, inner:Int):Void {
 		if (above[i] >= 0 && above[j] >= 0 && above[k] >= 0)
 			return;
@@ -495,7 +509,7 @@ class Water {
 		press(nx, ny, nz);
 	}
 
-	/** Pressure drag on the part under water of the outline edge of placed points i, j of a planar shape, as a face of unit depth. */
+	/** Applies pressure drag to the submerged part of the outline edge of placed points i, j of a planar shape, as a face of unit depth. */
 	function edge(i:Int, j:Int):Void {
 		if (above[i] >= 0 && above[j] >= 0)
 			return;
@@ -553,13 +567,13 @@ class Water {
 	}
 
 	/**
-	 * Pressure drag on the polygon (or segment), outward normal (nx, ny, nz),
-	 * of body slot `pressed`, where the water runs into it. The water's
-	 * speed into the face, s, varies linearly across it, so the push, half the
-	 * density times the coefficient times the integral of s squared, and its
-	 * centre of pressure are integrated exactly, and added to the body's drag
-	 * as a push along the normal at that centre, with the drag's strength
-	 * taken at the step's start.
+	 * Applies pressure drag to the polygon (or segment) with outward normal
+	 * (nx, ny, nz) on body slot `pressed`, where the water runs into it. The
+	 * water's speed s into the face varies linearly across it. The push is
+	 * half the density, times the coefficient, times the integral of s
+	 * squared. The push and its center of pressure are integrated exactly.
+	 * They are added to the body's drag as a push along the normal at that
+	 * center, with the drag's strength taken at the start of the step.
 	 */
 	function press(nx:Float, ny:Float, nz:Float):Void {
 		var w = world, b = pressed;
@@ -572,7 +586,8 @@ class Water {
 		var vx = currentX - w.velX[b] - aheadX,
 			vy = currentY - w.velY[b] - aheadY,
 			vz = currentZ - w.velZ[b] - aheadZ;
-		// The water's speed into the face at each corner: negative where it runs into it.
+		// Finds the water's speed into the face at each corner. The speed is negative where the water
+		// runs into the face.
 		var hit = false;
 		for (v in 0...polyCount) {
 			var rx = polyX[v] - mx, ry = polyY[v] - my, rz = polyZ[v] - mz;
@@ -583,7 +598,8 @@ class Water {
 		}
 		if (!hit)
 			return;
-		// Where the water runs into it only: the speed at each new corner, which is 0 where it was cut.
+		// Clips the polygon to the part where the water runs into the face. Each corner that the clip
+		// makes has a speed of 0.
 		var n = polyCount;
 		for (v in 0...n)
 			clipD[v] = polyD[v];
@@ -597,7 +613,8 @@ class Water {
 			if ((n > 2 || v < n - 1) && (dv < 0) != (clipD[next] < 0))
 				polyD[m++] = 0.0;
 		}
-		// Integrals of s squared, of the position times s squared, and of |s|, over the polygon's fan of triangles or the segment.
+		// Integrates s squared, the position times s squared, and |s| over the polygon's fan of
+		// triangles or over the segment.
 		var s2 = 0.0, sx = 0.0, sy = 0.0, sz = 0.0, s1 = 0.0;
 		if (polyCount == 2) {
 			var dx = polyX[1] - polyX[0],
@@ -627,7 +644,7 @@ class Water {
 				var a:Float = polyD[0],
 					c:Float = polyD[t],
 					e:Float = polyD[t + 1];
-				// The integral over the triangle of each corner's barycentric weight times s squared.
+				// Integrates each corner's barycentric weight times s squared over the triangle.
 				var ja = area * (a * a / 10 + (c * c + e * e) / 30 + (a * c + a * e) / 15 + c * e / 30);
 				var jc = area * (c * c / 10 + (a * a + e * e) / 30 + (c * a + c * e) / 15 + a * e / 30);
 				var je = area * (e * e / 10 + (a * a + c * c) / 30 + (e * a + e * c) / 15 + a * c / 30);
@@ -641,12 +658,13 @@ class Water {
 		if (!(s2 > 1e-18) || !(s1 > 0))
 			return;
 		var px = sx / s2, py = sy / s2, pz = sz / s2;
-		// The push over the step, and the mean speed it acts on, as the drag a unit of speed makes there.
+		// Computes the push over the step and the mean speed it acts on, as the drag that a unit of speed
+		// makes there.
 		var push = 0.5 * density * faceDrag * s2 * pressDt, speed = s2 / s1;
 		row(nx, ny, nz, px - mx, py - my, pz - mz, push / speed, -speed);
 	}
 
-	/** Applies an impulse at a world point on body slot `b`, as `World.applyImpulse`, without its handle checks. */
+	/** Applies an impulse at a world point on body slot `b`, as `World.applyImpulse` does, without its handle checks. */
 	inline function impulse(b:Int, jx:Float, jy:Float, jz:Float, px:Float, py:Float, pz:Float):Void {
 		var w = world;
 		w.velX[b] = w.velX[b] + jx * w.invMassX[b];
@@ -664,15 +682,16 @@ class Water {
 	}
 
 	/**
-	 * Cuts shape `solid` on body slot `b` at the surface: its volume under
-	 * water into `cutV`, and that volume times its centre into `cutX`..`cutZ`.
-	 * With `place`, only puts its points in the world, with their heights
-	 * above the cutting plane, unless it is clear of the water.
+	 * Cuts shape `solid` on body slot `b` at the surface. It writes the
+	 * submerged volume to `cutV`, and that volume times its center to
+	 * `cutX`..`cutZ`. With `place`, it only puts the shape's points in the
+	 * world, with their heights above the cutting plane, unless the shape is
+	 * clear of the water.
 	 */
 	function cut(solid:Solid, b:Int, place:Bool):Void {
 		var w = world, qx:Float = w.rotX[b], qy:Float = w.rotY[b], qz:Float = w.rotZ[b], qw:Float = w.rotW[b];
 		var px:Float = w.posX[b], py:Float = w.posY[b], pz:Float = w.posZ[b];
-		// The body's rotation as a matrix.
+		// Converts the body's rotation to a matrix.
 		var r00 = 1 - 2 * (qy * qy + qz * qz),
 			r01 = 2 * (qx * qy - qw * qz),
 			r02 = 2 * (qx * qz + qw * qy);
@@ -686,7 +705,7 @@ class Water {
 		var cx = r00 * lx + r01 * ly + r02 * lz + px,
 			cy = r10 * lx + r11 * ly + r12 * lz + py,
 			cz = r20 * lx + r21 * ly + r22 * lz + pz;
-		// The cutting plane: the surface, or its tangent plane under the shape's centre.
+		// The cutting plane is the surface, or its tangent plane under the shape's center.
 		var nx = 0.0, ny = 1.0, nz = 0.0, h = level;
 		if (waves.length > 0) {
 			var sx = 0.0, sz = 0.0;
@@ -702,7 +721,7 @@ class Water {
 			ny = 1 / l;
 			nz = -sz / l;
 		}
-		// Height of the shape's centre above the plane through (cx, h, cz).
+		// Finds the height of the shape's center above the plane through (cx, h, cz).
 		var centre = (cy - h) * ny;
 		cutV = 0.0;
 		cutX = 0.0;
@@ -747,7 +766,7 @@ class Water {
 			for (k in 0...solid.cellCount)
 				triangle(t[k * 3], t[k * 3 + 1], t[k * 3 + 2]);
 		} else {
-			// Tetrahedra fanned from the centre, which is the last point.
+			// Cuts the tetrahedra fanned from the center, which is the last point.
 			for (k in 0...solid.cellCount)
 				tetrahedron(t[k * 3], t[k * 3 + 1], t[k * 3 + 2], n - 1);
 		}
@@ -764,7 +783,7 @@ class Water {
 			addTriangle(wx[a], wy[a], wx[b], wy[b], wx[c], wy[c], z, 1.0);
 			return;
 		}
-		// Rotate so `a` is the odd one out: alone below (one under) or alone above (two under).
+		// Rotate the points so `a` is the odd one out: alone below (one under) or alone above (two under).
 		var lone = under == 1 ? (da < 0 ? a : db < 0 ? b : c) : (da >= 0 ? a : db >= 0 ? b : c);
 		var o1 = lone == a ? b : lone == b ? c : a,
 			o2 = lone == a ? c : lone == b ? a : b;
@@ -790,10 +809,11 @@ class Water {
 		cutZ += area * z;
 	}
 
-	// Points where edges meet the plane, three numbers each, for the pieces of a cut tetrahedron.
+	// Holds the points where edges meet the plane, three numbers each, for the pieces of a cut
+	// tetrahedron.
 	final crossing = new Float32Buffer(12);
 
-	/** Where the edge from scratch point `i` to `j` meets the plane, into crossing point `slot`. */
+	/** Writes the point where the edge from scratch point `i` to `j` meets the plane to crossing point `slot`. */
 	inline function meet(i:Int, j:Int, slot:Int):Void {
 		var di:Float = above[i], dj:Float = above[j], t = di / (di - dj);
 		crossing[slot * 3] = wx[i] + (wx[j] - wx[i]) * t;
@@ -816,7 +836,8 @@ class Water {
 			return;
 		}
 		if (under == 1 || under == 3) {
-			// One vertex alone on its side: the small tetrahedron at it, added (alone below) or taken from the whole (alone above).
+			// When one vertex is alone on its side, add the small tetrahedron at it (alone below), or take it
+			// from the whole (alone above).
 			var alone = under == 1;
 			var lone = ua == alone ? a : ub == alone ? b : uc == alone ? c : d;
 			var o1 = lone == a ? b : a,
@@ -830,7 +851,8 @@ class Water {
 			tet(x[lone], y[lone], z[lone], k[0], k[1], k[2], k[3], k[4], k[5], k[6], k[7], k[8], alone ? 1.0 : -1.0);
 			return;
 		}
-		// Two below (u0, u1) and two above (o0, o1): a wedge between triangles u0 / c00 / c01 and u1 / c10 / c11, as three tetrahedra.
+		// When two are below (u0, u1) and two above (o0, o1), the part below is a wedge between triangles
+		// u0 / c00 / c01 and u1 / c10 / c11. Add it as three tetrahedra.
 		var u0 = ua ? a : ub ? b : c,
 			u1 = ud ? d : uc && u0 != c ? c : ub && u0 != b ? b : c;
 		var o0 = !ua ? a : !ub ? b : c,
@@ -854,7 +876,7 @@ class Water {
 		cutZ += v * (az + bz + cz + dz) / 4;
 	}
 
-	/** Shape slot `s`'s cut-up form, built on first use. */
+	/** Returns the cut-up form of shape slot `s`, and builds it at first use. */
 	function solidOf(s:Int):Null<Solid> {
 		while (solids.length <= s)
 			solids.push(null);
@@ -866,7 +888,7 @@ class Water {
 		return solid.volume > 0 ? solid : null;
 	}
 
-	/** Every problem with the settings. */
+	/** Reports every problem with the settings. */
 	public function validate():Diagnostics {
 		var d = new Diagnostics();
 		if (!(density > 0) || !Math.isFinite(density))
@@ -887,7 +909,7 @@ class Water {
 		return d;
 	}
 
-	/** The water as JSON: settings, waves and what it touched at the last `apply`. */
+	/** Returns the water as JSON: its settings, its waves and what it touched at the last `apply`. */
 	public function describe():String {
 		inline function n(v:Float):String
 			return Diagnostics.number(v);
@@ -900,21 +922,21 @@ class Water {
 }
 
 /**
- * Holds a shape cut into simple pieces for finding what lies under a plane:
- * triangles for a planar shape, tetrahedra fanned from its centre for a
- * solid, over points in the body's frame scaled about the centre so their
- * volume is the shape's exact volume. `reach` bounds every point's distance
- * from the centre.
+ * `Solid` holds a shape cut into simple pieces for finding what lies under a
+ * plane: triangles for a planar shape, or tetrahedra fanned from its center
+ * for a solid. The points are in the body's frame, scaled about the center
+ * so their volume is the shape's exact volume. `reach` bounds the distance
+ * of every point from the center.
  */
 private class Solid {
 	public var planar = false;
 
-	/** Points, three numbers each; a solid's last point is its centre. */
+	/** Holds the points, three numbers each. The last point of a solid is its center. */
 	public var points:Float32Buffer;
 
 	public var count = 0;
 
-	/** Triangles, as three point indices each: a planar shape's pieces, or a solid's surface. */
+	/** Holds the triangles as three point indices each: the pieces of a planar shape, or the surface of a solid. */
 	public var cells:Int32Buffer;
 
 	public var cellCount = 0;
@@ -926,7 +948,7 @@ private class Solid {
 
 	function new() {}
 
-	/** Rounding of a rounded shape: points around a circle, and rings of points on a sphere. */
+	/** These constants set the rounding of a rounded shape: `AROUND` points around a circle, and `RINGS` rings of points on a sphere. */
 	static inline var AROUND = 24;
 
 	static inline var RINGS = 8;
@@ -943,7 +965,7 @@ private class Solid {
 		var exact:Float;
 		var cloud:Array<Vec3> = [];
 		if (planar) {
-			// The outline, convex and anticlockwise, as triangles fanned from its first point.
+			// Builds the outline, convex and anticlockwise, as triangles fanned from its first point.
 			var outline:Array<Float> = [];
 			if (kind == (Polygon : Int)) {
 				for (i in 0...count) {
@@ -960,7 +982,8 @@ private class Solid {
 					by = pool.vy[offset + 1];
 				}
 				var dir = Math.atan2(by - ay, bx - ax);
-				// Half circle round b, then half circle round a: a stadium, or a circle when a and b meet.
+				// Traces a half circle around b, then a half circle around a. The result is a stadium, or a
+				// circle when a and b meet.
 				for (k in 0...AROUND + 1) {
 					var t = dir - Math.PI / 2 + Math.PI * k / AROUND;
 					outline.push(bx + Math.cos(t) * radius);
@@ -975,7 +998,8 @@ private class Solid {
 				exact = 2 * radius * length + Math.PI * radius * radius;
 			}
 			var n = Std.int(outline.length / 2);
-			// Anticlockwise, so the fan's areas are positive; the area and centroid of the outline as drawn.
+			// The outline runs anticlockwise, so the areas of the fan are positive. Computes the area and
+			// centroid of the outline as drawn.
 			var twice = 0.0, cx = 0.0, cy = 0.0;
 			for (i in 0...n) {
 				var j = (i + 1) % n,
@@ -1024,7 +1048,8 @@ private class Solid {
 					cloud.push(new Vec3(pool.vx[offset + i], pool.vy[offset + i], localZ + side * depth));
 			exact = MassProperties.polygon(pool, offset, count, depth, localZ, 1).mass;
 		} else {
-			// Here the core is a segment (or a point) swept along Z by the depth, rounded by the radius: spheres at the four ends of that core.
+			// Here the core is a segment (or a point) swept along Z by the depth and rounded by the radius.
+			// The rounding is spheres at the four ends of that core.
 			var ax = 0.0, ay = 0.0, bx = 0.0, by = 0.0;
 			if (kind == (Segment : Int)) {
 				ax = pool.vx[offset];
@@ -1033,7 +1058,8 @@ private class Solid {
 				by = pool.vy[offset + 1];
 			}
 			var ends = kind == (Segment : Int) ? [[ax, ay], [bx, by]] : [[0.0, 0.0]];
-			// Only each end's outward half: the inner halves lie inside the hull, and their poles can meet.
+			// Uses only the outward half of each end. The inner halves lie inside the hull, and their poles
+			// can meet.
 			for (e in ends)
 				for (side in [-0.5, 0.5]) {
 					cloud.push(new Vec3(e[0], e[1], localZ + side * depth + (side > 0 ? radius : -radius)));
@@ -1055,7 +1081,7 @@ private class Solid {
 		if (!(exact > 0) || cloud.length < 4)
 			return solid;
 		var faces = ConvexHull.triangles(cloud);
-		// The hull's own volume and centroid, from tetrahedra fanned from its first point.
+		// Computes the hull's own volume and centroid from tetrahedra fanned from its first point.
 		var o = cloud[0], hv = 0.0, sx = 0.0, sy = 0.0, sz = 0.0;
 		for (f in 0...Std.int(faces.length / 3)) {
 			var a = cloud[faces[f * 3]],

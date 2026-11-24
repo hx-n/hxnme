@@ -52,7 +52,7 @@ class JointPool {
 	var used:Int = 0;
 	var freeHead:Int = -1;
 
-	/** Each joint's anchor in body A's and body B's frames, by joint slot. */
+	/** Holds each joint's anchor in the frames of body A and body B, by joint slot. */
 	public var anchorAX(default, null):Float32Buffer;
 
 	public var anchorAY(default, null):Float32Buffer;
@@ -77,7 +77,7 @@ class JointPool {
 	var jointParent:Int32Buffer;
 	var jointRank:Int32Buffer;
 
-	/** Bodies in a contact loop through joints, including their dynamic contact neighbours. */
+	/** Marks the bodies in a contact loop through joints, including their dynamic contact neighbors. */
 	@:noCompletion public var splitVelocity(default, null):Int32Buffer;
 
 	public function new(world:World, capacity:Int) {
@@ -131,7 +131,7 @@ class JointPool {
 		for (i in 0...world.bodyCapacity)
 			firstExcluded[i] = -1;
 	}
-	/** Marks the joint slots from `joints` and the bodies from `bodies` as a new pool has them, after a restore into a larger world. */
+	/** Resets the joint slots from `joints` and the bodies from `bodies` to the state of a new pool, after a restore into a larger world. */
 	public function clearTails(bodies:Int, joints:Int):Void {
 		for (i in joints...capacity)
 			activePosition[i] = -1;
@@ -140,8 +140,9 @@ class JointPool {
 	}
 
 	/**
-	 * Room for more bodies and joints, keeping what is stored. The world has already raised its own body capacity; the joint solvers
-	 * and the per-substep rows follow.
+	 * Makes room for more bodies and joints, and keeps what is stored. The
+	 * world raises its own body capacity first, then the joint solvers and the
+	 * per-substep rows follow.
 	 */
 	public function grow(newBodies:Int, newJoints:Int):Void {
 		var bodies = loopParent.length, joints = capacity;
@@ -200,7 +201,7 @@ class JointPool {
 	}
 
 
-	/** Called when a joint is being made and the pool is full: asks the world for twice the room, up to the limit a handle's index allows. */
+	/** Asks the world for twice the room, up to the limit that a handle's index allows. The pool calls it when a new joint does not fit. */
 	function roomForOneMore():Void {
 		if (capacity >= (1 << 20))
 			throw 'Joint capacity exceeded';
@@ -410,7 +411,7 @@ class JointPool {
 		return (generation[id] << 20) | id;
 	}
 
-	/** Slot of a live joint, or -1. */
+	/** Returns the slot of a live joint, or -1. */
 	public function slotOf(joint:JointId):Int {
 		var value:Int = joint;
 		var id = value & INDEX_MASK;
@@ -423,7 +424,7 @@ class JointPool {
 	public inline function isSpherical(slot:Int):Bool
 		return kind[slot] == SPHERICAL;
 
-	/** "distance", "hinge", "prismatic", "weld" or "spherical". */
+	/** Returns the kind of the joint in `slot`: "distance", "hinge", "prismatic", "weld" or "spherical". */
 	public function kindName(slot:Int):String {
 		return switch (kind[slot]) {
 			case DISTANCE: "distance";
@@ -435,10 +436,10 @@ class JointPool {
 	}
 
 	/**
-	 * Reflects a hinge's or spherical joint's frames through the plane the
-	 * diagonal reflection (ex, ey, ez), each 1 or -1, fixes in its bodies'
-	 * frames: for bodies whose relative turn has been mirrored that way, the
-	 * joint keeps its limits' meaning.
+	 * Reflects the frames of a hinge or spherical joint through the plane that
+	 * the diagonal reflection (ex, ey, ez) fixes in its bodies' frames. Each of
+	 * ex, ey and ez is 1 or -1. When the relative turn of the bodies was
+	 * mirrored that way, the joint keeps the meaning of its limits.
 	 */
 	public function mirrorFrames(joint:JointId, ex:Float, ey:Float, ez:Float):Void {
 		var id = slotOf(joint);
@@ -801,13 +802,13 @@ class JointPool {
 		rows.sortByColor(ids, start, count);
 	}
 
-	/** Four-joint SIMD batches used in the last substep; zero without SIMD. */
+	/** Counts the four-joint SIMD batches used in the last substep. It is zero without SIMD. */
 	public var packedBatches(get, never):Int;
 
 	inline function get_packedBatches():Int
 		return rows.packedBatches;
 
-	/** Switches the rows to their relax targets; see `JointRows.relax`. */
+	/** Switches the rows to their relax targets, as `JointRows.relax` describes. */
 	public function relax():Void {
 		rows.relax();
 	}
@@ -816,7 +817,7 @@ class JointPool {
 		rows.solveAll();
 	}
 
-	/** Forms the substep's joint batches within the islands of `partition`, or across all joints when null; call before `warmStart`. */
+	/** Forms the substep's joint batches within the islands of `partition`, or across all joints when it is null. Call it before `warmStart`. */
 	public function usePartition(partition:Null<hxn.me.physics.island.IslandPartition>):Void {
 		rows.usePartition(partition);
 	}
@@ -826,12 +827,12 @@ class JointPool {
 		rows.configureWorkers(count);
 	}
 
-	/** Solves island task `task`'s joints once, in the serial solve's color order; `ids` from `start` holds them sorted by color. */
+	/** Solves the joints of island task `task` once, in the color order of the serial solve. `ids` from `start` holds them sorted by color. */
 	public function solveTask(task:Int, ids:hxn.Int32Buffer, start:Int, count:Int, worker:Int):Void {
 		rows.solveTask(task, ids, start, count, worker);
 	}
 
-	/** Solves one joint's rows; island workers call this for the joints of their task. */
+	/** Solves one joint's rows. Island workers call this for the joints of their task. */
 	function solveJoint(id:Int):Void {
 		rows.solveJoint(id);
 	}
@@ -873,7 +874,8 @@ class JointPool {
 		s.floats(impulse, n);
 		s.ints(firstExcluded, bodies);
 		s.ints(splitVelocity, bodies);
-		// Each kind's solver exists once a joint of that kind has been made; a world built by the same calls has the same ones.
+		// Each kind's solver exists once a joint of that kind is made. Worlds built by the same calls
+		// have the same solvers.
 		if (s.bool(hinge != null)) {
 			if (hinge == null)
 				throw 'The world has no hinge joints to restore';

@@ -1,7 +1,7 @@
 package hxn.me;
 
 /**
-	Gives a system read access to a resource. Each resource is the one
+	`Res` gives a system read access to a resource. Each resource is the one
 	instance of a type that the systems of an app share. `T` is a class whose
 	constructor takes no arguments, or an abstract with a static `create()`,
 	and the schedule creates the instance. Systems use the fields of `T`

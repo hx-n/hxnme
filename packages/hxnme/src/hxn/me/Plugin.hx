@@ -1,7 +1,7 @@
 package hxn.me;
 
 /**
-	The methods of an hxnme plugin class. The class has
+	`Plugin` declares the methods of an hxnme plugin class. The class has
 	`@:plugin("<haxelib name>")`, and the `hxnme` section of the haxelib's
 	`haxelib.json` specifies it:
 
@@ -10,9 +10,9 @@ package hxn.me;
 	```
 
 	The haxelib's `extraParams.hxml` registers it with
-	`--macro hxn.me.macro.Registry.add("<haxelib name>")`. `hxn.me.Plugins`,
-	generated at compile time, creates each plugin of the app and starts it,
-	after the plugins it requires.
+	`--macro hxn.me.macro.Registry.add("<haxelib name>")`. The kernel
+	generates `hxn.me.Plugins` at compile time. It creates each plugin of the
+	app and starts it, after the plugins it requires.
 
 	The class does not have to implement this interface. The kernel checks
 	that it has these methods with these types, and calls the class directly.
@@ -20,6 +20,6 @@ package hxn.me;
 **/
 @:autoBuild(hxn.me.macro.Registry.check())
 interface Plugin {
-	/** Called once when the app starts. **/
+	/** `Plugins.start` calls it once when the app starts. **/
 	function start():Void;
 }

@@ -13,14 +13,15 @@ import hxn.me.physics.solver.SimdSolver4;
 #end
 
 /**
- * Contact rows are prepared once per substep, while body poses are fixed, and
- * stored field-major in solve order: four consecutive rows of one color are
- * one SIMD batch and load as whole vectors.
+ * `SoftStepSolver` solves the contacts. It prepares the contact rows once per
+ * substep, while body poses are fixed, and stores them field-major in solve
+ * order. Four consecutive rows of one color are one SIMD batch and load as
+ * whole vectors.
  */
 @:allow(hxn.me.physics.solver.SimdSolver4)
 class SoftStepSolver {
-	// Row fields. Each direction block holds the A Jacobian and A response negated,
-	// so applying an impulse is a multiply-add on both bodies.
+	// These constants are the row fields. Each direction block holds the A Jacobian and A response
+	// negated, so applying an impulse is a multiply-add on both bodies.
 	static inline var NX = 0;
 	static inline var T1X = 3;
 	static inline var T2X = 6;
@@ -43,7 +44,7 @@ class SoftStepSolver {
 	static inline var IMPULSE_T2 = 58;
 	static inline var NEG_IMPULSE_SCALE = 59;
 	static inline var NORMAL_MASS = 60;
-	// Separating speed an impact should leave with, or zero.
+	// Holds the separating speed that an impact must leave with, or zero.
 	static inline var BOUNCE_SPEED = 61;
 	static inline var FIELDS = 62;
 
@@ -65,12 +66,12 @@ class SoftStepSolver {
 	var rowWriteB:Int32Buffer;
 	// Rows without normal effective mass take the scalar path, which leaves them untouched.
 	var rowSkip:Int32Buffer;
-	// Lane constants for the SIMD kernel: -1, 0, 1.
+	// Holds the lane constants -1, 0 and 1 for the SIMD kernel.
 	var lanes:Float32Bytes;
 	var partition:IslandPartition;
 	var capacity:Int = 0;
 
-	/** Rows start at room for `capacity` contacts and grow when a substep has more. */
+	/** Creates a solver whose rows start with room for `capacity` contacts and grow when a substep has more. */
 	public function new(world:World, capacity:Int) {
 		this.world = world;
 		graph = new ConstraintGraph(world.bodyCapacity, capacity);
@@ -99,7 +100,7 @@ class SoftStepSolver {
 		rowSkip = new Int32Buffer(cap);
 	}
 
-	/** Colors the current contacts; island planning reads the colors before `prepare`. */
+	/** Colors the current contacts. Island planning reads the colors before `prepare`. */
 	public function color():Void {
 		graph.assign(world.contacts, world.bodyType, world.bodyCount);
 	}
@@ -131,8 +132,8 @@ class SoftStepSolver {
 			allocate(cap);
 		}
 		rowCount = count;
-		// Fields sit one stride apart. Sizing it to this substep keeps the rows
-		// compact, and an odd multiple of 16 bytes keeps fields off one cache set.
+		// Fields sit one stride apart. Sizing the stride to this substep keeps the rows
+		// compact, and an odd multiple of 16 bytes keeps the fields off one cache set.
 		stride = (((count + 7) & ~7) + 4) << 2;
 		var rows = this.rows, stride = this.stride;
 		var contacts = world.contacts;
@@ -260,7 +261,7 @@ class SoftStepSolver {
 					w.recordImpact(c, -speed);
 			}
 			var anchored = !dynamicA || !dynamicB;
-			// Deep overlaps separate at no more than a few metres a second rather than flying apart.
+			// Deep overlaps separate at no more than a few meters a second, so they do not fly apart.
 			var separationBias = Math.min(3.0, (anchored ? staticBiasRate : biasRate) * Math.max(0.0, contacts.penetration[c] - 0.002));
 			var gain = (anchored ? staticMassScale : massScale) * normalMass;
 			put(rows, stride, NEG_IMPULSE_SCALE, slot, anchored ? -staticImpulseScale : -impulseScale);
@@ -274,7 +275,8 @@ class SoftStepSolver {
 			put(rows, stride, IMPULSE_T2, slot, contacts.tangentImpulse2[c]);
 		}
 		packedBatches = 0;
-		// solver_scalar_bench keeps batch order but uses scalar lanes for differential checks.
+		// With `solver_scalar_bench`, the solver keeps the batch order but uses scalar lanes, for
+		// differential checks.
 		#if (ash_simd && !solver_scalar_bench)
 		if (islands == null) {
 			for (color in 0...ConstraintGraph.SIMD_COLORS)
@@ -293,7 +295,7 @@ class SoftStepSolver {
 		rows.setF32(field * stride + (slot << 2), value);
 	}
 
-	/** Stores Jacobians and inverse-inertia responses along one direction; returns its inverse effective mass. */
+	/** Stores Jacobians and inverse-inertia responses along one direction. Returns its inverse effective mass. */
 	extern static inline function direction(rows:Float32Bytes, stride:Int, slot:Int, block:Int, x:Float, y:Float, z:Float, rax:Float, ray:Float, raz:Float, rbx:Float,
 			rby:Float, rbz:Float, max:Float, may:Float, maz:Float, mbx:Float, mby:Float, mbz:Float, axx:Float, ayy:Float, azz:Float, axy:Float, axz:Float,
 			ayz:Float, bxx:Float, byy:Float, bzz:Float, bxy:Float, bxz:Float, byz:Float):Float {
@@ -353,7 +355,8 @@ class SoftStepSolver {
 				var slot = graph.offsets[color];
 				var end = slot + graph.counts[color];
 				#if (ash_simd && !solver_scalar_bench)
-				// Every row of a SIMD colour goes through the lanes, the last group masked, so grouping cannot change a row's arithmetic.
+				// Every row of a SIMD color goes through the lanes, with the last group masked, so grouping
+				// cannot change the arithmetic of a row.
 				if (color < ConstraintGraph.SIMD_COLORS) {
 					while (slot < end) {
 						simd.solve(this, slot, end - slot < 4 ? end - slot : 4);
@@ -428,7 +431,7 @@ class SoftStepSolver {
 		world.joints.configureWorkers(count);
 	}
 
-	/** Solves one island task; its rows were laid out in partition order by `prepare`. */
+	/** Solves one island task. `prepare` laid out its rows in partition order. */
 	public function solveIsland(index:Int, task:IslandTask, iterations:Int, worker:Int):Void {
 		for (iter in 0...iterations) {
 			for (color in 0...ConstraintGraph.COLOR_COUNT) {

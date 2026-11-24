@@ -11,18 +11,18 @@ class BroadPhase {
 	public var nodeCapacity:Int;
 	public var freeList:Int = 0;
 
-	// Flat SoA Node Buffers
-	public var aabb:Float64Buffer; // stride 6: minX, minY, minZ, maxX, maxY, maxZ
+	// The tree nodes are struct-of-arrays in flat buffers.
+	public var aabb:Float64Buffer; // Each node has six entries: minX, minY, minZ, maxX, maxY, maxZ.
 	public var parent:Int32Buffer;
 	public var child1:Int32Buffer;
 	public var child2:Int32Buffer;
 	public var height:Int32Buffer;
-	public var userData:Int32Buffer; // Stores ShapeId
+	public var userData:Int32Buffer; // Stores the ShapeId of each node.
 
-	// Flat stack for allocation-free tree queries
+	// Tree queries use this flat stack, so they do not allocate.
 	var queryStack:Int32Buffer;
 
-	// Output pairs buffer: stride 2 (shapeA, shapeB)
+	// Holds the pairs found, two entries each (shapeA, shapeB).
 	public var pairs:Int32Buffer;
 	public var pairCount:Int = 0;
 	public var maxPairs:Int;
@@ -49,8 +49,9 @@ class BroadPhase {
 	}
 
 	/**
-	 * Room for `capacity` tree nodes, keeping the tree. The new nodes join the free list after the ones already on it, so nodes are
-	 * handed out in the order a tree made that large from the start hands them out.
+	 * Makes room for `capacity` tree nodes, and keeps the tree. The new nodes
+	 * join the free list after the nodes already on it, so the tree hands out
+	 * nodes in the same order as a tree made that large from the start.
 	 */
 	public function growNodes(capacity:Int):Void {
 		if (capacity <= nodeCapacity)
@@ -107,7 +108,7 @@ class BroadPhase {
 	public function createProxy(minX:Float, minY:Float, minZ:Float, maxX:Float, maxY:Float, maxZ:Float, shapeId:Int):Int {
 		var proxyId = allocateNode();
 		var b6 = proxyId * 6;
-		var margin = 0.05; // Fattening margin for temporal coherence
+		var margin = 0.05; // Fattens each box by this margin for temporal coherence.
 
 		aabb[b6] = minX - margin;
 		aabb[b6 + 1] = minY - margin;
@@ -124,7 +125,7 @@ class BroadPhase {
 
 	public function updateProxy(proxyId:Int, minX:Float, minY:Float, minZ:Float, maxX:Float, maxY:Float, maxZ:Float, force:Bool = false):Void {
 		var b6 = proxyId * 6;
-		// Skip tree re-insertion if still inside fat AABB
+		// If the box is still inside the fat AABB, skip reinsertion into the tree.
 		if (!force && aabb[b6] <= minX && aabb[b6 + 1] <= minY && aabb[b6 + 2] <= minZ && aabb[b6 + 3] >= maxX && aabb[b6 + 4] >= maxY && aabb[b6 + 5] >= maxZ) {
 			return;
 		}
@@ -151,7 +152,7 @@ class BroadPhase {
 		pairCount = 0;
 	}
 
-	// Unified 2D/3D Surface Area Heuristic: reduces to 2*wx*wy when wz == 0
+	// Computes the surface area heuristic for 2D and 3D boxes. It reduces to 2*wx*wy when wz == 0.
 	inline function getPerimeter(nodeId:Int):Float {
 		var b6 = nodeId * 6;
 		var wx = aabb[b6 + 3] - aabb[b6];
@@ -186,7 +187,7 @@ class BroadPhase {
 			&& group == groupIndex[b] ? group > 0 : (categoryBits[a] & maskBits[b]) != 0 && (categoryBits[b] & maskBits[a]) != 0;
 	}
 
-	/** Writes the shapes whose boxes overlap proxy `proxy`'s box into `out`, including its own; returns the count. */
+	/** Writes the shapes whose boxes overlap proxy `proxy`'s box into `out`, including its own. Returns the count. */
 	public function overlapping(proxy:Int, out:hxn.Int32Buffer):Int {
 		if (root == NULL_NODE)
 			return 0;
@@ -209,7 +210,7 @@ class BroadPhase {
 		return count;
 	}
 
-	/** Writes the shapes whose boxes overlap the given box into `out`; returns the count. */
+	/** Writes the shapes whose boxes overlap the given box into `out`. Returns the count. */
 	public function overlappingBox(minX:Float, minY:Float, minZ:Float, maxX:Float, maxY:Float, maxZ:Float, out:hxn.Int32Buffer):Int {
 		if (root == NULL_NODE)
 			return 0;
@@ -292,7 +293,7 @@ class BroadPhase {
 			var cost = 2.0 * combinedArea;
 			var inheritanceCost = 2.0 * (combinedArea - area);
 
-			// Cost of descending into child1
+			// Computes the cost of descending into child1.
 			var c1_6 = c1 * 6;
 			var c1x0 = lx0 < aabb[c1_6] ? lx0 : aabb[c1_6];
 			var c1y0 = ly0 < aabb[c1_6 + 1] ? ly0 : aabb[c1_6 + 1];
@@ -306,7 +307,7 @@ class BroadPhase {
 			var c1Area = 2.0 * (c1wx * c1wy + c1wy * c1wz + c1wz * c1wx);
 			var cost1 = (child1[c1] == NULL_NODE ? c1Area : c1Area - getPerimeter(c1)) + inheritanceCost;
 
-			// Cost of descending into child2
+			// Computes the cost of descending into child2.
 			var c2_6 = c2 * 6;
 			var c2x0 = lx0 < aabb[c2_6] ? lx0 : aabb[c2_6];
 			var c2y0 = ly0 < aabb[c2_6 + 1] ? ly0 : aabb[c2_6 + 1];
@@ -380,7 +381,7 @@ class BroadPhase {
 		nodeCount--;
 	}
 
-	// Rotate an imbalanced subtree and return its new root.
+	// Rotates an imbalanced subtree and returns its new root.
 	function balance(a:Int):Int {
 		if (child1[a] == NULL_NODE)
 			return a;
@@ -458,7 +459,7 @@ class BroadPhase {
 		}
 	}
 
-	// Finds all overlapping shape pairs in the shared 2D/3D world
+	// Finds all overlapping shape pairs in the shared 2D and 3D world.
 	public function findPairs(shapeCount:Int, shapeProxy:Int32Buffer, shapeBody:Int32Buffer, bodyType:Int32Buffer,
 			categoryBits:Int32Buffer, maskBits:Int32Buffer, groupIndex:Int32Buffer, isAwake:Int32Buffer = null,
 			activeIds:Int32Buffer = null):Void {

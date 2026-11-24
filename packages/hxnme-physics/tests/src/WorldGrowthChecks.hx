@@ -5,7 +5,7 @@ import hxn.me.physics.core.Handles.BodyType;
 import hxn.me.physics.core.World;
 import hxn.me.physics.core.WorldSnapshot;
 
-/** Each world given more room as it runs goes on exactly as one made that large would: every body, contact and joint, bit for bit. */
+/** `WorldGrowthChecks` checks that each world given more room as it runs continues exactly as a world made that large from the start: every body, contact and joint, bit for bit. */
 class WorldGrowthChecks {
 	static function check(ok:Bool, what:String):Void
 		if (!ok)
@@ -16,7 +16,7 @@ class WorldGrowthChecks {
 		return ShapeBuilder.makeHull(w.verts, corners, 0.0);
 	}
 
-	/** Boxes in a leaning grid, a hinge chain, and one joint of each other kind: the same calls in every world. */
+	/** Adds boxes in a leaning grid, a hinge chain, and one joint of each other kind, with the same calls in every world. */
 	static function populate(w:World, boxes:Int, links:Int, tag:Int, handles:Array<BodyId>):Void {
 		if (tag == 0) {
 			var floor = w.createBody(BodyType.Static, 0, -0.5, 0);
@@ -63,7 +63,7 @@ class WorldGrowthChecks {
 		}
 	}
 
-	/** Each saved state restores into a world of other room: more room is kept and made as new, less is given. */
+	/** Checks that each saved state restores into a world of a different size. Larger worlds keep their room and reset the extra room as new. Smaller worlds get the room. */
 	static function snapshotsAcrossCapacities():Void {
 		var small = new World(4, 4, 1), large = new World(4096, 8192, 256);
 		var hs:Array<BodyId> = [], hl:Array<BodyId> = [];
@@ -73,7 +73,8 @@ class WorldGrowthChecks {
 			small.step(1 / 60);
 			large.step(1 / 60);
 		}
-		// Taken at the world's own room, then the world is given more and runs on; restoring puts it back, and it goes on as the large one does.
+		// The snapshot is taken at the world's own size. Then the world gets more room and runs on. The
+		// restore puts it back, and it continues as the large world does.
 		var saved = new WorldSnapshot();
 		saved.save(small);
 		small.reserve(900, 900, 90);
@@ -95,7 +96,7 @@ class WorldGrowthChecks {
 			large.step(1 / 60);
 		}
 		same(small, large, moreSmall, moreLarge, "the bodies made after a restore into a world with more room");
-		// Taken from a large world, restored into a small one, which is given the room.
+		// This snapshot is taken from a large world and restored into a small world, which gets the room.
 		var big = new World(4096, 8192, 256), hb:Array<BodyId> = [];
 		populate(big, 40, 8, 0, hb);
 		for (_ in 0...140)
@@ -149,7 +150,7 @@ class WorldGrowthChecks {
 		var kept = [for (k in 0...hs.length) if (k < 10 || k >= 15) k];
 		same(small, large, [for (k in kept) hs[k]], [for (k in kept) hl[k]], "after growing mid-run");
 		same(small, large, more, moreLarge, "the bodies made after growth");
-		// Past a million is refused, and a handle from before growth is still good.
+		// Growth past a million is refused, and a handle from before growth is still good.
 		var threw = false;
 		try
 			small.reserve((1 << 20) + 1, 0)

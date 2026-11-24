@@ -12,7 +12,7 @@ import haxe.io.Bytes;
 	field.
 **/
 class Instances {
-	/** The number of fields. Each field holds four values. **/
+	/** `FIELDS` sets the number of fields. Each field holds four values. **/
 	public static inline final FIELDS = 7;
 
 	public static inline final RECT = 0;
@@ -23,7 +23,7 @@ class Instances {
 	public static inline final RADIUS = 5;
 	public static inline final BORDER = 6;
 
-	/** The bytes of all the fields of one instance. **/
+	/** `BYTES` gives the size in bytes of all the fields of one instance. **/
 	public static inline final BYTES = 5 * 16 + 2 * 4;
 
 	/** Returns whether `field` holds a color, packed in four bytes. **/
@@ -56,7 +56,7 @@ class Instances {
 	public function clear():Void
 		length = 0;
 
-	/** Writes the four values of `field` of instance `index`. A color's values are from 0 to 1. **/
+	/** Writes the four values of `field` of instance `index`. The values of a color are from 0 to 1. **/
 	public inline function set(field:Int, index:Int, a:Float, b:Float, c:Float, d:Float):Void {
 		var bytes = fields[field];
 		if (packed(field)) {
@@ -86,7 +86,7 @@ class Instances {
 		bytes.setFloat(offset + 4, b);
 	}
 
-	/** Returns value `at` of `field` of instance `index`. A color's values are from 0 to 1. **/
+	/** Returns value `at` of `field` of instance `index`. The values of a color are from 0 to 1. **/
 	public inline function get(field:Int, index:Int, at:Int):Float
 		return packed(field) ? fields[field].get(index * 4 + at) / 255 : fields[field].getFloat(index * 16 + at * 4);
 

@@ -6,14 +6,14 @@ enum abstract Severity(String) to String {
 	var Info = "info";
 }
 
-/** One finding: a stable code, where it is, what is wrong, and how to fix it. */
+/** `Diagnostic` records one finding: a stable code, where it is, what is wrong, and how to fix it. */
 class Diagnostic {
-	/** Stable identifier such as RIG_UNKNOWN_PARENT; safe to match on. */
+	/** Holds a stable identifier, such as RIG_UNKNOWN_PARENT. Code can safely match on it. */
 	public var code(default, null):String;
 
 	public var severity(default, null):Severity;
 
-	/** Slash-separated path to the object, such as skeleton/bones/forearm/parent. */
+	/** Holds the slash-separated path to the object, such as skeleton/bones/forearm/parent. */
 	public var path(default, null):String;
 
 	public var message(default, null):String;
@@ -34,9 +34,9 @@ class Diagnostic {
 }
 
 /**
- * Findings collected while building or validating something, for both people
- * and agents: every problem is reported at once, `toJson` gives a
- * machine-readable report, and `toText` a readable one.
+ * `Diagnostics` collects the findings of building or validating something,
+ * for both people and agents. It reports every problem at once. `toJson`
+ * gives a machine-readable report, and `toText` gives a readable one.
  */
 class Diagnostics {
 	public var items(default, null):Array<Diagnostic> = [];
@@ -71,7 +71,7 @@ class Diagnostics {
 		return n;
 	}
 
-	/** Findings with `code`, for checks and tools that look for one problem. */
+	/** Returns the findings with `code`, for checks and tools that look for one problem. */
 	public function withCode(code:String):Array<Diagnostic> {
 		return [for (d in items) if (d.code == code) d];
 	}
@@ -83,9 +83,9 @@ class Diagnostics {
 	}
 
 	/**
-	 * Report as JSON: {"errors":n,"warnings":n,"items":[{"code",...}]}. Field
-	 * order is fixed and absent optional fields are omitted, so equal reports
-	 * produce equal text.
+	 * Returns the report as JSON: {"errors":n,"warnings":n,"items":[{"code",...}]}.
+	 * The field order is fixed and absent optional fields are left out, so
+	 * equal reports produce equal text.
 	 */
 	public function toJson():String {
 		var out = new StringBuf();
@@ -107,7 +107,7 @@ class Diagnostics {
 		return out.toString();
 	}
 
-	/** One line per finding, then suggestions indented beneath. */
+	/** Returns the report as text: one line per finding, then its suggestions indented beneath. */
 	public function toText():String {
 		if (items.length == 0)
 			return "no problems found";
@@ -128,7 +128,7 @@ class Diagnostics {
 		return '$n $noun' + (n == 1 ? "" : "s");
 	}
 
-	/** JSON string literal for `text`. */
+	/** Returns `text` as a JSON string literal. */
 	public static function quote(text:String):String {
 		var out = new StringBuf();
 		out.add('"');
@@ -156,7 +156,7 @@ class Diagnostics {
 		return out.toString();
 	}
 
-	/** Fixed-point text with up to four decimals, no exponent and no negative zero; null when not finite. */
+	/** Formats `v` as fixed-point text with up to four decimals, no exponent and no negative zero. Returns null when `v` is not finite. */
 	public static function number(v:Float):String {
 		if (!Math.isFinite(v))
 			return "null";
@@ -174,7 +174,7 @@ class Diagnostics {
 		return text + "." + digits;
 	}
 
-	/** The candidate nearest `name` by edit distance, when close enough to be a likely typo. */
+	/** Returns the candidate nearest `name` by edit distance, when it is close enough to be a likely typo. */
 	public static function closest(name:String, candidates:Iterator<String>):Null<String> {
 		var best:Null<String> = null, bestDistance = 3;
 		for (candidate in candidates) {

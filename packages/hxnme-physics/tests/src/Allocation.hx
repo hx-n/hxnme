@@ -1,20 +1,15 @@
-/** Measures how much a piece of code allocates, steadily despite the runtime's own background work. */
+/** `Allocation` measures how much a piece of code allocates, with steady results despite the background work of the runtime. */
 #if (cpp && !cppia && HXCPP_TELEMETRY)
 @:cppFileCode('#include <hx/Telemetry.h>')
 #end
 class Allocation {
-	/**
-	 * The least that `run` allocated over `windows` calls, less what reading
-	 * the statistics itself costs. Code that allocates does so on every call,
-	 * while the runtime's background threads only add to some windows, so the
-	 * least is the code's own.
-	 */
 	#if macro
 	/**
-	 * Turns on hxcpp telemetry in a native hxcpp build, where it counts
-	 * allocations. Telemetry does not start under Emscripten, and it faults on
-	 * allocations made from CPPIA script code, so those builds go without it.
-	 * Run it from the program file: `--macro Allocation.setup()`.
+	 * Turns on hxcpp telemetry when hxcpp compiles a native program, where
+	 * telemetry counts allocations. Telemetry does not start under Emscripten,
+	 * and it faults on allocations made from CPPIA script code, so those
+	 * targets go without it. To run it, add `--macro Allocation.setup()` to
+	 * the program file.
 	 */
 	public static function setup():Void {
 		var context = haxe.macro.Context;
@@ -23,6 +18,12 @@ class Allocation {
 	}
 	#end
 
+	/**
+	 * Returns the least that `run` allocated over `windows` calls, less the
+	 * cost of reading the statistics. Code that allocates does so on every
+	 * call, while the background threads of the runtime add only to some
+	 * windows, so the least is the code's own.
+	 */
 	public static function least(run:Void->Void, windows:Int = 5):Float {
 		var best = Math.POSITIVE_INFINITY;
 		for (_ in 0...windows) {
@@ -41,12 +42,12 @@ class Allocation {
 		return hl.Gc.stats().totalAllocated;
 	}
 	#elseif (cpp && !cppia && HXCPP_TELEMETRY)
-	// hxcpp counts allocations only in a telemetry build (-D HXCPP_TELEMETRY):
-	// each frame lists the size of every allocation since the previous frame.
-	// hxcpp finds the frames by thread number. After worker threads have run,
-	// the main thread's number can find another thread's stack, or none.
-	// Reading through it would count nothing or read freed memory, so counting
-	// stops when the number no longer finds this thread.
+	// hxcpp counts allocations only when it compiles with telemetry
+	// (-D HXCPP_TELEMETRY). Each frame lists the size of every allocation since
+	// the previous frame. hxcpp finds the frames by thread number. After worker
+	// threads have run, the main thread's number can find another thread's
+	// stack, or none. Reading through it counts nothing or reads freed memory,
+	// so counting stops when the number no longer finds this thread.
 	static var thread = -1;
 	static var counted = 0.0;
 	static var lost = false;

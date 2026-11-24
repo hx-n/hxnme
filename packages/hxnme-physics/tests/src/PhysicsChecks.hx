@@ -324,7 +324,7 @@ class PhysicsChecks {
         mustThrow(function() spatial.setKinematicTarget((cube + (1 << 20)), new Vec3(), new Quat()), 'stale kinematic body');
     }
 
-    /** Many kinematic targets per step through the buffers, without allocating. */
+    /** Checks many kinematic targets per step through the buffers, without allocating. */
     static function checkKinematicBulk():Void {
         var world = new World(128, 128);
         world.gravity = new Vec3();
@@ -368,7 +368,8 @@ class PhysicsChecks {
         near(world.posY[slot], 3, 'kinematic box holds');
         if (world.invMassX[slot] != 0) throw 'kinematic box has mass';
 
-        // Moving under a target, then dynamic: keeps that motion, falls, and lands on the floor.
+        // When a body moves under a target and then turns dynamic, it keeps that motion, falls, and
+        // lands on the floor.
         world.setKinematicTarget(box, new Vec3(0.025, 3), new Quat());
         world.step(1.0 / 60.0);
         world.setBodyType(box, BodyType.Dynamic);
@@ -388,7 +389,7 @@ class PhysicsChecks {
         world.setBodyType(still, BodyType.Dynamic);
         near(world.velX[world.bodySlot(still)], 0, 'switch after holding is at rest');
 
-        // Back to kinematic: stops where it is and follows targets again.
+        // When the body turns kinematic again, it stops where it is and follows targets again.
         var x = world.posX[slot];
         world.setBodyType(box, BodyType.Kinematic);
         world.step(1.0 / 60.0);
@@ -397,7 +398,8 @@ class PhysicsChecks {
         world.step(1.0 / 60.0);
         near(world.posY[slot], 2, 'kinematic again follows targets');
 
-        // Each volumetric body regains full 3D freedom; a joint left between two kinematic bodies is inert.
+        // Each volumetric body regains full 3D freedom. Each joint left between two kinematic bodies is
+        // inert.
         var cube = world.createBody(BodyType.Kinematic, 3, 2, 0);
         world.attachShape(cube, ShapeBuilder.makeBox(world.verts, 0.2, 0.2, 0.2, 0));
         var arm = world.createBody(BodyType.Dynamic, 3, 1, 0);
@@ -728,7 +730,7 @@ class PhysicsChecks {
         for (_ in 0...30) world.step(1.0 / 60.0);
         near(world.posY[world.bodySlot(ball)], 0.6 + 0.3, 'ball rides a reshaped deck', 0.04);
         sameTopology(world, deck, 'in-place reshape');
-        // Reversing the winding takes the rebuild path; the result must match a fresh build too.
+        // Reversing the winding takes the rebuild path. The result must also match a freshly built shape.
         world.setShapeVertices(deck, [new Vec3(-2, 0.6), new Vec3(2, 0.6), new Vec3(2, -0.2), new Vec3(-2, -0.2)]);
         sameTopology(world, deck, 'reshape with reversed winding');
         world.setShapeVertices(deck, [new Vec3(-2, -0.2), new Vec3(2, -0.2), new Vec3(2, 0.6), new Vec3(-2, 0.6)]);
@@ -831,13 +833,14 @@ class PhysicsChecks {
                 impactSpeed = e.impacts.speed(i);
                 var crateIsA = e.impacts.shapeA(i) == crateShape;
                 near(crateIsA ? e.impacts.userDataA(i) : e.impacts.userDataB(i), 9, 'impact user value');
-                // The normal runs from shape A to shape B: down when the crate is A.
+                // The normal runs from shape A to shape B, so it points down when the crate is A.
                 if ((crateIsA ? -1 : 1) * e.impacts.normalY(i) < 0.9) throw 'impact normal points the wrong way';
             }
         }
         near(begins, 1, 'crate touches the floor once');
         near(impacts, 1, 'crate lands with one impact');
-        // Dropped from 2 m above contact: sqrt(2 * 9.81 * 2), less a substep of gravity.
+        // The crate drops from 2 m above contact, so the approach speed is sqrt(2 * 9.81 * 2), less a
+        // substep of gravity.
         near(impactSpeed, Math.sqrt(2 * 9.81 * 1.98), 'impact approach speed', 0.25);
         if (world.islands.isAwake[world.bodySlot(crate)] != 0) throw 'crate did not fall asleep';
         near(ends, 0, 'sleeping crate keeps touching the floor');
@@ -974,7 +977,7 @@ class PhysicsChecks {
         near(contacts.normalImpulse[0], 0, 'stale feature is not reused');
     }
 
-    /** The pool starts small, grows while a step adds contacts, keeps warm starts across growth, and stops at its limit. */
+    /** Checks that the pool starts small, grows while a step adds contacts, keeps warm starts across growth, and stops at its limit. */
     static function checkContactGrowth():Void {
         var contacts = new ContactManifoldPool(1000, 8);
         var up = new Vec3(0, 1, 0), point = new Vec3();
@@ -984,7 +987,8 @@ class PhysicsChecks {
             contacts.normalImpulse[i] = i + 0.5;
         }
         contacts.beginStep();
-        // New contacts first, so the storage grows while last step's are still to be looked up.
+        // Adds new contacts first, so the storage grows while the contacts of the last step still wait
+        // for lookup.
         for (i in 0...100) contacts.addContact(500 + i, 501 + i, 500 + i, 501 + i, i, up, point, 0.1);
         if (contacts.capacity < 108 || contacts.count != 100) throw 'contact pool grew to ${contacts.capacity} holding ${contacts.count}';
         for (i in 0...8) {
@@ -1020,7 +1024,7 @@ class PhysicsChecks {
         for (box in boxes) if (Math.abs(world.posY[box] - 0.25) > 0.02) throw 'a box in the pile sank or rose to ${world.posY[box]}';
     }
 
-    /** Shapes with no rounding resting on each other overlap at their cores every step; that path allocates nothing, in 3D or in the plane. */
+    /** Checks that shapes with no rounding, resting on each other, overlap at their cores every step, and that this path allocates nothing, in 3D or in the plane. */
     static function checkDeepContactsAllocateNothing():Void {
         for (planar in [false, true]) {
             var world = new World(8, 8, 2);
@@ -1193,7 +1197,7 @@ class PhysicsChecks {
         lever.attachShape(offsetBody, ShapeBuilder.makeCircle(0.3));
         lever.createDistanceJoint(pivot, offsetBody, 1.0, 0.0, 1.0, new Vec3(), new Vec3(0, 0.2));
         lever.step(1.0 / 60.0);
-        // Pulling the joint shut turns the body about its off-centre anchor.
+        // Pulling the joint shut turns the body about its off-center anchor.
         if (Math.abs(2 * Math.atan2(lever.rotZ[offsetBody], lever.rotW[offsetBody])) < 0.01) throw 'off-center joint anchor produced no torque';
 
         var mixed = new World(8, 8, 2);
@@ -1623,7 +1627,7 @@ class PhysicsChecks {
         near(stack.posY[upper], 2.0, 'upper stack resting height', 0.08);
     }
 
-    /** Hull faces counted once each: volumes, centroids and triangle counts of turned boxes and octahedra against their exact values. */
+    /** Checks that hull faces are counted once each, against the exact volumes, centroids and triangle counts of turned boxes and octahedra. */
     static function checkHullVolumes():Void {
         var seed = 3;
         inline function next():Float {
@@ -1656,7 +1660,7 @@ class PhysicsChecks {
         }
     }
 
-    /** Nearly coplanar points with rounding jitter, as EPA meets them, still make a hull with every face outward; a box foot rests on a box floor wherever it stands. */
+    /** Checks that nearly coplanar points with rounding jitter, as EPA meets them, still make a hull with every face outward, and that a box foot rests on a box floor wherever it stands. */
     static function checkHullRobustness():Void {
         var text = "-1.910000086,0.000408561,2.119999886 | 2.209999800,-1.079592109,-2.120000124 | -1.910000205,0.000408069,-2.120000124 | 2.210000038,0.000408425,-1.880000234 | 2.210000038,-0.999591589,-1.880000234 | -1.910000324,-1.079591990,-2.119999886 | -1.910000086,0.000408560,-1.880000114 | -1.790000319,-1.079592109,-2.120000124 | -1.910000086,-1.079591393,2.120000124 | -1.790000200,-0.999592066,-2.120000124";
         var pts = [for (p in text.split(" | ")) { var c = p.split(","); new Vec3(Std.parseFloat(c[0]), Std.parseFloat(c[1]), Std.parseFloat(c[2])); }];

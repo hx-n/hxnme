@@ -1,6 +1,6 @@
 package hxn.me.physics.solver;
 
-// Four-wide solver paths over ash.simd, compiled for HashLink with -D ash_simd.
+// These four-wide solver paths use ash.simd, and compile for HashLink with -D ash_simd.
 #if (ash_simd && hl)
 
 import ash.simd.Float32x4;
@@ -8,17 +8,17 @@ import ash.simd.Vec;
 import hxn.me.math.Float32Bytes;
 
 /**
- * Solves four independent contact rows at once: body velocities are gathered
- * once, the normal and both friction impulses update in vector registers, and
- * each dynamic body is written back once.
+ * `SimdSolver4` solves four independent contact rows at once. It gathers the
+ * body velocities once, updates the normal and both friction impulses in
+ * vector registers, and writes each dynamic body back once.
  *
- * Each group can be partial or hold skipped rows: those lanes are masked, so
- * every row of a SIMD colour is solved with the same lane arithmetic however
- * rows are grouped, and a serial solve matches an island-parallel one.
+ * Each group can be partial or hold skipped rows. Those lanes are masked, so
+ * every row of a SIMD color is solved with the same lane arithmetic however
+ * the rows are grouped, and a serial solve matches an island-parallel one.
  *
- * Only Float32x4's Haxe-inline operations (load, store, add, mul, gt, select)
- * appear here, so Ash can keep the temporaries in registers; square root and
- * division go through scratch slots.
+ * Only the Haxe-inline operations of Float32x4 (load, store, add, mul, gt,
+ * select) appear here, so Ash can keep the temporaries in registers. Square
+ * root and division go through scratch slots.
  */
 class SimdSolver4 {
 	static inline var VEL_A = 0;
@@ -43,8 +43,8 @@ class SimdSolver4 {
 
 	/**
 	 * Stores a row field's four lanes, or only the live ones when lanes are
-	 * masked: a masked lane may be another island's row, solved at the same
-	 * time by another worker, so it is never written.
+	 * masked. Each masked lane can be the row of another island, which another
+	 * worker solves at the same time, so it is never written.
 	 */
 	inline function put(value:Float32x4, rows:Float32Bytes, at:Int, slot:Int, count:Int, skip:hxn.Int32Buffer, whole:Bool):Void {
 		if (whole)
@@ -57,7 +57,7 @@ class SimdSolver4 {
 		}
 	}
 
-	/** Solves rows `slot` to `slot + count - 1`, at most four; rows past them and skipped rows are masked out. */
+	/** Solves rows `slot` to `slot + count - 1`, at most four. Rows past them and skipped rows are masked out. */
 	public function solve(solver:SoftStepSolver, slot:Int, count:Int = 4):Void {
 		var skip = solver.rowSkip;
 		var world = solver.world;
@@ -127,7 +127,7 @@ class SimdSolver4 {
 		var imby = field(rows, stride, SoftStepSolver.INV_MASS_B + 1, base);
 		var imbz = field(rows, stride, SoftStepSolver.INV_MASS_B + 2, base);
 
-		// Normal impulse.
+		// Solves the normal impulse.
 		var nx = field(rows, stride, SoftStepSolver.NX, base);
 		var ny = field(rows, stride, SoftStepSolver.NX + 1, base);
 		var nz = field(rows, stride, SoftStepSolver.NX + 2, base);
@@ -163,7 +163,7 @@ class SimdSolver4 {
 		wby = wby + field(rows, stride, block + SoftStepSolver.RESPONSE_B + 1, base) * dn;
 		wbz = wbz + field(rows, stride, block + SoftStepSolver.RESPONSE_B + 2, base) * dn;
 
-		// Friction: both tangent speeds use the post-normal velocities.
+		// Solves friction. Both tangent speeds use the velocities after the normal impulse.
 		var dvx = vbx + vax * minusOne,
 			dvy = vby + vay * minusOne,
 			dvz = vbz + vaz * minusOne;
@@ -238,7 +238,7 @@ class SimdSolver4 {
 		wbx.store(scratch, ANG_B);
 		wby.store(scratch, ANG_B + 16);
 		wbz.store(scratch, ANG_B + 32);
-		// Static and kinematic supports may repeat across lanes and are never written.
+		// Static and kinematic supports can repeat across lanes and are never written.
 		var writeA = solver.rowWriteA, writeB = solver.rowWriteB;
 		for (lane in 0...count) {
 			var o = lane << 2;

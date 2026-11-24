@@ -1,24 +1,27 @@
 package hxn.me.render2d;
 
 /**
-	`Region` is a named rectangle of an `Atlas` texture, with optional
-	nine-slice borders. `Draw.region`, `Draw.regionSlice` and
-	`Sprites.addRegion` draw it.
+	`Region` holds the corner and size of a named rectangle of an `Atlas`
+	texture, and its optional nine-slice borders. `Draw.region`,
+	`Draw.regionSlice` and `Sprites.addRegion` draw it.
 **/
 class Region {
 	public final name:String;
 
-	/** The atlas texture that the region is part of. **/
+	/** `texture` holds the atlas texture that the region is part of. **/
 	public final texture:Texture;
 
-	/** The region's corner and size in texture pixels, from the top left. **/
+	/** `x`, `y`, `width` and `height` give the region's corner and size in texture pixels, from the top left. **/
 	public final x:Int;
 
 	public final y:Int;
 	public final width:Int;
 	public final height:Int;
 
-	/** The nine-slice borders in texture pixels, or 0 for a region that is not a nine-slice. **/
+	/**
+		`left`, `top`, `right` and `bottom` give the nine-slice borders in
+		texture pixels. They are 0 for a region that is not a nine-slice.
+	**/
 	public final left:Int;
 
 	public final top:Int;
@@ -26,16 +29,17 @@ class Region {
 	public final bottom:Int;
 
 	/**
-		The point of the region that `Draw.region`, `Draw.shadowOf` and
-		`Sprites.addRegion` place at their `x`, `y`, and that `angle` turns
-		about: a fraction of the region's width and height, from its top left
-		in the image. The default is the center, 0.5 and 0.5.
+		`pivotX` and `pivotY` give the point of the region that `Draw.region`,
+		`Draw.shadowOf` and `Sprites.addRegion` place at their `x`, `y`, and
+		that `angle` turns about. They are fractions of the region's width and
+		height, from its top left in the image. The default is the center, 0.5
+		and 0.5.
 	**/
 	public final pivotX:Float;
 
 	public final pivotY:Float;
 
-	/** The region's texture coordinates, from 0 to 1, with `v0` at its top. **/
+	/** `u0`, `v0`, `u1` and `v1` give the region's texture coordinates, from 0 to 1, with `v0` at its top. **/
 	public final u0:Float;
 
 	public final v0:Float;

@@ -31,9 +31,10 @@ class TimeOfImpact {
 	var dy:Float32Buffer;
 	var dz:Float32Buffer;
 	var fast:Int32Buffer;
-	// The largest move any body not checked as fast makes this segment; fast bodies' sweeps are widened by it.
+	// Holds the largest move that any body not checked as fast makes in this segment. The sweeps of
+	// fast bodies widen by it.
 	var slowReach:Float = 0.0;
-	// Per-pair scratch and the hits of the current search, reused across calls.
+	// Holds the per-pair scratch and the hits of the current search, reused across calls.
 	var shapeA:ShapeDef = new ShapeDef(ShapeKind.Point);
 	var shapeB:ShapeDef = new ShapeDef(ShapeKind.Point);
 	var posA:Vec3 = new Vec3();
@@ -55,7 +56,7 @@ class TimeOfImpact {
 		candidates = new Int32Buffer(world.shapeCapacity);
 	}
 
-	/** Makes the per-step scratch for the world's present capacities; it holds nothing between steps. */
+	/** Makes the per-step scratch for the world's present capacities. It holds nothing between steps. */
 	public function resize():Void {
 		dx = new Float32Buffer(world.bodyCapacity);
 		dy = new Float32Buffer(world.bodyCapacity);
@@ -120,10 +121,11 @@ class TimeOfImpact {
 	}
 
 	/**
-	 * Grows each fast body's shapes over the whole of their move, and by the
-	 * furthest any other body moves, so a query from a fast shape finds every
-	 * shape it could meet. Only fast bodies are touched: in a crowd, sweeping
-	 * every moving body would rebuild most of the tree each segment.
+	 * Grows the proxies of each fast body's shapes over their whole move, and
+	 * by the furthest that any other body moves, so a query from a fast shape
+	 * finds every shape it can meet. Only fast bodies change, because in a
+	 * crowd a sweep of every moving body rebuilds most of the tree each
+	 * segment.
 	 */
 	function sweptProxies():Void {
 		var r = slowReach;
@@ -178,7 +180,7 @@ class TimeOfImpact {
 			world.shapeLocalZ[shape], world.shapeDensity[shape]);
 	}
 
-	/** Core distance between the pair with A and B advanced by `fraction` of their moves; normal in the workspace. */
+	/** Returns the core distance between the pair with A and B advanced by `fraction` of their moves. The normal stays in the workspace. */
 	inline function separationAt(bodyA:Int, bodyB:Int, fraction:Float):Float {
 		atA.x = posA.x + dx[bodyA] * fraction;
 		atA.y = posA.y + dy[bodyA] * fraction;
@@ -189,7 +191,7 @@ class TimeOfImpact {
 		return NarrowPhase.separation(world.verts, shapeA, atA, rotA, shapeB, atB, rotB, world.narrowWorkspace);
 	}
 
-	/** Conservative advancement for one pair; on a hit before `maxFraction`, fills `candidate` and returns true. */
+	/** Runs conservative advancement for one pair. On a hit before `maxFraction`, it fills `candidate` and returns true. */
 	function castPair(a:Int, b:Int, maxFraction:Single):Bool {
 		var bodyA = world.shapeBody[a], bodyB = world.shapeBody[b];
 		load(shapeA, a);
@@ -228,7 +230,7 @@ class TimeOfImpact {
 				return hit(crossing, a, b, 0.0, 0.0, rz > 0 ? -1.0 : 1.0);
 			}
 		}
-		// Already touching at the start: the discrete contact handles it.
+		// If the pair already touches at the start, the discrete contact handles it.
 		var separation:Float = separationAt(bodyA, bodyB, 0.0) - radii;
 		if (separation <= 1e-5)
 			return false;
@@ -262,7 +264,7 @@ class TimeOfImpact {
 		return true;
 	}
 
-	/** Earliest impact among fast bodies this segment, or null. The returned hit is reused by the next call. */
+	/** Returns the earliest impact among fast bodies in this segment, or null. The next call reuses the returned hit. */
 	public function findEarliest(h:Single, frameDt:Single):ToiHit {
 		if (!prepare(h, frameDt))
 			return null;

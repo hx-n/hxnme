@@ -26,7 +26,7 @@ class ConstraintGraph {
 		usedColors = new Int32Buffer(bodyCapacity);
 	}
 
-	/** Room for `n` bodies. */
+	/** Makes room for `n` bodies. */
 	public function growBodies(n:Int):Void {
 		if (n > usedColors.length)
 			usedColors = hxn.me.math.Grow.ints(usedColors, usedColors.length, n);

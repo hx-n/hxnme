@@ -1,7 +1,7 @@
 package hxn.me.gpu;
 
 /**
-	`Cameras` is the resource that holds the app's cameras. It starts with
+	`Cameras` holds the app's cameras, as a resource. It starts with
 	`main`, an orthographic camera that shows one world unit for each logical
 	pixel, centered on the world's origin. Renderers draw once for each
 	enabled camera, in the order of `Camera.order`.

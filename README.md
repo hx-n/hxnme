@@ -1,9 +1,10 @@
 # hxnme
 
-hxnme is an engine framework for developing games and rich interactive apps and experiences, written in Haxe. It is part
-of the [hxn](https://github.com/hx-n/hxn) project. The engine consists of a
-lightweight kernel and a set of plugins, each published as its own haxelib.
-Apps depend on the kernel and add the plugins they need.
+hxnme is an engine framework, written in Haxe, for games and rich interactive
+apps and experiences. It is part of the [hxn](https://github.com/hx-n/hxn)
+project. The engine has a small kernel and a set of plugins, and each one is
+published as its own haxelib. Apps depend on the kernel and add the plugins
+that they need.
 
 ## Architecture
 
@@ -53,18 +54,18 @@ flowchart TB
 
 1. Core: app loop, input actions, 2D renderer, assets, and `new`, `run` and
    `build` for desktop and web.
-2. Physics: a GPU solve, with the CPU solve for deterministic worlds.
+2. Physics: a GPU solver, and the CPU solver for deterministic worlds.
 3. Dev loop: hot reload of code and assets, on desktop, Android and iOS.
 4. Entities: ECS, scenes, prefabs, serialization and audio.
 5. UI: layout, widgets, text input and accessibility.
 6. 3D: frame graph, meshes, materials and post-processing.
-7. Delivery: packaging, signing, and deploys to app stores and the web.
+7. Delivery: packaging, signing, and deployment to app stores and the web.
 
 ## Agent skills
 
 Each package has an agent skill for coding agents in
-[`skills/`](skills/), and the package's haxelib includes it.
+[`skills/`](skills/). The haxelib of the package includes its skill.
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+hxnme uses the Apache-2.0 license. See [LICENSE](LICENSE).

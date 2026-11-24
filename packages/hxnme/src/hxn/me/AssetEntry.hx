@@ -1,12 +1,12 @@
 package hxn.me;
 
-/** Each entry holds one loaded value, the number of handles to it, and the assets that it holds. **/
+/** `AssetEntry` holds one loaded value, the number of handles to it, and the assets that the value holds. **/
 @:allow(hxn.me)
 @:noCompletion
 class AssetEntry {
 	final assets:Assets;
 	final key:String;
-	// The path of the asset's file, which `AssetContext.resolve` resolves against.
+	// Holds the path of the asset's file. `AssetContext.resolve` resolves relative paths against it.
 	final path:String;
 	final type:AssetType<Dynamic>;
 	var value:Dynamic;

@@ -51,21 +51,22 @@ class Shader implements hxn.gpu.Shader {
 		@input var input : { rect : Vec4, uv : Vec4, color : Vec4, xform : Vec4, shape : Vec4, radius : Vec4, border : Vec4 };
 		var output : { position : Vec4, color : Vec4 };
 		/**
-			The columns of the matrix that maps the plane's points to clip space,
-			which is the camera's matrix times the plane's matrix. The third
-			column is left out, because 2D content lies at z = 0 in its plane.
+			`matrix0`, `matrix1` and `matrix3` hold the columns of the matrix that
+			maps the plane's points to clip space, which is the camera's matrix
+			times the plane's matrix. The shader leaves out the third column,
+			because 2D content lies at z = 0 in its plane.
 		**/
 		@param var matrix0 : Vec4;
 		@param var matrix1 : Vec4;
 		@param var matrix3 : Vec4;
-		/** `x` is 1 when the camera's view has y down, as with a screen camera, and 0 when it has y up. **/
+		/** `flags.x` is 1 when the camera's view has y down, as with a screen camera, and 0 when it has y up. **/
 		@param var flags : Vec4;
-		/** The clip's corner with the smaller coordinates and its size, in the plane's coordinates. **/
+		/** `clipRect` holds the clip's corner with the smaller coordinates and its size, in the plane's coordinates. **/
 		@param var clipRect : Vec4;
-		/** The clip's corner radius in `x` and its `CornerShape` in `y`. `z` is 1 when the run has a clip. **/
+		/** `clipShape` holds the clip's corner radius in `x` and its `CornerShape` in `y`. `z` is 1 when the run has a clip. **/
 		@param var clipShape : Vec4;
 		@param var image : Sampler2D;
-		/** The fragment's position in the quad, in pixels from its corner at `rect.xy`. **/
+		/** `local` holds the fragment's position in the quad, in pixels from its corner at `rect.xy`. **/
 		var local : Vec2;
 		var size : Vec2;
 		var texel : Vec2;
@@ -73,9 +74,9 @@ class Shader implements hxn.gpu.Shader {
 		var kind : Vec4;
 		var radii : Vec4;
 		var edge : Vec4;
-		/** The fragment's position in the plane's coordinates. **/
+		/** `at` holds the fragment's position in the plane's coordinates. **/
 		var at : Vec2;
-		/** The part of `image` that a nine-slice shows. **/
+		/** `region` holds the part of `image` that a nine-slice shows. **/
 		var region : Vec4;
 
 		function vertex() {
@@ -99,9 +100,9 @@ class Shader implements hxn.gpu.Shader {
 				mirror = 1.;
 			var cornerY = mix(r.y, 2. * input.shape.z + input.shape.w - r.y - r.w, mirror);
 			var pivot = vec2(input.xform.z, mix(input.xform.w, 1. - input.xform.w, mirror));
-			// A sprite or silhouette with `radius.w` set is placed by its pivot: `rect.xy` is
-			// the pivot's position, and `xform.zw` the pivot as a fraction of the quad, top
-			// first in the image. The image's top is the quad's larger y in a view with y up.
+			// Sprites and silhouettes with `radius.w` set are placed by their pivot. `rect.xy`
+			// is the pivot's position, and `xform.zw` is the pivot as a fraction of the quad,
+			// top first in the image. The image's top is the quad's larger y in a view with y up.
 			if ((input.shape.x < 0.5 || input.shape.x > 6.5) && input.radius.w > 0.5) {
 				pivot = vec2(input.xform.z, flags.x > 0.5 ? input.xform.w : 1. - input.xform.w);
 				cornerY = r.y - pivot.y * r.w;
@@ -121,7 +122,7 @@ class Shader implements hxn.gpu.Shader {
 			var fromTop = vec2(local.x, flags.x > 0.5 ? local.y : size.y - local.y);
 			var nine = kind.x > 4.5 ? 1. : 0.;
 			// WGSL takes derivatives and samples textures only outside branches.
-			// The borders as fractions of the part of the image, from the borders in texels.
+			// The next line computes the borders as fractions of the part of the image, from the borders in texels.
 			var texels = max(vec4(kind.y * kind.z, kind.y * kind.w, kind.y * kind.z, kind.y * kind.w), vec4(0.0001, 0.0001, 0.0001, 0.0001));
 			var sliced = mix(region.xy, region.zw, sliceUv(fromTop, size, radii, radii / texels));
 			var sampled = image.get(mix(texel, sliced, vec2(nine, nine)));
@@ -131,7 +132,7 @@ class Shader implements hxn.gpu.Shader {
 			var rel = local - halfSize;
 			// The radii are top left, top right, bottom right and bottom left, as the view shows them.
 			var up = vec2(rel.x, flags.x > 0.5 ? -rel.y : rel.y);
-			// A shadow's box is its quad less the margin for the blur, in `shape.w`.
+			// Each shadow's box is its quad less the margin for the blur, which `shape.w` holds.
 			var boxHalf = kind.x > 5.5 ? max(halfSize - vec2(kind.w, kind.w), vec2(0., 0.)) : halfSize;
 			var box = shapedBox(up, boxHalf, radii, vec4(kind.z, kind.z, kind.z, kind.z));
 			var d = kind.x < 2.5 ? box : (kind.x < 3.5 ? ellipse(rel, halfSize) : taperedLine(local, radii.xy, radii.zw, kind.z, kind.w));
@@ -144,7 +145,7 @@ class Shader implements hxn.gpu.Shader {
 			else if (kind.x < 1.5)
 				result = vec4(tint.rgb, tint.a * sampled.r);
 			else if (kind.x > 6.5) {
-				// The sprite's silhouette, its alpha blurred over a 5 by 5 grid of samples.
+				// The silhouette is the sprite's alpha, blurred over a 5 by 5 grid of samples.
 				// Samples outside the sprite's part of the image count as transparent.
 				var spriteSize = max(radii.xy, vec2(0.0001, 0.0001));
 				var base = (fromTop - vec2(kind.z, kind.z)) / spriteSize;

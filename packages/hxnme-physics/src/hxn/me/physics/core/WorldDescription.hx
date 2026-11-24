@@ -4,7 +4,7 @@ import hxn.me.physics.diagnostics.Diagnostics;
 import hxn.me.physics.collision.BroadPhase;
 import hxn.me.physics.core.Handles.BodyType;
 
-/** Builds `World.describe` from the world's public buffers. */
+/** `WorldDescription` builds `World.describe` from the world's public buffers. */
 class WorldDescription {
 	static inline function num(v:Float):String
 		return Diagnostics.number(v);

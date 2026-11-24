@@ -16,8 +16,8 @@ import hxn.me.window.WindowPlugin;
 	after that, the system `prepare` makes the surface the size of the window
 	and takes the window's next frame in `Begin`. The system `present` runs the
 	passes of the frame graph into that frame and shows it at the end of
-	`Render`. Systems in `Render` that change what the passes draw must run
-	before `present`, so they add `before = hxn.me.gpu.GpuPlugin.present`.
+	`Render`. Each system in `Render` that changes what the passes draw must
+	run before `present`, so it adds `before = hxn.me.gpu.GpuPlugin.present`.
 
 	`gpu.vsync` in hxnme.toml sets whether each frame waits for the display's
 	refresh before it shows. The default is true. The plugin copies it to

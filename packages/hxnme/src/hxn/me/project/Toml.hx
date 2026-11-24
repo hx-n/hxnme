@@ -1,10 +1,10 @@
 package hxn.me.project;
 
 /**
-	Reads the TOML that hxnme's project files use: tables, dotted keys,
+	`Toml` reads the TOML that hxnme's project files use: tables, dotted keys,
 	strings, integers, floats, booleans, and arrays and inline tables of
-	those. Dates and arrays of tables are rejected with an error that reports
-	the line. The result is an anonymous structure of `String`, `Int`,
+	those. It rejects dates, arrays of tables and multi-line strings with an
+	error that reports the line. The result is an anonymous structure of `String`, `Int`,
 	`Float`, `Bool`, `Array<Dynamic>` and nested structures.
 **/
 class Toml {
@@ -55,7 +55,7 @@ class Toml {
 		}
 	}
 
-	// The table at `path` under `table`, created where missing.
+	// Returns the table at `path` under `table`, and creates each table that is missing.
 	function into(table:Dynamic, path:Array<String>):Dynamic {
 		for (i in 0...path.length) {
 			var name = path[i];

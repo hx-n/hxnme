@@ -10,42 +10,42 @@ import hxn.gpu.Buffer;
 	characters of a scene. `add` returns a handle to the new sprite, and the
 	other methods take that handle. The renderer writes one of its sets of
 	buffers in each frame, and uploads to that set only the parts of each field
-	that changed since it last wrote the set. A change therefore reaches each
-	set in turn. Sprites that do not change cost no upload.
+	that changed since it last wrote the set. Each change therefore reaches
+	every set in turn. Sprites that do not change cost no upload.
 
-	Sprites with the same texture, layer, plane and clip form a group, and each group
-	draws with one instanced draw. Groups draw in the order that their first
-	sprites were added, and before the contents of `Draw` in the same frame. The
-	sprites of one group draw in the order that they were added. `remove`
-	changes that order, because it moves the last sprite of the group into the
-	place of the removed sprite.
+	Sprites with the same texture, layer, plane and clip form a group, and
+	each group draws with one instanced draw. Groups draw in the order that
+	their first sprites were added, and before the contents of `Draw` in the
+	same frame. The sprites of one group draw in the order that they were
+	added. `remove` changes that order, because it moves the last sprite of
+	the group into the place of the removed sprite.
 **/
 class Sprites {
-	/** The layer bits of the sprites added next. Cameras show the layers in their `layers`. **/
+	/** `layer` sets the layer bits of the sprites added next. Cameras show the layers in their `layers`. **/
 	public var layer = 1;
 
-	/** The plane of the sprites added next, or null for the XY plane of the world. **/
+	/** `plane` sets the plane of the sprites added next. Null selects the XY plane of the world. **/
 	public var plane:Null<Plane>;
 
-	/** The clip of the sprites added next, or null for none. **/
+	/** `clip` sets the clip of the sprites added next. Null sets no clip. **/
 	public var clip:Null<Clip>;
 
-	/** The number of sprites. **/
+	/** `length` gives the number of sprites. **/
 	public var length(default, null) = 0;
 
-	/** The bytes that the renderer uploaded for sprites in the last frame. **/
+	/** `uploaded` gives the number of bytes that the renderer uploaded for sprites in the last frame. **/
 	public var uploaded(default, null) = 0;
 
 	@:allow(hxn.me.render2d) final groups:Array<SpriteGroup> = [];
 
-	// The texts in the store, in the order they were added.
+	// Holds the texts in the store, in the order they were added.
 	@:allow(hxn.me.render2d) final texts:Array<TextEntry> = [];
 
-	// For each slot: its group, or null when it is free or holds a text, and its index there.
+	// `slotGroup` holds the group of each slot, or null when the slot is free or holds a text. `slotIndex` holds the slot's index in its group.
 	final slotGroup:Array<Null<SpriteGroup>> = [];
-	// For each slot that holds a text: its entry.
+	// Holds the text entry of each slot that contains a text.
 	final slotText:Array<Null<TextEntry>> = [];
-	// For each slot of a region with a shadow: the shadow's slot, or -1, its style, and the region.
+	// For each slot of a region with a shadow, these hold the shadow's slot or -1, its style, and the region.
 	final slotShadow:Array<Int> = [];
 	final slotStyle:Array<Null<Shadow>> = [];
 	final slotRegion:Array<Null<Region>> = [];
@@ -101,7 +101,7 @@ class Sprites {
 			for (field in 0...Instances.FIELDS)
 				group.changed(field, at);
 			shadowSlot = take();
-			// A shadow is not counted as a sprite.
+			// Shadows do not count as sprites.
 			length--;
 			slotGroup[shadowSlot] = group;
 			slotIndex[shadowSlot] = at;
@@ -111,7 +111,7 @@ class Sprites {
 		slotShadow[sprite.slot] = shadowSlot;
 		slotStyle[sprite.slot] = shadow;
 		slotRegion[sprite.slot] = region;
-		// Placed by the pivot, as `Draw.region` places it.
+		// Places the sprite by its pivot, as `Draw.region` does.
 		var group = slotGroup[sprite.slot];
 		var i = slotIndex[sprite.slot];
 		group.instances.set(Instances.XFORM, i, Math.cos(angle), Math.sin(angle), region.pivotX, region.pivotY);
@@ -336,24 +336,25 @@ class Sprites {
 **/
 @:allow(hxn.me.render2d)
 class SpriteGroup {
-	// A text's group follows its atlas, whose texture changes when the atlas grows.
+	// The group of a text follows its atlas, whose texture changes when the atlas grows.
 	var texture:Texture;
 	final layer:Int;
 	final plane:Null<Plane>;
 	final clip:Null<Clip>;
-	// Whether the group holds shadows, which draw before the other groups.
+	// Is true when the group holds shadows, which draw before the other groups.
 	final shadows:Bool;
 	final instances = new Instances(64);
 
-	// The slot of the sprite at each index.
+	// Holds the slot of the sprite at each index.
 	final slots:Array<Int> = [];
 
-	// For each set of the renderer's buffers and each field, the first index that
-	// changed since the renderer last uploaded that set, and one past the last.
+	// For each set of the renderer's buffers and each field, `low` holds the first
+	// index that changed since the renderer last uploaded that set, and `high` holds
+	// one past the last.
 	final low = [for (_ in 0...Renderer.SETS) [for (_ in 0...Instances.FIELDS) 0]];
 	final high = [for (_ in 0...Renderer.SETS) [for (_ in 0...Instances.FIELDS) 0]];
 
-	// For each set, the vertex buffers of the fields and the number of instances they hold.
+	// For each set, these hold the vertex buffers of the fields and the number of instances they hold.
 	final buffers:Array<Array<Buffer>> = [for (_ in 0...Renderer.SETS) []];
 	final capacities = [for (_ in 0...Renderer.SETS) 0];
 
@@ -402,13 +403,13 @@ private class TextEntry {
 	final plane:Null<Plane>;
 	final clip:Null<Clip>;
 
-	// The groups of the coverage and color atlases, made when the text first has glyphs in them.
+	// Holds the groups of the coverage and color atlases. Each group is made when the text first has glyphs in its atlas.
 	final groups:Array<SpriteGroup> = [];
 	final kinds:Array<AtlasKind> = [];
 
-	// True after a change that the glyph instances do not show yet.
+	// Is true after a change that the glyph instances do not show yet.
 	var stale = true;
-	// The layout that the glyph instances show.
+	// Holds the layout that the glyph instances show.
 	var shown:Null<PreparedText>;
 
 	function new(text:Text, x:Float, y:Float, color:Int, alpha:Float, angle:Float, layer:Int, plane:Null<Plane>, clip:Null<Clip>) {

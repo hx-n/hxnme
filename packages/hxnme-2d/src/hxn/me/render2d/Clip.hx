@@ -9,19 +9,19 @@ package hxn.me.render2d;
 	the next frame.
 **/
 class Clip {
-	/** The x coordinate of the clip's corner with the smaller coordinates. **/
+	/** `x` sets the x coordinate of the clip's corner with the smaller coordinates. **/
 	public var x:Float;
 
-	/** The y coordinate of the clip's corner with the smaller coordinates. **/
+	/** `y` sets the y coordinate of the clip's corner with the smaller coordinates. **/
 	public var y:Float;
 
 	public var width:Float;
 	public var height:Float;
 
-	/** The radius of the clip's corners. **/
+	/** `radius` sets the radius of the clip's corners. **/
 	public var radius:Float;
 
-	/** The shape of the clip's corners. **/
+	/** `corner` sets the shape of the clip's corners. **/
 	public var corner:CornerShape;
 
 	public function new(x:Float, y:Float, width:Float, height:Float, radius = 0.0, corner:CornerShape = Round) {

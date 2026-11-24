@@ -14,14 +14,15 @@ plugins = ["hxnme-window", "hxnme-gpu", "hxnme-2d"]
 ## Use
 
 The renderer draws through `hxn.me.gpu.Cameras` (see the hxnme-gpu skill),
-shared with 3D. The world has y up, as in physics; 2D lies in the XY plane.
-The main camera is orthographic, one unit per logical pixel. `Screen`
-cameras show logical pixels, top left, y down, for UI. Each shape's `x`, `y`
-is its corner with the smaller coordinates. `draw.layer` sets the layer bits of
-what is added next; each camera draws the layers in its `layers`.
+which 3D content also uses. The world has y up, as in physics, and 2D
+content lies in the XY plane. The main camera is orthographic and shows one
+unit for each logical pixel. `Screen` cameras show logical pixels with the
+origin at the top left and y down, for UI. Each shape's `x`, `y` is its
+corner with the smaller coordinates. `draw.layer` sets the layer bits of
+what is added next, and each camera draws the layers in its `layers`.
 
-Draw through `ResMut<Draw>` in `Update`, every frame; it is emptied in
-`Begin`. Colors are 0xRRGGBB with `alpha` 0 to 1.
+Draw through `ResMut<Draw>` in `Update`, in every frame. The plugin empties
+`Draw` in `Begin`. Colors are 0xRRGGBB with `alpha` from 0 to 1.
 
 ```haxe
 draw.rect(x, y, w, h, 0x3366CC, 1, radius, border, borderColor, borderAlpha, Squircle /* CornerShape */);
@@ -37,8 +38,9 @@ draw.sprite(texture, x, y, w, h, tint, alpha, angle, u0, v0, u1, v1);
 draw.nineSlice(texture, x, y, w, h, left, top, right, bottom /* texture px */, tint, alpha, angle, scale);
 ```
 
-Sprites that stay from frame to frame go in `ResMut<Sprites>`. Only the
-parts that change are uploaded, so sprites that stand still cost nothing:
+Keep sprites that stay from frame to frame in `ResMut<Sprites>`. The
+renderer uploads only the parts that change, so sprites that stand still
+cost no upload:
 
 ```haxe
 sprites.layer = 1; sprites.plane = null; sprites.clip = null;   // for the sprites added next
@@ -49,9 +51,9 @@ sprites.xOf(s); sprites.yOf(s); sprites.exists(s); sprites.remove(s);
 var t:Sprite = sprites.addText(label, x, y, color, alpha, angle);   // glyphs kept; move, turn, tint, remove
 ```
 
-Text goes through `ResMut<Typesetter>` (hxn-text). Keep the `Text` and
-`set` its string; it lays itself out again only when the string, the
-display's scale or the atlases change:
+Lay out text with `ResMut<Typesetter>` (hxn-text). Keep the `Text` and
+change its string with `set`. It lays itself out again only when the
+string, the display's scale or the atlases change:
 
 ```haxe
 var label:Text = typesetter.text(font /* hxn.text.Font */, "Score 0", {size: 24});
@@ -59,12 +61,13 @@ label.set("Score 10"); label.width; label.height;
 draw.text(label, x, y, color, alpha, angle);   // upright through y-up and Screen cameras
 ```
 
-Assets through the kernel's `hxn.me.Assets`: declare `AssetRef<Texture>`
-(PNG), `AssetRef<hxn.text.Font>` (TTF, OTF, WOFF2) and `AssetRef<Atlas>`
-(JSON of regions with an image; `slice: [l, t, r, b]` for nine-slices;
-`pivot: [fx, fy]` from the top left, default center, which region, shadowOf
-and addRegion place at x, y) fields
-on an `@:build(hxn.me.Assets.build())` class, and declare the atlas image too:
+Load assets through the kernel's `hxn.me.Assets`. Declare
+`AssetRef<Texture>` (PNG), `AssetRef<hxn.text.Font>` (TTF, OTF, WOFF2) and
+`AssetRef<Atlas>` fields on an `@:build(hxn.me.Assets.build())` class, and
+declare the atlas image too. Each atlas is a JSON file of regions with an
+image. `slice: [l, t, r, b]` sets the borders of a nine-slice.
+`pivot: [fx, fy]` sets the point, from the top left, that region, shadowOf
+and addRegion place at x, y. The default pivot is the center:
 
 ```haxe
 assets.load(GameAssets.Sheet).then(a -> sheet = a);   // Asset<GameAssetsSheetAtlas>; sheet.release() closes it
@@ -76,22 +79,24 @@ sprites.addRegion(sheet.value.tree, x, y, ground);   // the shadow moves and is 
 draw.shadowOf(sheet.value.hero, x, y, offsetX, offsetY, blur, color, alpha, squash);   // a silhouette on its own
 ```
 
-`new Texture(width, height, rgbaPixels)` at any time; it uploads once the
-GPU is ready. `Texture.solid(color)` is a one-pixel texture.
+Call `new Texture(width, height, rgbaPixels)` at any time, and the texture
+uploads once the GPU is ready. `Texture.solid(color)` returns a one-pixel
+texture.
 
 Rules:
 
-- Order is draw order. Sprites with the same texture, and shapes between
-  them, share one instanced draw; a texture change starts another.
-- Clips are uniforms of each run and group, tested for each pixel in the
-  shader. A clip change starts a new run.
-- `Sprites` groups sprites by texture, layer, plane and clip, with one draw for
-  each group. Groups draw before `Draw`, in the order of their first
-  sprites. `remove` moves the group's last sprite into the removed one's
-  place, which changes the order within the group.
-- Glyphs sample hxn-text's coverage atlas, rasterized at the display's
-  scale, in the same shader. Text shares runs with sprites on the atlas
-  texture.
+- Order is draw order. Sprites with the same texture, and the shapes
+  between them, share one instanced draw. Each texture change starts
+  another.
+- Clips are uniforms of each run and group, and the shader tests each pixel
+  against them. Each clip change starts a new run.
+- `Sprites` groups sprites by texture, layer, plane and clip, and draws each
+  group with one draw. Groups draw before `Draw`, in the order of their
+  first sprites. `remove` moves the group's last sprite into the removed
+  one's place, which changes the order within the group.
+- Glyphs sample the coverage atlas of hxn-text in the same shader. The atlas
+  is rasterized at the display's scale. Text shares runs with sprites on the
+  atlas texture.
 - Shapes are signed distance functions in `Sdf`, so they stay smooth at
   any zoom and angle. `Sdf.shapedBox` takes a radius and a `CornerShape`
   for each corner. The UI imports the same module.

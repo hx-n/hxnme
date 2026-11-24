@@ -1,6 +1,6 @@
 package hxn.me.math;
 
-/** Symmetric 3x3 tensor. */
+/** `Mat3` holds a symmetric 3x3 tensor. */
 class Mat3 {
 	public var xx:Single;
 	public var yy:Single;

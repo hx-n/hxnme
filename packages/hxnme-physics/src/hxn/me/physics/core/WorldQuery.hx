@@ -24,18 +24,19 @@ class QueryHit {
 
 class WorldQuery {
 	var world:World;
-	// Candidate lists, one per nesting level: a queryAABB callback may run another query.
+	// Holds one candidate list per nesting level, because a queryAABB callback can run another query.
 	var candidates:Array<Int32Buffer> = [];
 	var entries:Array<Float64Buffer> = [];
 	var depth:Int = 0;
-	// Box written by `bounds`.
+	// `bounds` writes its box here.
 	var minX:Float = 0.0;
 	var minY:Float = 0.0;
 	var minZ:Float = 0.0;
 	var maxX:Float = 0.0;
 	var maxY:Float = 0.0;
 	var maxZ:Float = 0.0;
-	// Cast scratch: the target shape and its pose, the moving shape's pose, and the last hit found.
+	// The cast scratch holds the target shape and its pose, the moving shape's pose, and the last hit
+	// found.
 	var target:ShapeDef = new ShapeDef(ShapeKind.Point);
 	var targetPos:Vec3 = new Vec3();
 	var targetRot:Quat = new Quat();
@@ -52,7 +53,7 @@ class WorldQuery {
 	var hitNZ:Float = 0.0;
 	var rayOrigin:Vec3 = new Vec3();
 
-	/** The nearest hit of the last `rayCastNearest`: its shape, fraction, point and unit normal. */
+	/** Holds the nearest hit of the last `rayCastNearest`: its shape, fraction, point and unit normal. */
 	public var nearestShape(default, null):ShapeId = 0;
 
 	public var nearestFraction(default, null):Float = 0.0;
@@ -71,7 +72,7 @@ class WorldQuery {
 		return v != null && Math.isFinite(v.x) && Math.isFinite(v.y) && Math.isFinite(v.z);
 	}
 
-	/** Lets go of the candidate buffers, which are sized by the shape capacity, so the next query makes them for the new one. */
+	/** Releases the candidate buffers, which are sized by the shape capacity, so the next query makes them for the new capacity. */
 	public function releaseScratch():Void {
 		candidates.resize(0);
 		entries.resize(0);
@@ -87,11 +88,12 @@ class WorldQuery {
 	}
 
 	/**
-	 * Box of `def` at the given pose: rotated core vertices, plus local Z
-	 * offset and extrusion along the rotated Z axis, padded by the rounding
-	 * radius. With `flatPlanar`, an unrotated planar shape gets no Z padding,
-	 * which is the exact extent region queries test; casts pass false because
-	 * a planar shape's radius still reaches along Z against volumetric shapes.
+	 * Computes the box of `def` at the given pose: the rotated core vertices,
+	 * plus the local Z offset and the extrusion along the rotated Z axis,
+	 * padded by the rounding radius. With `flatPlanar`, an unrotated planar
+	 * shape gets no Z padding, which is the exact extent that region queries
+	 * test. Casts pass false, because a planar shape's radius still reaches
+	 * along Z against volumetric shapes.
 	 */
 	function bounds(def:ShapeDef, px:Float, py:Float, pz:Float, x:Float, y:Float, z:Float, w:Float, flatPlanar:Bool):Void {
 		var r00 = 1.0 - 2.0 * (y * y + z * z),
@@ -195,7 +197,7 @@ class WorldQuery {
 		depth = level;
 	}
 
-	/** Casts `def` against world shape `slot`; on a hit at or before `maxFraction`, fills the hit fields and returns true. */
+	/** Casts `def` against world shape `slot`. On a hit at or before `maxFraction`, it fills the hit fields and returns true. */
 	function castOne(def:ShapeDef, startPos:Vec3, startRot:Quat, translation:Vec3, maxFraction:Float, slot:Int):Bool {
 		loadTarget(slot);
 		var ws = world.narrowWorkspace;
@@ -247,7 +249,7 @@ class WorldQuery {
 			var distance = NarrowPhase.separation(verts, def, movingPos, startRot, target, targetPos, targetRot, ws);
 			var separation:Single = distance - def.radius - target.radius;
 			if (separation <= 1e-5) {
-				// Touching cores give no direction of their own; keep the last approach direction.
+				// Touching cores give no direction of their own. Keep the last approach direction.
 				var nx = distance > 1e-5 ? ws.separationX : lastX;
 				var ny = distance > 1e-5 ? ws.separationY : lastY;
 				var nz = distance > 1e-5 ? ws.separationZ : lastZ;
@@ -277,8 +279,8 @@ class WorldQuery {
 	}
 
 	/**
-	 * Earliest fraction in [0, 1] at which the box `m`, moved by `t`, overlaps
-	 * the current bounds; -1 when it never does.
+	 * Returns the earliest fraction in [0, 1] at which the box `m`, moved by
+	 * `t`, overlaps the current bounds. Returns -1 when it never does.
 	 */
 	function entry(mMinX:Float, mMinY:Float, mMinZ:Float, mMaxX:Float, mMaxY:Float, mMaxZ:Float, tx:Float, ty:Float, tz:Float):Float {
 		var enter = 0.0, exit = 1.0;
@@ -322,7 +324,8 @@ class WorldQuery {
 	 * Casts a ray from (ox, oy, oz) to (ox, oy, oz) + (dx, dy, dz) and keeps
 	 * its nearest hit in the `nearest` fields, with the fraction along that
 	 * segment, from 0 to 1. Returns false when it hits nothing. Allocates
-	 * nothing: for casting many rays a step, such as particles moving.
+	 * nothing, so it suits casting many rays a step, such as for moving
+	 * particles.
 	 */
 	public function rayCastNearest(ox:Float, oy:Float, oz:Float, dx:Float, dy:Float, dz:Float, mask:Int = -1):Bool {
 		rayOrigin.x = ox;
@@ -334,7 +337,7 @@ class WorldQuery {
 		return nearest(rayShape, rayOrigin, rayRotation, rayTranslation, mask);
 	}
 
-	/** The nearest hit of `def` moved by `translation`, into the `nearest` fields; false when there is none. */
+	/** Finds the nearest hit of `def` moved by `translation` and writes it to the `nearest` fields. Returns false when there is none. */
 	function nearest(def:ShapeDef, startPos:Vec3, startRot:Quat, translation:Vec3, mask:Int):Bool {
 		def.ensureVertices(world.verts);
 		bounds(def, startPos.x, startPos.y, startPos.z, startRot.x, startRot.y, startRot.z, startRot.w, false);

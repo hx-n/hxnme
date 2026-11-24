@@ -1,18 +1,18 @@
 package hxn.me.physics.joints;
 
-// Four-wide solver paths over ash.simd, compiled for HashLink with -D ash_simd.
+// These four-wide solver paths use ash.simd, and compile for HashLink with -D ash_simd.
 #if (ash_simd && hl)
 
 import ash.simd.Float32x4;
 import hxn.me.math.Float32Bytes;
 
 /**
- * Solves a batch of four joints of one color. The joints share no dynamic
+ * `JointSimd4` solves a batch of four joints of one color. The joints share no dynamic
  * body, so their velocities are gathered once, every row level is solved for
  * all four lanes, and each dynamic body is written back once.
  *
- * Only Float32x4's Haxe-inline operations (load, store, add, mul, gt, select)
- * appear here, so Ash can keep the temporaries in registers.
+ * Only the Haxe-inline operations of Float32x4 (load, store, add, mul, gt,
+ * select) appear here, so Ash can keep the temporaries in registers.
  */
 class JointSimd4 {
 	static inline var VEL_A = 0;
@@ -41,7 +41,8 @@ class JointSimd4 {
 		for (lane in 0...4) {
 			var id = joints[batch * 4 + lane], o = lane << 2;
 			if (id < 0) {
-				// The lane is empty: zero velocities and zero rows, so it changes nothing and is never written back.
+				// The lane is empty. It has zero velocities and zero rows, so it changes nothing and is never
+				// written back.
 				scratch.setF32(VEL_A + o, 0.0);
 				scratch.setF32(VEL_A + 16 + o, 0.0);
 				scratch.setF32(VEL_A + 32 + o, 0.0);
@@ -135,7 +136,7 @@ class JointSimd4 {
 		wbx.store(scratch, ANG_B);
 		wby.store(scratch, ANG_B + 16);
 		wbz.store(scratch, ANG_B + 32);
-		// Static and kinematic bodies may repeat across lanes and are never written.
+		// Static and kinematic bodies can repeat across lanes and are never written.
 		var writeA = rows.rowWriteA, writeB = rows.rowWriteB;
 		for (lane in 0...4) {
 			var id = joints[batch * 4 + lane];

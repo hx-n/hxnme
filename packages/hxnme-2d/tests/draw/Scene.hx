@@ -17,10 +17,11 @@ import hxn.me.render2d.Typesetter;
 import hxn.text.Font;
 
 /**
-	The 2D check. It draws through nine cameras, each into its own render
-	target, changes part of what it draws once the renderer has filled each of
-	its sets of buffers, and a few frames later reads every target back and compares it with what each
-	camera must show. The README's Checks section lists what it tests.
+	`Scene` runs the 2D check. It draws through nine cameras, each into its
+	own render target. After the renderer fills each of its sets of buffers,
+	it changes part of what it draws. After a few more frames, it reads every
+	target back and compares it with what each camera must show. The Checks
+	section of the README lists what it tests.
 **/
 class Scene {
 	static final screen = new RenderTarget(64, 64);
@@ -32,9 +33,9 @@ class Scene {
 	static var moved:Sprite;
 	static var removed:Sprite;
 	static var changed = false;
-	// The frame in which the check changes what it draws, after the renderer filled each set of buffers.
+	// Sets the frame in which the check changes what it draws, after the renderer filled each set of buffers.
 	static inline final CHANGE = hxn.me.render2d.Renderer.SETS;
-	// What `Sprites` uploaded in each frame after the change.
+	// Holds what `Sprites` uploaded in each frame after the change.
 	static final uploadsAfterChange:Array<Int> = [];
 	static final lettered = new RenderTarget(64, 64);
 	static final letteredUp = new RenderTarget(64, 64);
@@ -49,7 +50,7 @@ class Scene {
 	static final turned = new Plane();
 	static final clip = new Clip(12, 38, 16, 20, 6);
 
-	// Rows of the readback are top first, as each target shows them.
+	// The rows of the readback are top first, as each target shows them.
 	static final expected = [
 		{target: screen, name: "rectangle", x: 8, y: 8, rgb: [255, 0, 0]},
 		{target: screen, name: "circle", x: 48, y: 16, rgb: [0, 255, 0]},
@@ -100,13 +101,13 @@ class Scene {
 	];
 
 	// Moving the first sprite writes its rect, and the sprite that fills the
-	// removed one's place writes all seven fields: the rects of indices 0 and
-	// 1, and one instance of each other field. The text in `Sprites` changes
-	// from L to T, one glyph of all the fields.
+	// removed one's place writes all seven fields. The upload holds the rects of
+	// indices 0 and 1, and one instance of each other field. The text in
+	// `Sprites` changes from L to T, which uploads one glyph of all the fields.
 	static final CHANGED_BYTES = 2 * 16 + (hxn.me.render2d.Instances.BYTES - 16) + hxn.me.render2d.Instances.BYTES;
 
 	/**
-		Sets up a camera for each part of the check, each with its own layers
+		Sets up one camera for each part of the check, each with its own layers
 		and render target:
 
 		- 1, the main camera: a screen camera of shapes and sprites.
@@ -224,7 +225,7 @@ class Scene {
 		var store:Sprites = sprites;
 		var blank = Texture.solid(0xFFFFFF);
 		store.layer = 16;
-		// A handle stays invalid after another sprite takes its slot.
+		// The handle of a removed sprite stays invalid after another sprite takes its slot.
 		var gone = store.add(blank, 0, 0, 1, 1);
 		store.remove(gone);
 		var reused = store.add(blank, 0, 0, 1, 1);
@@ -239,7 +240,7 @@ class Scene {
 		store.addText(keptLabel, 8, 4, 0xFFFFFF);
 	}
 
-	// In frame `CHANGE`, moves one sprite, removes another and changes both texts. In the frames after, records what `Sprites` uploaded.
+	// In frame `CHANGE`, moves one sprite, removes another and changes both texts. In the frames after it, records what `Sprites` uploaded.
 	@:system(Update)
 	static function change(gpu:Res<Gpu>, sprites:ResMut<Sprites>) {
 		var store:Sprites = sprites;
@@ -258,7 +259,7 @@ class Scene {
 		Sys.exit(1);
 	}
 
-	// Rows of `width` pixels: the first half of the rows in `top`, the rest in `bottom`.
+	// Returns rows of `width` pixels. The first half of the rows are in `top`, and the rest are in `bottom`.
 	static function pixels(top:Array<Int>, bottom:Array<Int>, width = 2):Bytes {
 		var bytes = Bytes.alloc(width * 2 * 4);
 		for (i in 0...width * 2) {
@@ -308,7 +309,8 @@ class Scene {
 	}
 
 	// Returns whether the lit pixels in the left half of `pixels`, 64 wide,
-	// form a T: some lit rows, the widest of them in the top fifth.
+	// form a T. The pixels must have some lit rows, and the widest of them must
+	// be in the top fifth.
 	static function upright(pixels:Bytes):Bool {
 		var rows = [for (y in 0...64) width(pixels, 64, y, 32)];
 		var first = 0;
@@ -377,7 +379,7 @@ class Scene {
 		if (!foreshortened)
 			failed++;
 		Sys.println('tilted square: ${foreshortened ? "its far side is narrower than its near side" : 'far side $far pixels, near side $near'}');
-		// The blur covers the shadow's edge in part: about 0.6 at the edge, and about 0.1 2.5 pixels outside it.
+		// The blur covers the shadow's edge in part. The expected coverage is about 0.6 at the edge, and about 0.1 at 2.5 pixels outside it.
 		var shadowed = read[targets.indexOf(kept)];
 		var edge = shadowed.get((52 * 64 + 46) * 4), beyond = shadowed.get((52 * 64 + 43) * 4);
 		var blurred = edge > 110 && edge < 200 && beyond > 5 && beyond < 60;

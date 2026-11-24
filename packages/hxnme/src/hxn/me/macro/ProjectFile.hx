@@ -8,16 +8,16 @@ import sys.FileSystem;
 import sys.io.File;
 
 /**
-	Reads the app's `hxnme.toml` once for each compile, for `hxn.me.Project`.
-	`-D hxnme_project` gives its path. The file is a dependency of the module
-	that reads it, so the compilation server compiles that module again when
-	the file changes.
+	`ProjectFile` reads the app's `hxnme.toml` once for each compile, for
+	`hxn.me.Project`. `-D hxnme_project` gives its path. The file is a
+	dependency of the module that reads it, so the compilation server
+	compiles that module again when the file changes.
 **/
 class ProjectFile {
 	static var parsed:Null<Dynamic>;
 	static var path:Null<String>;
 
-	/** The constant at `key`, or `fallback`. `kind` describes the expected type in the error. **/
+	/** Returns the constant at `key`, or `fallback`. `kind` describes the expected type in the error. **/
 	public static function value(key:String, fallback:Dynamic, kind:String):Expr {
 		var table = load();
 		var found:Dynamic = table;

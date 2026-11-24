@@ -36,7 +36,7 @@ class IslandParallelChecks {
 		return world;
 	}
 
-	/** Serial and parallel solves give the same bits: every row of a color takes the same arithmetic however the rows are grouped. */
+	/** Throws unless the serial and parallel values are the same bits. Serial and parallel solves give the same bits, because every row of a color takes the same arithmetic however the rows are grouped. */
 	static function checkNear(a:Float, b:Float, name:String):Void {
 		if (!Math.isFinite(a) || !Math.isFinite(b) || a != b)
 			throw '$name: serial=$a parallel=$b';
@@ -116,7 +116,7 @@ class IslandParallelChecks {
 		return a.count;
 	}
 
-	/** Serial and island-worker stepping report the same events in the same order. */
+	/** Checks that serial and island-worker stepping report the same events in the same order. */
 	static function checkEvents():Void {
 		var serial = makeEventScene();
 		var parallel = makeEventScene();

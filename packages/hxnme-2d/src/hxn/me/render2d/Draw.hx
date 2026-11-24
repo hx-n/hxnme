@@ -13,19 +13,20 @@ package hxn.me.render2d;
 
 	Shapes get their edges from signed distance functions, so they stay smooth
 	at any size, zoom and angle. Each change of texture between sprites and text
-	starts a new batch. Shapes never start a batch.
+	starts a new batch. Shapes start one only when the layer, plane or clip
+	changes.
 **/
 class Draw {
 	@:allow(hxn.me.render2d) final instances = new Instances();
 	@:allow(hxn.me.render2d) final runs:Array<Run> = [];
 
-	/** The layer bits of the content added next. Cameras show the layers in their `layers`. **/
+	/** `layer` sets the layer bits of the content added next. Cameras show the layers in their `layers`. **/
 	public var layer = 1;
 
-	/** The plane of the content added next, or null for the XY plane of the world. **/
+	/** `plane` sets the plane of the content added next. Null selects the XY plane of the world. **/
 	public var plane:Null<Plane>;
 
-	/** The clip of the content added next, or null for none. **/
+	/** `clip` sets the clip of the content added next. Null sets no clip. **/
 	public var clip:Null<Clip>;
 
 	public function new() {}
@@ -46,9 +47,9 @@ class Draw {
 		Adds a shadow of the rectangle at `x`, `y`, blurred by `blur` as with
 		CSS `box-shadow`, in `color` and `alpha`. `radius` and `corner` give
 		the rectangle's corners. Add the shadow before the shape that casts it,
-		and move it by the shadow's offset. The shadow is one instance, a quad
-		larger than the rectangle by the reach of the blur. The shader computes
-		the blur for each pixel from its distance to the rectangle.
+		and move it by the shadow's offset. The shadow is one instance, which is
+		a quad larger than the rectangle by the reach of the blur. The shader
+		computes the blur for each pixel from its distance to the rectangle.
 	**/
 	public function shadow(x:Float, y:Float, width:Float, height:Float, blur:Float, color = 0x000000, alpha = 0.5, radius = 0.0,
 			corner:CornerShape = Round):Void {
@@ -60,13 +61,13 @@ class Draw {
 	}
 
 	/**
-		Adds the shadow of `region` drawn with its pivot at `x`, `y`: the
-		region's silhouette, moved by `offsetX`, `offsetY`, blurred by `blur`
-		and filled with `color` and `alpha`. `squash` scales its height about
-		the pivot, such as 0.4 for a shadow on the ground under a character. The silhouette is the region's size unless
-		`width` and `height` are given. Add it before the region. The shader
-		samples the region's alpha for each pixel, so any shape casts its own
-		shadow.
+		Adds the shadow of `region` drawn with its pivot at `x`, `y`. The
+		shadow is the region's silhouette, moved by `offsetX`, `offsetY`,
+		blurred by `blur` and filled with `color` and `alpha`. `squash` scales
+		its height about the pivot, such as 0.4 for a shadow on the ground under
+		a character. The silhouette is the region's size unless `width` and
+		`height` are given. Add it before the region. The shader samples the
+		region's alpha for each pixel, so any shape casts its own shadow.
 	**/
 	public function shadowOf(region:Region, x:Float, y:Float, offsetX:Float, offsetY:Float, blur:Float, color = 0x000000, alpha = 0.5, squash = 1.0,
 			?width:Float, ?height:Float):Void {
@@ -85,7 +86,7 @@ class Draw {
 		instances.set(Instances.RECT, i, x + offsetX, y + offsetY, w + grow * 2, h + grow * 2);
 		instances.set(Instances.UV, i, region.u0, region.v0, region.u1, region.v1);
 		instances.set(Instances.COLOR, i, ((color >> 16) & 0xFF) / 255, ((color >> 8) & 0xFF) / 255, (color & 0xFF) / 255, alpha);
-		// The region's pivot, within the quad that is larger by `grow` on each side.
+		// Places the region's pivot within the quad, which is larger by `grow` on each side.
 		instances.set(Instances.XFORM, i, 1, 0, (grow + region.pivotX * w) / (w + grow * 2), (grow + region.pivotY * h) / (h + grow * 2));
 		instances.set(Instances.SHAPE, i, 7, blur, grow, 0);
 		instances.set(Instances.RADIUS, i, w, h, 0, 1);
@@ -173,7 +174,7 @@ class Draw {
 		instances.set(Instances.UV, i, region.u0, region.v0, region.u1, region.v1);
 		tint(Instances.COLOR, i, color, alpha);
 		instances.set(Instances.XFORM, i, Math.cos(angle), Math.sin(angle), region.pivotX, region.pivotY);
-		// Placed by the pivot, which the shader applies for the view's orientation.
+		// `radius.w` set to 1 places the region by its pivot, which the shader applies for the view's orientation.
 		instances.set(Instances.RADIUS, i, 0, 0, 0, 1);
 		textured(region.texture, i);
 	}
@@ -212,7 +213,7 @@ class Draw {
 	public function text(text:Text, x:Float, y:Float, color = 0xFFFFFF, alpha = 1.0, angle = 0.0):Void
 		text.write(instances, x, y, color, alpha, angle, null, textured);
 
-	// Adds instance `i`, which draws with `texture`, to the last run. If the texture, layer or plane differs, it starts a new run.
+	// Adds instance `i`, which draws with `texture`, to the last run. If the texture, layer, plane or clip differs, it starts a new run.
 	function textured(texture:Texture, i:Int):Void {
 		var last = runs.length > 0 ? runs[runs.length - 1] : null;
 		if (last == null || last.layer != layer || last.plane != plane || last.clip != clip || (last.texture != null && last.texture != texture))

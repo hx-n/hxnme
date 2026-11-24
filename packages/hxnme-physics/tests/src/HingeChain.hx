@@ -2,7 +2,7 @@ import hxn.me.physics.geom.ShapeBuilder;
 import hxn.me.math.Vec3;
 import hxn.me.physics.core.World;
 
-/** Hanging rectangular links with an analytic mass and inertia reference. */
+/** `HingeChain` builds hanging rectangular links with an analytic mass and inertia reference. */
 class HingeChain {
 	public final world:World;
 	public final bodies:Array<Int> = [];
@@ -29,7 +29,7 @@ class HingeChain {
 		}
 	}
 
-	/** Rectangle/cuboid kinetic energy plus gravitational potential relative to release height. */
+	/** Returns the kinetic energy of the rectangles or cuboids plus their gravitational potential relative to the release height. */
 	public function energy(gravity:Float = 9.81):Float {
 		var w = world, sum = 0.0, width = 2 * halfWidth;
 		var ix = mass * 0.02 / 12, iy = mass * (width * width + 0.01) / 12;

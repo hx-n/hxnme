@@ -3,7 +3,7 @@ import hxn.me.render2d.Atlas;
 import hxn.me.render2d.Texture;
 import hxn.text.Font;
 
-/** The game's assets, in the `assets` directory. Only declared files are bundled, so the atlas image is declared too. **/
+/** `GameAssets` declares the game's assets, which are in the `assets` directory. hxn-assets bundles only declared files, so the class declares the atlas image too. **/
 @:build(hxn.me.Assets.build())
 class GameAssets {
 	@:asset("sheet.png")

@@ -3,9 +3,9 @@ package hxn.me.input;
 import haxe.macro.Expr;
 
 /**
-	The actions of the set `A`, as a resource. `A` is an enum abstract over
-	`Int` with `@:actions`, and each of its values is an action. Metadata on
-	each value binds it:
+	`Input` holds the actions of the set `A`, as a resource. `A` is an enum
+	abstract over `Int` with `@:actions`, and each of its values is an
+	action. Metadata on each value binds it:
 
 	```haxe
 	@:actions
@@ -32,39 +32,41 @@ abstract Input<A>(InputState) {
 	inline function new(state:InputState)
 		this = state;
 
-	/** True in the frame in which `action` went down. **/
+	/** Returns true in the frame in which `action` went down. **/
 	public inline function pressed(action:A):Bool
 		return this.isPressed(cast action);
 
-	/** True while `action` is down. **/
+	/** Returns true while `action` is down. **/
 	public inline function held(action:A):Bool
 		return this.isHeld(cast action);
 
-	/** True in the frame in which `action` came up. **/
+	/** Returns true in the frame in which `action` came up. **/
 	public inline function released(action:A):Bool
 		return this.isReleased(cast action);
 
 	/**
-		The value of `action`, from -1 to 1. Keys and buttons give 1 while they are down. Gamepad axes give their
-		position. Two keys bound with
-		`@:keyAxis` give -1 for the first and 1 for the second.
+		Returns the value of `action`, from -1 to 1. Keys and buttons give 1
+		while they are down. Gamepad axes give their position. Two keys bound
+		with `@:keyAxis` give -1 for the first and 1 for the second.
 	**/
 	public inline function value(action:A):Float
 		return this.valueOf(cast action);
 
 	/**
-		The label of the first gamepad button bound to `action`, on the family
-		of the connected gamepad: "A" on Xbox, "Cross" on PlayStation, "B" on
-		Nintendo for `South`. It is empty for an action with no gamepad button.
+		Returns the label of the first gamepad button bound to `action`, on the
+		family of the connected gamepad. For `South`, the label is "A" on Xbox,
+		"Cross" on PlayStation and "B" on Nintendo. The label is empty for an
+		action with no gamepad button.
 	**/
 	public inline function gamepadLabel(action:A):String
 		return this.labelOf(cast action);
 
 	/**
-		Returns a signal of whether `action` is down, for code that reacts to changes,
-		such as a UI. The plugin creates it the first time it is asked for,
-		and sets it once a frame, in `Begin`, when the value changes. Systems
-		that run each frame call `held` instead, which costs nothing.
+		Returns a signal of whether `action` is down, for code that reacts to
+		changes, such as a UI. The plugin creates the signal the first time
+		that code asks for it. It sets the signal once a frame, in `Begin`,
+		when the value changes. Systems that run each frame call `held`
+		instead, which costs nothing.
 	**/
 	public inline function signal(action:A):hxn.Signal<Bool>
 		return this.signalOf(cast action);

@@ -15,9 +15,10 @@ private class ProjectedVertex {
 }
 
 /**
- * Builds outward triangles from an unordered set of convex hull vertices.
- * The arithmetic is in 64-bit floats: plane tests must agree for every
- * triple of points on one face, which 32-bit vectors do not guarantee.
+ * `ConvexHull` builds outward triangles from an unordered set of convex hull
+ * vertices. The arithmetic is in 64-bit floats, because plane tests must
+ * agree for every triple of points on one face, and 32-bit vectors do not
+ * guarantee that.
  */
 class ConvexHull {
 	static inline function cross2(a:ProjectedVertex, b:ProjectedVertex, c:ProjectedVertex):Float {
@@ -61,7 +62,7 @@ class ConvexHull {
 					throw 'Hull has duplicate vertices';
 			}
 
-		// Faces seen so far, by the points on them, so each face is triangulated once.
+		// Records the faces seen so far, keyed by the points on them, so each face is triangulated once.
 		var faces = new Map<String, Bool>();
 		var result:Array<Int> = [];
 		for (i in 0...count)
@@ -109,7 +110,7 @@ class ConvexHull {
 						continue;
 					faces.set(key, true);
 
-					// The face's points in its own plane, ordered around it by a monotone chain.
+					// Orders the face's points around it in its own plane with a monotone chain.
 					var o = face[0];
 					var ux = px[face[1]] - px[o],
 						uy = py[face[1]] - py[o],

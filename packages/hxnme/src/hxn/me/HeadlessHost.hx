@@ -3,13 +3,13 @@ package hxn.me;
 import haxe.Timer;
 
 /**
-	Runs the frames of an app that has no window. `app.rate` in `hxnme.toml`
-	sets the number of frames in a second. The default is 60. Servers, tools
-	and checks run on it. Under Emscripten, it returns to the browser between
-	frames.
+	`HeadlessHost` runs the frames of an app that has no window. `app.rate` in
+	`hxnme.toml` sets the number of frames in a second. The default is 60.
+	Servers, tools and checks run on it. Under Emscripten, it returns to the
+	browser between frames.
 **/
 class HeadlessHost implements Host {
-	/** The frames in a second. **/
+	/** The number of frames in a second. **/
 	public static final RATE:Float = Project.number("app.rate", 60);
 
 	public function new() {}

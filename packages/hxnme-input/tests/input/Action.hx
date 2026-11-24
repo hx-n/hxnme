@@ -1,4 +1,4 @@
-/** The actions of the check. **/
+/** `Action` declares the actions of the check. **/
 @:actions
 enum abstract Action(Int) {
 	@:keys(Space) @:buttons(South)

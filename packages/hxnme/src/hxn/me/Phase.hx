@@ -1,9 +1,10 @@
 package hxn.me;
 
 /**
-	The phases of a frame, in the order they run. Each system specifies its phase in
-	`@:system`, for example `@:system(Update)`. The schedule that hxnme
-	generates at compile time has one method for each phase.
+	`Phase` lists the phases of a frame, in the order that they run. Each
+	system specifies its phase in `@:system`, for example `@:system(Update)`.
+	The schedule that hxnme generates at compile time has one method for each
+	phase.
 **/
 enum abstract Phase(Int) {
 	/** Runs once, after the plugins start. **/

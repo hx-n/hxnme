@@ -52,12 +52,12 @@ class IslandManager {
 			sleepGroup[i] = -1;
 	}
 
-	/** Marks the bodies from `from` as in no sleep group, as a new world has them. */
+	/** Marks the bodies from `from` as in no sleep group, as in a new world. */
 	public function clearTail(from:Int):Void
 		for (i in from...sleepGroup.length)
 			sleepGroup[i] = -1;
 
-	/** Room for `to` bodies, keeping the first `from`. */
+	/** Makes room for `to` bodies, and keeps the first `from`. */
 	public function grow(from:Int, to:Int):Void {
 		isAwake = Grow.ints(isAwake, from, to);
 		integrationMask = Grow.floats(integrationMask, from, to);

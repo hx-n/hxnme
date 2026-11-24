@@ -4,9 +4,10 @@ import sys.io.File;
 import sys.io.Process;
 
 /**
-	Compiles action sets that are wrong, and makes sure that each compile
-	fails with the error that describes the problem. Run it in `tests` with
-	`haxe action-errors.hxml`. It needs hxn and hxn-window in haxelib.
+	`ActionErrors` compiles action sets that are wrong, and makes sure that
+	each compile fails with the error that describes the problem. Run it in
+	`tests` with `haxe action-errors.hxml`. It needs hxn and hxn-window in
+	haxelib.
 **/
 class ActionErrors {
 	static final out = "bin/action-errors";
@@ -54,8 +55,9 @@ class ActionErrors {
 		Sys.println('$what: $error');
 	}
 
-	// The class path of the haxelib `name`. The check compiles without output,
-	// so it needs the classes only, and not the haxelib's macros.
+	// Returns the class path of the haxelib `name`. The check compiles
+	// without output, so it needs the classes only, and not the haxelib's
+	// macros.
 	static function classPath(name:String):String {
 		var process = new Process("haxelib", ["libpath", name]);
 		var root = StringTools.trim(process.stdout.readAll().toString());

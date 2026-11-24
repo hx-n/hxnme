@@ -1,4 +1,4 @@
-/** The game's actions. A gamepad's stick gives -1 for up, so the keys for up give -1 too. **/
+/** `Action` lists the game's actions. The stick of a gamepad gives -1 for up, so the keys for up give -1 too. **/
 @:actions
 enum abstract Action(Int) {
 	@:keyAxis(KeyA, KeyD) @:keyAxis(ArrowLeft, ArrowRight) @:axis(LeftX)

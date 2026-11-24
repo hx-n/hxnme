@@ -6,8 +6,8 @@ import hxn.me.physics.collision.BroadPhase;
 import hxn.me.physics.core.Handles.BodyType;
 
 /**
- * Builds `World.validate`: what is wrong with a world, as findings with
- * stable codes and paths (`world/bodies/<slot>/...`, `world/shapes/<slot>`,
+ * `WorldValidation` builds `World.validate`, which reports what is wrong with
+ * a world as findings with stable codes and paths (`world/bodies/<slot>/...`, `world/shapes/<slot>`,
  * `world/joints/<slot>`, `world/capacity/...`). It reads the world's buffers
  * and allocates only the report.
  */
@@ -15,13 +15,13 @@ class WorldValidation {
 	static inline function num(v:Float):String
 		return Diagnostics.number(v);
 
-	/** How far from the origin a body may be before 32-bit positions lose millimetres. */
+	/** Sets how far from the origin a body can be before 32-bit positions lose millimeters. */
 	public static inline var FAR = 10000.0;
 
-	/** How far past every static shape, along gravity, a dynamic body may be before it counts as fallen out. */
+	/** Sets how far past every static shape, along gravity, a dynamic body can be before it counts as fallen out. */
 	public static inline var FALLEN = 100.0;
 
-	/** The share of a capacity in use that earns a warning. */
+	/** Sets the share of a capacity in use that earns a warning. */
 	public static inline var FULL = 0.9;
 
 	/** Clears an optional report, or creates one, then fills it with the world's current findings. */
@@ -32,7 +32,8 @@ class WorldValidation {
 		var dx = gl > 0 ? g.x / gl : 0.0,
 			dy = gl > 0 ? g.y / gl : 0.0,
 			dz = gl > 0 ? g.z / gl : 0.0;
-		// The furthest any static shape reaches along gravity: a dynamic body well past it has nothing left to land on.
+		// Finds the furthest that any static shape reaches along gravity. Each dynamic body well past it has
+		// nothing left to land on.
 		var floor = Math.NEGATIVE_INFINITY;
 		for (p in 0...w.activeShapeCount) {
 			var s = w.activeShapeIds[p];
@@ -50,7 +51,8 @@ class WorldValidation {
 		var j = w.joints;
 		for (i in 0...j.count) {
 			var id = j.activeIds[i];
-			// Kinematic bodies are left out: an animated rig keeps its joints for when its bodies go dynamic.
+			// Kinematic bodies are left out, because an animated rig keeps its joints for when its bodies go
+			// dynamic.
 			if (w.bodyType[j.bodyA[id]] == BodyType.Static && w.bodyType[j.bodyB[id]] == BodyType.Static)
 				d.warning("WORLD_JOINT_STATIC", 'world/joints/$id',
 					'The ${j.kindName(id)} joint connects bodies ${j.bodyA[id]} and ${j.bodyB[id]}, both of them static, so it holds nothing.',

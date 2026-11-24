@@ -7,22 +7,26 @@ import hxn.me.AssetType;
 import hxn.text.Font;
 
 /**
-	The asset types of the 2D renderer. `Texture`, `Atlas` and
-	`hxn.text.Font` name them with `@:assetType`, so `AssetRef<Texture>`,
-	`AssetRef<Atlas>` and `AssetRef<Font>` fields use them.
+	`RenderAssets` holds the asset types of the 2D renderer. `Texture`,
+	`Atlas` and `hxn.text.Font` refer to them with `@:assetType`, so
+	`AssetRef<Texture>`, `AssetRef<Atlas>` and `AssetRef<Font>` fields use
+	them.
 **/
 class RenderAssets {
-	/** A PNG image as a `Texture`. The texture closes with the asset. **/
+	/** `texture` loads a PNG image as a `Texture`. The texture closes with the asset. **/
 	public static final texture = new AssetType<Texture>("hxnme-2d texture", (bytes, _) -> try {
 		var image = hxn.assets.AssetDecode.png(bytes);
 		Future.resolved(new Texture(image.width, image.height, image.pixels));
 	} catch (e:haxe.Exception) Future.rejected(e), t -> t.close());
 
-	/** A TTF, OpenType or WOFF2 file as an `hxn.text.Font`, for `Typesetter.text`. **/
+	/** `font` loads a TTF, OpenType or WOFF2 file as an `hxn.text.Font`, for `Typesetter.text`. **/
 	public static final font = new AssetType<Font>("hxnme-2d font", (bytes, _) -> try Future.resolved(new Font(bytes, {})) catch (e:haxe.Exception)
 		Future.rejected(e), f -> f.close());
 
-	/** A JSON file of regions, and the image it lists, as an `Atlas`. The image must be declared too, so that it is bundled. **/
+	/**
+		`atlas` loads a JSON file of regions, and the image it lists, as an
+		`Atlas`. The app must declare the image too, so that it is bundled.
+	**/
 	public static final atlas = new AssetType<Atlas>("hxnme-2d atlas", decodeAtlas);
 
 	static function sortedNames(regions:Dynamic):Array<String> {
@@ -40,7 +44,7 @@ class RenderAssets {
 			var regions:Dynamic = data.regions;
 			var pivot:Array<Float> = data.pivot != null ? data.pivot : [0.5, 0.5];
 			if (regions != null)
-				// In the order of their names, which the properties of a declared atlas index.
+				// Adds the regions in the order of their names, which is the order that the properties of a declared atlas index.
 				for (name in sortedNames(regions)) {
 					var r:Dynamic = Reflect.field(regions, name);
 					var slice:Array<Int> = r.slice != null ? r.slice : [0, 0, 0, 0];

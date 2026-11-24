@@ -14,19 +14,20 @@ plugins = ["hxnme-window", "hxnme-gpu"]
 vsync = true
 ```
 
-The plugin brings each target's drivers: Metal on Apple platforms, Direct3D
-12 on Windows, Vulkan then OpenGL ES on Linux and Android, WebGPU then WebGL2
-in a web page. Replace a target's list in hxnme.toml, by a fragment of the
-target triple: `[libraries.hxnme-gpu]` with `windows = ["hxn-gpu-d3d12",
-"hxn-gpu-gles"]`.
+The plugin brings each target's drivers. Apple platforms get Metal, and
+Windows gets Direct3D 12. Linux and Android get Vulkan then OpenGL ES, and
+a web page gets WebGPU then WebGL2. To replace a target's list, set it in
+the `[libraries.hxnme-gpu]` table of hxnme.toml. Its key is part of the
+target triple, such as `windows = ["hxn-gpu-d3d12", "hxn-gpu-gles"]`.
 
 ## Use
 
-`Res<hxn.me.gpu.Gpu>` holds `device`, `surface`, `frame` (the texture of
-this frame, from `Begin` to the end of `Render`), `format` (for pipelines
-that draw into the frame), `clear`, `graph`, `presented` and `failure`. The
-device opens in the first frame and settles some frames later: check
-`gpu.ready()` before making pipelines or buffers.
+`Res<hxn.me.gpu.Gpu>` holds `device`, `surface`, `frame`, `format`,
+`clear`, `graph`, `presented` and `failure`. `frame` is the texture of this
+frame, from `Begin` to the end of `Render`. Pipelines that draw into the
+frame use `format`. The device opens in the first frame and settles some
+frames later. Before you make pipelines or buffers, make sure that
+`gpu.ready()` returns true.
 
 ```haxe
 @:system(Start)
@@ -39,28 +40,32 @@ static function setup(gpu:ResMut<Gpu>) {
 }
 ```
 
-Cameras, shared by 2D and 3D: `Res<hxn.me.gpu.Cameras>` has `main` and
-`add(camera)`. The world has y up (as in physics); 2D lies in the XY plane.
-Each `Camera` has `x`, `y`, `z`, a quaternion `rx`, `ry`, `rz`, `rw` (or
-`roll(angle)`), looks along -z, and has `projection`:
-`Orthographic(height, near, far)` (height 0 is one unit per logical pixel;
-the default), `Perspective(fovY, near, far)` or `Screen` (logical pixels,
-top left, y down, for UI). It also has `viewport` (parts 0 to 1), `target`,
-`clear`, `order`, `layers` (bits of the content it shows) and `depth` (renderers
-test and write depth for it; off by default). `pass.depth` gives a pass a depth
-texture of its target's size, cleared by the frame's first pass that uses it.
-`camera.writeMatrix(width, height, out)` gives the world-to-clip matrix,
-column after column.
+`Res<hxn.me.gpu.Cameras>` holds the cameras, which 2D and 3D share. It has
+`main` and `add(camera)`. The world has y up, as in physics, and 2D lies in
+the XY plane. Each `Camera` has `x`, `y`, `z` and a quaternion `rx`, `ry`,
+`rz`, `rw`, which `roll(angle)` can also set. It looks along -z. Its
+`projection` is `Orthographic(height, near, far)`,
+`Perspective(fovY, near, far)` or `Screen`. The default is orthographic,
+and height 0 shows one unit for each logical pixel. `Screen` shows logical
+pixels from the top left with y down, for UI. Each camera also has
+`viewport` (parts from 0 to 1), `target`, `clear`, `order`, `layers` (the
+bits of the content it shows) and `depth`. With `depth`, renderers test and
+write depth for the camera. It is off by default. `pass.depth` gives a pass
+a depth texture of its target's size. The frame's first pass that uses the
+texture clears it. `camera.writeMatrix(width, height, out)` gives the
+world-to-clip matrix, column after column.
 
 Rules:
 
-- Passes run by `order`, then in the order added. The first frame pass
-  clears the frame to `gpu.clear` unless it sets `clear`; later frame passes
-  draw over it. Target passes with `keep` draw over their target.
-- Add passes once; toggle `pass.enabled`. Drawing a frame allocates no pass.
-- Systems in `Render` that change what passes draw add
+- Passes run by `order`, then in the order that they were added. The first
+  pass into the frame clears it to `gpu.clear`, unless the pass sets
+  `clear`. Later passes into the frame draw over it. Passes into a render
+  target with `keep` draw over their target.
+- Add each pass once, and turn it on and off with `pass.enabled`. Drawing a
+  frame allocates no pass.
+- Systems in `Render` that change what the passes draw add
   `before = hxn.me.gpu.GpuPlugin.present`.
-- Frames on Metal cannot be read back; read a render target instead.
+- On Metal, the app cannot read a frame back. Read a render target instead.
 
 ## Checks
 

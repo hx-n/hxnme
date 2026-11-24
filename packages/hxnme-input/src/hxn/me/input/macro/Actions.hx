@@ -7,10 +7,10 @@ import haxe.macro.Type;
 import haxe.macro.TypeTools;
 
 /**
-	Reads the bindings of an action set at compile time, for `Input.create`.
-	Each binding becomes an integer in the table of the set. Names that are
-	not a key, a button or an axis of hxn-window are compile errors at the
-	metadata.
+	`Actions` reads the bindings of an action set at compile time, for
+	`Input.create`. Each binding becomes an integer in the table of the set.
+	Each name that is not a key, a button or an axis of hxn-window is a
+	compile error at the metadata.
 **/
 class Actions {
 	static inline final KEY = 1;
@@ -21,17 +21,19 @@ class Actions {
 	static inline final KEY_POSITIVE = 6;
 	static inline final SHORTCUT = 7;
 
-	// The modifiers of a shortcut, as bits of the window's modifier state.
+	// `MODIFIERS` maps the modifiers of a shortcut to bits of the window's
+	// modifier state.
 	static final MODIFIERS = ["Shift" => 1, "Control" => 2, "Alt" => 4, "Super" => 8];
 
-	// The kinds of the parts of a shortcut, in the high bits of each part.
+	// These constants are the kinds of the parts of a shortcut, which sit in
+	// the high bits of each part.
 	static inline final PART_KEY = 0;
 	static inline final PART_MODIFIER = 1;
 	static inline final PART_CHARACTER = 2;
 
 	static final MOUSE_BUTTONS = ["Left", "Right", "Middle", "Back", "Forward"];
 
-	/** The expression that `Input.create()` becomes, for the expected `Input<A>`. **/
+	/** Returns the expression that `Input.create()` becomes, for the expected `Input<A>`. **/
 	public static function create():Expr {
 		var pos = Context.currentPos();
 		var set = switch Context.getExpectedType() {
@@ -114,7 +116,7 @@ class Actions {
 		return macro(cast new hxn.me.input.InputState([$a{table}], [$a{shortcuts}]) : $type);
 	}
 
-	// The values of the enum abstract `path`, by name.
+	// Returns the values of the enum abstract `path`, by name.
 	static function values(path:String):Map<String, Int> {
 		var out = new Map<String, Int>();
 		switch Context.getType(path) {

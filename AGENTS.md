@@ -1,8 +1,8 @@
 # Working on hxnme
 
-hxnme is the hxn media engine: a Haxe kernel and first-party plugins, each a
-haxelib under `packages/`. Read the [hxn](https://github.com/hx-n/hxn)
-conventions first. They apply here too.
+hxnme is the hxn media engine. It has a Haxe kernel and first-party plugins,
+and each one is a haxelib under `packages/`. Read the
+[hxn](https://github.com/hx-n/hxn) conventions first. They apply here too.
 
 ## Rules
 
@@ -14,67 +14,68 @@ conventions first. They apply here too.
 - Compose plugins at compile time. Do not look up plugins, systems or
   components by name at run time.
 - Do not allocate in a frame. The physics checks measure allocations around
-  `World.step`. On Ash, run them with `ASH_GC_TLAB=0`. If it is not set,
+  `World.step`. On Ash, run them with `ASH_GC_TLAB=0`. Without this setting,
   Ash counts allocations only in whole 32 KiB regions, and a check can pass
-  when the code allocates. The setting is safe for checks, and it makes programs that
-  allocate a lot use more memory.
+  when the code allocates. The setting is safe for checks. It makes programs
+  that allocate a lot use more memory.
 - Do not write a compound assignment to a `Single` with a `Float` operand,
   such as `s /= f` or `s *= f`. HashLink computes it in single precision, and
   hxcpp computes it in double. Cast the `Single`: `s = (s : Float) / f`.
-- Record each third-party dependency of a package in the package's
-  `third-party/NOTICES.md`, with its license and notice texts copied
-  unchanged under `third-party/licenses/`, in the same commit that adds the
-  dependency. The notices ship in the package's haxelib. Code written for
-  hxnme needs no entry.
-- Keep an agent skill for each package in `skills/<package>/SKILL.md`, and
-  update it in the same commit as an API or workflow change. Links in a
-  skill are absolute HTTPS URLs. The release of each package copies its skill into the haxelib's `skills/`.
+- In the commit that adds a third-party dependency to a package, record the
+  dependency in the `third-party/NOTICES.md` of the package. Copy its license
+  and notice texts unchanged under `third-party/licenses/`. The notices ship
+  in the haxelib of the package. Code written for hxnme needs no entry.
+- Keep an agent skill for each package in `skills/<package>/SKILL.md`. When
+  you change an API or a workflow, update the skill in the same commit. Each
+  link in a skill is an absolute HTTPS URL. The release of each package
+  copies its skill into the `skills/` of the haxelib.
 
 ## Physics
 
 - If a change is not meant to alter the simulation, the physics checks must
   print the same values after it. Compare the output of the checks before
   and after the change.
-- Ash performance is the baseline. Run the benchmarks on Ash with
-  `--preset game`, the thresholds of a game, before and after a change, on
-  the Mac and on the NUC, through `scripts/bench.py`. Compare results only
-  with results of the same preset.
+- Performance on Ash is the baseline. Before and after a change, run the
+  benchmarks on Ash through `scripts/bench.py` with `--preset game`, on the
+  Mac and on the NUC. That preset sets the thresholds of a game. Compare
+  results only with results of the same preset.
 - Put measurements in issues. Do not put them in code, comments or commit
   messages.
 
 ## Before calling a change done
 
-- Run the checks with `hxn run` in each package's `tests` directory. Install
-  `hxn` from the hxn repository with `cargo install --path crates/hxn-cli`.
-  The kernel's checks compare every runtime at once:
+- Install `hxn` from the hxn repository with
+  `cargo install --path crates/hxn-cli`. Run the checks with `hxn run` in the
+  `tests` directory of each package.
+  The checks of the kernel compare every runtime at once. Run
   `hxn check hl cpp cppia toml-checks.hxml --vm ash`, and in
-  `tests/plugins`, `tests/systems`, `tests/loop` and `tests/headless`,
+  `tests/plugins`, `tests/systems`, `tests/loop` and `tests/headless`, run
   `hxn check hl cpp cppia app.hxml --vm ash`.
   Those checks use `-lib hxnme`, so run `haxelib dev hxnme packages/hxnme`
   once. `haxe plugin-errors.hxml` and `haxe system-errors.hxml` check the
-  compile errors of the registry and the scheduler. The window plugin's
-  check, in `packages/hxnme-window/tests/window`, needs
-  `haxelib install hxn-window` once, and a display. So does the input
-  plugin's check, in `packages/hxnme-input/tests/input`, and
-  `haxe action-errors.hxml` in `packages/hxnme-input/tests` checks the
-  compile errors of action sets.
-  Each check program has two program files: `<name>.hxml` runs on every
+  compile errors of the registry and the scheduler. The check of the window
+  plugin, in `packages/hxnme-window/tests/window`, needs a display, and
+  `haxelib install hxn-window` run once. The check of the input plugin, in
+  `packages/hxnme-input/tests/input`, needs the same. In
+  `packages/hxnme-input/tests`, `haxe action-errors.hxml` checks the compile
+  errors of action sets.
+  Each check program has two program files. `<name>.hxml` runs on every
   runtime, and `<name>-simd.hxml` adds the SIMD paths, which run on Ash.
-- Run both files on Ash in hybrid, JIT and interpreter modes:
+- Run both files on Ash in hybrid, JIT and interpreter modes, for example
   `hxn run hl checks-simd.hxml --vm "ash --mode jit"`.
-- Build both files ahead of time, the build a game ships as, with
-  `hxn build hl checks-simd.hxml`, and run the executable it prints.
+- Build both files ahead of time with `hxn build hl checks-simd.hxml`, and
+  run the executable that it prints. Games ship in this form.
 - Run `<name>.hxml` on hxcpp, CPPIA, and wasm with Ash and with hxcpp, with
   and without threads: `hxn run cpp`, `hxn run cppia`,
-  `hxn run hl --wasm --threads`, `hxn run cpp --wasm --threads`. Add
-  `--browser` to run it in a web page. hxcpp does not start Haxe threads
-  under Emscripten, so `WorkerPool` runs its jobs on the calling thread
-  there.
+  `hxn run hl --wasm --threads`, `hxn run cpp --wasm --threads`. To run it in
+  a web page, add `--browser`. hxcpp does not start Haxe threads under
+  Emscripten, so `WorkerPool` runs its jobs on the calling thread there.
 - Compare Ash and hxcpp with
-  `hxn check hl cpp <name>.hxml --vm "ash --no-fma"`. It compares the full
-  output exactly. Ash fuses multiply-adds by default, and `--no-fma` makes it
-  round each operation as HashLink and hxcpp do. `island-parallel-checks`
-  prints timings, so it is not compared.
+  `hxn check hl cpp <name>.hxml --vm "ash --no-fma"`. This command compares
+  the full output exactly. By default, Ash fuses multiply-adds. With
+  `--no-fma`, Ash rounds each operation as HashLink and hxcpp do.
+  `island-parallel-checks` prints timings, so leave it out of this
+  comparison.
 - CPPIA keeps `Single` values in double precision, and the math library of
   wasm differs from the native one. Compare the output of CPPIA and of wasm
   with their own output from before the change.
@@ -85,8 +86,9 @@ conventions first. They apply here too.
 
 - The issues for hxnme are in the git-bug tracker of the hxn repository,
   under the label `area:me`.
-- No planning, backlog or status documents. Put them in issues.
-- Commit messages are short. Cite the issue with its full 64-character id in
-  a `git-bug:` trailer.
-- No AI attribution in commits, issues or pull requests.
+- Do not write planning, backlog or status documents. Put that content in
+  issues.
+- Keep commit messages short. Cite the issue with its full 64-character id
+  in a `git-bug:` trailer.
+- Do not put AI attribution in commits, issues or pull requests.
 - If the user did not ask for a commit or a push, do not make one.

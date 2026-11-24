@@ -2,7 +2,10 @@ package hxn.me;
 
 import haxe.macro.Expr;
 
-/** The entry point of an hxnme app. **/
+/**
+	`App` starts an hxnme app. It generates the schedule of the app at
+	compile time, and runs its frames on the host.
+**/
 class App {
 	/** Checks the plugin classes of the app. The generated `Plugins.start` calls it. **/
 	@:noCompletion public static macro function checkPlugins():Expr

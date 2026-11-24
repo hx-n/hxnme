@@ -3,13 +3,13 @@ package hxn.me;
 import hxn.Future;
 
 /**
-	`AssetContext` is what a decoder of an `AssetType` gets besides the bytes:
-	the asset's address, and loads of the other assets that its value holds.
-	The context keeps a handle to each of those, and releases them after the
-	value closes.
+	`AssetContext` gives the decoder of an `AssetType` the address of the
+	asset, and loads the other assets that the value of the asset holds. The
+	decoder gets the context together with the bytes. The context keeps a
+	handle to each of those assets, and releases them after the value closes.
 **/
 class AssetContext {
-	/** The path of the file of the asset that is being decoded. **/
+	/** The path of the file of the asset that the decoder decodes. **/
 	public final path:String;
 
 	final assets:Assets;
@@ -21,14 +21,14 @@ class AssetContext {
 		path = entry.path;
 	}
 
-	/** Loads the bundled file at `path` as `type`, held until the value of this asset closes. **/
+	/** Loads the bundled file at `path` as `type`, and holds it until the value of this asset closes. **/
 	public function load<T>(path:String, type:AssetType<T>):Future<T>
 		return assets.loadFile(path, type).map(asset -> {
 			entry.held.push(cast asset);
 			asset.value;
 		});
 
-	/** Returns `relative`, a path relative to the directory of this asset's file, as a path in the bundled assets. **/
+	/** Resolves `relative`, a path relative to the directory of this asset's file, to a path in the bundled assets. **/
 	public function resolve(relative:String):String {
 		var slash = path.lastIndexOf("/");
 		return slash < 0 ? relative : path.substr(0, slash + 1) + relative;

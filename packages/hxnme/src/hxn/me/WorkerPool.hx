@@ -1,15 +1,15 @@
 package hxn.me;
 
 /**
-	Runs jobs on a fixed set of worker threads. `run` calls a job once on each of the first
-	`count` workers, with the worker's index, and returns when every call has
-	finished. Starting a job allocates nothing, because each worker waits on a
-	lock of its own. Store the job in a field: a closure made for each call
-	allocates.
+	`WorkerPool` runs jobs on a fixed set of worker threads. `run` calls a job
+	once on each of the first `count` workers, with the worker's index, and
+	returns when every call finishes. Starting a job allocates nothing,
+	because each worker waits on a lock of its own. Store the job in a field,
+	because a closure made for each call allocates.
 
 	In a program compiled without threads, `run` calls the job for each index
-	in turn on the calling thread. So does an hxcpp program for Emscripten,
-	because hxcpp does not start Haxe threads there.
+	in turn on the calling thread. The same applies to an hxcpp program for
+	Emscripten, because hxcpp does not start Haxe threads there.
 **/
 class WorkerPool {
 	/** The number of workers. **/
@@ -40,8 +40,7 @@ class WorkerPool {
 
 	/**
 		Calls `job(worker)` for each worker below `count`, and returns when all
-		of the calls have finished. Rethrows the first exception that a call
-		threw.
+		of the calls finish. Rethrows the first exception that a call threw.
 	**/
 	public function run(count:Int, job:Int->Void):Void {
 		if (count < 0 || count > size)

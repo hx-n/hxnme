@@ -4,23 +4,24 @@ import hxn.Float64Buffer;
 import hxn.Int32Buffer;
 
 /**
- * Expands a Minkowski polytope around the origin for core penetration, over
- * buffers kept from call to call, so a deep contact allocates nothing.
+ * `Epa` expands a Minkowski polytope around the origin to find the
+ * penetration of the core shapes. It works over buffers kept from call to
+ * call, so a deep contact allocates nothing.
  *
- * The caller seeds vertices with `add` (each a point W = A - B with the A and
- * B support points that made it), then `solve3D` or `solve2D` pulls more
- * support points through `NarrowPhase.minkowskiSupport` and leaves the normal,
- * depth and witness points in the result fields.
+ * The caller seeds vertices with `add`, each a point W = A - B with the A
+ * and B support points that made it. Then `solve3D` or `solve2D` pulls more
+ * support points through `NarrowPhase.minkowskiSupport` and leaves the
+ * normal, depth and witness points in the result fields.
  */
 @:allow(hxn.me.physics.collision.NarrowPhase)
 class Epa {
 	static inline var MAX_VERTICES = 104;
 	static inline var MAX_FACES = 512;
 	static inline var MAX_EDGES = 256;
-	// The initial hull is found by testing every triple, which needs its points as bits of an Int.
+	// The initial hull comes from testing every triple, which needs the points as bits of an Int.
 	static inline var MAX_SEED = 30;
 
-	// Vertices: W = A - B, and the A and B support points.
+	// Each vertex holds W = A - B and the A and B support points.
 	var count = 0;
 	var wx = new Float64Buffer(MAX_VERTICES);
 	var wy = new Float64Buffer(MAX_VERTICES);
@@ -32,7 +33,8 @@ class Epa {
 	var by = new Float64Buffer(MAX_VERTICES);
 	var bz = new Float64Buffer(MAX_VERTICES);
 
-	// Faces: three vertex indices, the outward unit normal and the plane's distance from the origin.
+	// Each face holds three vertex indices, the outward unit normal and the distance of its plane
+	// from the origin.
 	var faceCount = 0;
 	var fa = new Int32Buffer(MAX_FACES);
 	var fb = new Int32Buffer(MAX_FACES);
@@ -42,14 +44,15 @@ class Epa {
 	var fnz = new Float64Buffer(MAX_FACES);
 	var fdepth = new Float64Buffer(MAX_FACES);
 
-	// Horizon edges while a vertex is added; the 2D ring of vertex indices.
+	// These fields hold the horizon edges while a vertex is added, and the 2D ring of vertex indices.
 	var edgeCount = 0;
 	var ea = new Int32Buffer(MAX_EDGES);
 	var eb = new Int32Buffer(MAX_EDGES);
 	var ringCount = 0;
 	var ring = new Int32Buffer(MAX_VERTICES);
 
-	// Scratch for the initial hull: faces seen, by their points as bits, and a face's points ordered in its plane.
+	// These scratch fields serve the initial hull: the faces seen, keyed by their points as bits, and
+	// the points of a face ordered in its plane.
 	var seenCount = 0;
 	var seen = new Int32Buffer(4096);
 	var orderCount = 0;
@@ -59,7 +62,7 @@ class Epa {
 	var lower = new Int32Buffer(MAX_SEED + 1);
 	var upper = new Int32Buffer(MAX_SEED + 1);
 
-	/** The result: unit normal from B toward A's side, as the old solver gave it, the depth, and the witness points. */
+	/** Holds the result: the unit normal from B toward A's side, the depth, and the witness points. */
 	public var normalX(default, null) = 0.0;
 
 	public var normalY(default, null) = 0.0;
@@ -78,7 +81,7 @@ class Epa {
 		count = 0;
 	}
 
-	/** Adds a vertex unless one is already within rounding of it; returns whether it was added. */
+	/** Adds a vertex unless one is already within rounding of it. Returns whether it added the vertex. */
 	public function add(pax:Float, pay:Float, paz:Float, pbx:Float, pby:Float, pbz:Float):Bool {
 		var x = pax - pbx, y = pay - pby, z = paz - pbz;
 		for (i in 0...count) {
@@ -157,7 +160,7 @@ class Epa {
 		pointBZ = bz[a] * u + bz[b] * v + bz[c] * w;
 	}
 
-	/** Adds face (a, b, c), oriented by its winding alone: touching cores put the origin on face planes, where its side is decided by rounding. */
+	/** Adds face (a, b, c), oriented by its winding alone. Touching cores put the origin on face planes, where rounding decides its side. */
 	function addFace(a:Int, b:Int, c:Int):Bool {
 		if (faceCount == MAX_FACES)
 			return false;
@@ -189,9 +192,9 @@ class Epa {
 	}
 
 	/**
-	 * Outward triangles of the hull of the seed vertices, each face of the hull
-	 * found once from the triples that span it and fanned around its outline.
-	 * Returns false when the seed has no volume.
+	 * Builds the outward triangles of the hull of the seed vertices. It finds
+	 * each face of the hull once, from the triples that span it, and fans the
+	 * face around its outline. Returns false when the seed has no volume.
 	 */
 	function buildHull():Bool {
 		faceCount = 0;
@@ -278,7 +281,7 @@ class Epa {
 						return false;
 					seen[seenCount++] = mask;
 
-					// The face's points in its own plane, sorted by x then y, then wrapped by a monotone chain.
+					// Sorts the face's points in its own plane by x then y, then wraps them with a monotone chain.
 					var o = -1, second = -1;
 					for (v in 0...n)
 						if (mask & (1 << v) != 0) {
@@ -357,12 +360,12 @@ class Epa {
 		return (orderX[j] - orderX[i]) * (orderY[k] - orderY[i]) - (orderY[j] - orderY[i]) * (orderX[k] - orderX[i]);
 	}
 
-	/** Records edge a→b of a face being removed; the reverse edge of a neighbour also being removed cancels it. */
+	/** Records edge a→b of a face that is being removed. The reverse edge of a neighbor that is also being removed cancels it. */
 	function addHorizon(a:Int, b:Int):Bool {
 		for (i in 0...edgeCount)
 			if (ea[i] == b && eb[i] == a) {
 				edgeCount--;
-				// Kept in order, as the faces built from them are.
+				// The edges stay in order, as the faces built from them do.
 				for (k in i...edgeCount) {
 					ea[k] = ea[k + 1];
 					eb[k] = eb[k + 1];
@@ -377,7 +380,7 @@ class Epa {
 		return true;
 	}
 
-	/** Solves for a 3D pair; false when the polytope cannot be built or does not converge. */
+	/** Solves for a 3D pair. Returns false when the polytope cannot be built or does not converge. */
 	public function solve3D(pair:NarrowPhase.EpaPair):Bool {
 		for (axis in 0...6) {
 			var s = (axis & 1) == 0 ? 1.0 : -1.0;
@@ -406,7 +409,7 @@ class Epa {
 				bestDepth = fdepth[best];
 			var before = count;
 			var added = pair.support(this, nx, ny, nz);
-			// The support point, whether or not it was new.
+			// Reads the support point, whether or not it was new.
 			var px = pair.lastX, py = pair.lastY, pz = pair.lastZ;
 			var gain = nx * px + ny * py + nz * pz - bestDepth;
 			if (gain <= 1e-5 * Math.max(1.0, bestDepth) || before >= 96) {
@@ -452,7 +455,7 @@ class Epa {
 		return false;
 	}
 
-	/** Solves for a planar pair, in the XY plane; false when the ring cannot be built or does not converge. */
+	/** Solves for a planar pair, in the XY plane. Returns false when the ring cannot be built or does not converge. */
 	public function solve2D(pair:NarrowPhase.EpaPair):Bool {
 		pair.support(this, 1, 0, 0);
 		pair.support(this, -1, 0, 0);
@@ -510,9 +513,9 @@ class Epa {
 		return false;
 	}
 
-	/** The convex outline of the vertices in XY, counter-clockwise, by a monotone chain. */
+	/** Builds the convex outline of the vertices in XY, counter-clockwise, with a monotone chain. */
 	function buildRing():Void {
-		// Vertex indices sorted by x then y, in `order`.
+		// Sorts the vertex indices by x then y, in `order`.
 		orderCount = 0;
 		for (v in 0...count) {
 			if (orderCount == MAX_SEED)

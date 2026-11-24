@@ -20,11 +20,11 @@ private typedef Manifest = {
 }
 
 /**
-	Generates `hxn.me.Plugins` at compile time from the plugins of the app.
-	Each plugin's `extraParams.hxml` calls `add` with its haxelib name, for
-	`-lib` and for `hxnme.toml` alike. Once the init macros have run, the
-	registry reads each plugin's manifest, checks the requirements and the
-	target, orders the plugins after the ones they require, and defines a
+	`Registry` generates `hxn.me.Plugins` at compile time from the plugins of
+	the app. Each plugin's `extraParams.hxml` calls `add` with its haxelib
+	name, for `-lib` and for `hxnme.toml` alike. After the init macros run,
+	the registry reads each plugin's manifest, checks the requirements and
+	the target, orders the plugins after the ones they require, and defines a
 	class that creates and starts each plugin directly. `-D hxnme_dump` writes
 	that class to a file.
 
@@ -47,7 +47,7 @@ class Registry {
 	static var checked:Array<String> = [];
 	static var installed = false;
 
-	/** Generates `hxn.me.Plugins` once the init macros have run. **/
+	/** Makes the registry generate `hxn.me.Plugins` after the init macros run. **/
 	public static function install() {
 		if (installed)
 			return;
@@ -126,8 +126,8 @@ class Registry {
 	/**
 		Checks each plugin class against `hxn.me.Plugin`, and each provider
 		against its service. `Plugins.start` calls it first, so it runs when
-		the compiler types that body. By then the compiler has built every
-		plugin class, and the calls after it are not typed yet.
+		the compiler types that body. At that point, the compiler already built
+		every plugin class, and it did not type the calls after it yet.
 	**/
 	public static function contracts():Expr {
 		for (name in order) {
@@ -173,8 +173,8 @@ class Registry {
 	}
 
 	/**
-		The expression for the plugin that provides the service `path`, or
-		null if no plugin of the app provides it.
+		Returns the expression for the plugin that provides the service
+		`path`, or null if no plugin of the app provides it.
 	**/
 	public static function provider(path:String):Null<Expr> {
 		var name = providers.get(path);
@@ -184,15 +184,15 @@ class Registry {
 		return macro hxn.me.Plugins.$field;
 	}
 
-	/** The description that `@:plugin` gives the plugin `name`, or null. **/
+	/** Returns the description that `@:plugin` gives the plugin `name`, or null. **/
 	public static function description(name:String):Null<String>
 		return descriptions.get(name);
 
-	/** The plugin classes of the app, in the order they start. **/
+	/** Returns the plugin classes of the app, in the order that they start. **/
 	public static function pluginClasses():Array<String>
 		return [for (name in order) manifests.get(name).plugin];
 
-	/** The classes that the plugin class `path` lists with `@:systems`. **/
+	/** Returns the classes that the plugin class `path` lists with `@:systems`. **/
 	public static function systemClasses(path:String):Array<String>
 		return systems.exists(path) ? systems.get(path) : [];
 
@@ -251,8 +251,9 @@ class Registry {
 		Dump.add(definition);
 	}
 
-	// The registered plugins, each after the plugins it requires, and in name
-	// order where the requirements allow either. Cycles are errors.
+	// Returns the registered plugins, each after the plugins that it requires,
+	// and in name order where the requirements allow either order. Cycles are
+	// errors.
 	static function sorted():Array<String> {
 		var order = [];
 		var visiting = [];
@@ -278,7 +279,7 @@ class Registry {
 		return order;
 	}
 
-	// The kind of platform the build is for.
+	// Returns the kind of platform that the app compiles for.
 	static function target():String {
 		var triple = Context.definedValue("hxn_triple");
 		triple = triple == null ? "" : triple;
@@ -291,8 +292,8 @@ class Registry {
 		return "desktop";
 	}
 
-	// The manifest of the haxelib `name`, found in one of its class path
-	// directories or in the directory above it.
+	// Returns the manifest of the haxelib `name`. It looks in each class path
+	// directory, and in the directory above each one.
 	static function read(name:String):Manifest {
 		for (classPath in Context.getClassPath()) {
 			var dir = Path.removeTrailingSlashes(classPath == "" ? "." : classPath);

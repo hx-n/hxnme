@@ -1,13 +1,13 @@
 package hxn.me.math;
 
 /**
-	32-bit floats addressed by byte offset, for records whose fields are laid
-	out at fixed offsets and read four lanes at a time. Offsets are multiples
-	of 4. On HashLink and Ash it is `hl.Bytes`, so `ash.simd` loads and stores
-	read it directly.
+	`Float32Bytes` stores 32-bit floats that code addresses by byte offset. It
+	holds records whose fields have fixed offsets, and that code reads four
+	lanes at a time. Offsets are multiples of 4. On HashLink and Ash it is
+	`hl.Bytes`, so `ash.simd` loads and stores read it directly.
 **/
 abstract Float32Bytes(#if hl hl.Bytes #else Array<Single> #end) #if hl to hl.Bytes #end {
-	/** Storage for `byteLength` bytes. **/
+	/** Makes storage for `byteLength` bytes. **/
 	public inline function new(byteLength:Int) {
 		#if hl
 		this = new hl.Bytes(byteLength);

@@ -8,14 +8,14 @@ import ash.simd.Float32x4;
 class Simd {}
 
 class SimdBatch {
-	/** Adds gravity to the velocity of every active body with mass along that axis. */
+	/** Adds gravity to the velocity of every active body, on each axis along which the body has mass. */
 	public static inline function integrateVelocities(count:Int, velX:Float32Buffer, velY:Float32Buffer, velZ:Float32Buffer, invMassX:Float32Buffer,
 			invMassY:Float32Buffer, invMassZ:Float32Buffer, gx:Single, gy:Single, gz:Single, dt:Single, integrationMask:Float32Buffer = null,
 			constants:Float32Bytes = null):Void {
 		var i = 0;
 
 		#if (ash_simd && hl)
-		// Lane constants go through a caller-owned buffer: Float32x4.splat allocates a fresh vector per call.
+		// The lane constants go through a buffer that the caller owns, because Float32x4.splat allocates a new vector for each call.
 		if (constants == null)
 			constants = new Float32Bytes(80);
 		for (lane in 0...4) {
@@ -34,7 +34,7 @@ class SimdBatch {
 		var simdLimit = count & ~3;
 		while (i < simdLimit) {
 			var at = Float32Buffer.hlOffset(i);
-			// Gravity only where the body is active and has mass along the axis.
+			// The velocity gets gravity only where the body is active and has mass along the axis.
 			var agx = Float32x4.select(Float32x4.load(invMassX.hlBytes(), at).gt(vZero), vGxDt, vZero);
 			var agy = Float32x4.select(Float32x4.load(invMassY.hlBytes(), at).gt(vZero), vGyDt, vZero);
 			var agz = Float32x4.select(Float32x4.load(invMassZ.hlBytes(), at).gt(vZero), vGzDt, vZero);

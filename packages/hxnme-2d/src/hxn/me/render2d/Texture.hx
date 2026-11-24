@@ -6,29 +6,29 @@ import hxn.gpu.Texture as GpuTexture;
 import hxn.gpu.TextureFormat;
 
 /**
-	`Texture` is an image that sprites draw. The app can make it at any time,
-	from RGBA pixels with 4 bytes for each pixel and the top row first. In the
-	first frame after the GPU device opens, the 2D renderer uploads it and
-	releases the pixels.
+	`Texture` holds an image that sprites draw. The app can make it at any
+	time, from RGBA pixels with 4 bytes for each pixel and the top row first.
+	In the first frame after the GPU device opens, the 2D renderer uploads it
+	and releases the pixels.
 **/
 @:assetType(hxn.me.render2d.RenderAssets.texture)
 class Texture {
 	public var width(default, null):Int;
 	public var height(default, null):Int;
 
-	/** The GPU texture, or null until the renderer uploads it. **/
+	/** `texture` holds the GPU texture, or null until the renderer uploads it. **/
 	public var texture(default, null):Null<GpuTexture>;
 
-	/** Whether `close` was called. **/
+	/** `closed` is true after a call to `close`. **/
 	public var closed(default, null) = false;
 
 	var format:TextureFormat;
 	var pixels:Null<Bytes>;
 
-	// Closed textures whose GPU textures are released at the start of the next frame, because draws earlier in the frame still use them.
+	// Holds the closed textures. `release` closes their GPU textures at the start of the next frame, because draws earlier in the frame still use them.
 	static final retired:Array<Texture> = [];
 
-	// Writes to parts of the texture that wait for the next upload.
+	// Holds the writes to parts of the texture that wait for the next upload.
 	var patches:Array<Patch>;
 
 	public function new(width:Int, height:Int, pixels:Bytes) {

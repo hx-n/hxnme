@@ -22,15 +22,15 @@ import hxn.me.gpu.Pass;
 
 	Each camera has its own view, with a pass in the frame graph. For each plane
 	and clip that the frame draws on, the view also has a uniform buffer with
-	the matrix of the camera times the matrix of the plane, and the clip. The pass draws the sprite
-	groups of `Sprites` in the layers of the camera, then the runs of `Draw`.
-	Each group and each run is one instanced draw.
+	the matrix of the camera times the matrix of the plane, and the clip. The
+	pass draws the sprite groups of `Sprites` in the layers of the camera, then
+	the runs of `Draw`. Each group and each run is one instanced draw.
 **/
 class Renderer {
 	/**
-		The number of sets of buffers that the renderer writes in turn, one set
-		in each frame. The GPU finished with a set long before the renderer
-		writes it again, so the writes do not wait for the GPU.
+		`SETS` gives the number of buffer sets that the renderer writes in turn,
+		one set in each frame. The GPU finishes with a set long before the
+		renderer writes it again, so the writes do not wait for the GPU.
 	**/
 	public static inline final SETS = 3;
 
@@ -40,21 +40,21 @@ class Renderer {
 	final pipelines = new Map<String, RenderPipeline>();
 	final sampler:Sampler;
 	final white = Texture.solid(0xFFFFFF);
-	// The instance buffers of `Draw` in each set, and the instances each set holds.
+	// Holds the instance buffers of `Draw` in each set, and the number of instances that each set holds.
 	final buffers:Array<Array<Buffer>> = [for (_ in 0...SETS) []];
 	final capacities = [for (_ in 0...SETS) 0];
-	// The set of this frame.
+	// Holds the index of the set for this frame.
 	var set = 0;
 	final views = new ObjectMap<Camera, View>();
 	final params = Bytes.alloc(Shader.PARAMS_SIZE);
 	final matrix = [for (_ in 0...16) 0.0];
 	final model = [for (_ in 0...16) 0.0];
 	final combined = [for (_ in 0...16) 0.0];
-	// Counts the cameras shown. Each plane view records the count when its uniforms are written, so they are written once for each camera in each frame.
+	// Counts the cameras shown. Each plane view records the count when the renderer writes its uniforms, so the renderer writes them once for each camera in each frame.
 	var shown = 0;
-	// The world's XY plane, for runs without a plane.
+	// Stands for the world's XY plane in runs without a plane.
 	final flat = new Plane();
-	// The key for runs without a clip.
+	// Serves as the key for runs without a clip.
 	final open = new Clip(0, 0, 0, 0);
 	final draw:Draw;
 	final sprites:Sprites;
@@ -208,7 +208,7 @@ class Renderer {
 		}
 		var pipeline = pipelineFor(into.format, camera.depth);
 		pass.setPipeline(pipeline);
-		// Shadows first, so that no shadow covers a sprite.
+		// Shadows draw first, so that no shadow covers a sprite.
 		drawGroups(view, pass, pipeline, true);
 		drawGroups(view, pass, pipeline, false);
 		for (run in draw.runs)
@@ -231,7 +231,7 @@ class Renderer {
 	// Draws `count` instances of `source` from index `start`, on `plane` inside `clip`, with `image`.
 	function drawRange(view:View, pass:RenderPass, pipeline:RenderPipeline, plane:Null<Plane>, clip:Null<Clip>, image:Texture, source:Array<Buffer>,
 			start:Int, count:Int):Void {
-		// A texture closed before it was uploaded draws nothing.
+		// Textures closed before their upload draw nothing.
 		if (image.upload(device) == null)
 			return;
 		var shared = Shader.PARAMS_GROUP == Shader.TEXTURE_image_GROUP;
@@ -339,7 +339,7 @@ private class View {
 /** Each plane view holds one camera's uniform buffer for one plane and clip, and its bind groups. **/
 private class PlaneView {
 	public final uniforms:Buffer;
-	// The count of cameras shown when the uniforms were last written.
+	// Holds the count of cameras shown when the renderer last wrote the uniforms.
 	public var shown = -1;
 	public var params:Null<BindGroup>;
 	public final groups = new ObjectMap<Texture, BindGroup>();

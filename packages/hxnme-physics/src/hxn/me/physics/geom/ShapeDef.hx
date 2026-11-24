@@ -3,10 +3,10 @@ package hxn.me.physics.geom;
 import hxn.me.math.Vec3;
 
 enum abstract ShapeKind(Int) from Int to Int {
-	var Point = 0; // 0 verts: 2D Circle (depth == 0) or 3D Cylinder/Sphere (depth > 0)
-	var Segment = 1; // 2 verts: 2D Line/Capsule (depth == 0) or 3D Quad/Lozenge (depth > 0)
-	var Polygon = 2; // N coplanar verts: 2D Polygon (depth == 0) or 3D Extruded Prism (depth > 0)
-	var Hull = 3; // N volumetric 3D verts (intrinsic depth > 0)
+	var Point = 0; // Point has no vertices. It is a 2D circle (depth == 0) or a 3D cylinder or sphere (depth > 0).
+	var Segment = 1; // Segment has 2 vertices. It is a 2D line or capsule (depth == 0) or a 3D quad or lozenge (depth > 0).
+	var Polygon = 2; // Polygon has N coplanar vertices. It is a 2D polygon (depth == 0) or a 3D extruded prism (depth > 0).
+	var Hull = 3; // Hull has N volumetric 3D vertices, with intrinsic depth > 0.
 }
 
 private class VertexLease {
@@ -81,7 +81,7 @@ class ShapeDef {
 		lease.generation = pool.generationAt(offset);
 	}
 
-	// Select the core vertex with the greatest dot product.
+	// Selects the core vertex with the greatest dot product.
 	public inline function getLocalSupport(pool:VertexPool, dir:Vec3):Vec3 {
 		if (lease != null)
 			ensureVertices(pool);

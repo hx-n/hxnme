@@ -1,13 +1,15 @@
 # hxnme-physics
 
-Rigid-body physics for hxnme, in `hxn.me.physics`.
+hxnme-physics simulates rigid bodies for hxnme, in the package
+`hxn.me.physics`.
 
-- 2D and 3D bodies in one world. Each body's degrees of freedom follow from
-  its shapes.
-- Deterministic stepping, and snapshots that restore the full solver state.
-- Zero-allocation steps once storage has grown to the scene's size.
-- Soft-step contact solver with 4-wide SIMD contact and joint batches.
-- Parallel stepping of islands, and of independent worlds.
+- 2D and 3D bodies share one world. Each body's degrees of freedom follow
+  from its shapes.
+- Stepping is deterministic, and snapshots restore the full solver state.
+- Once storage has grown to the scene's size, steps allocate nothing.
+- The soft-step contact solver works on 4-wide SIMD batches of contacts and
+  joints.
+- Islands step in parallel, and so do independent worlds.
 
 ```haxe
 import hxn.me.physics.core.Handles.BodyType;
@@ -68,8 +70,8 @@ points. Depth is the full extent along Z, centered on `localZ`.
 
 ## Determinism and snapshots
 
-Stepping is deterministic for a given runtime, build and number of island
-workers. `WorldSnapshot` saves the complete state that a step depends on:
+Stepping is deterministic for a given runtime, compiled program and number
+of island workers. `WorldSnapshot` saves the complete state that a step depends on:
 warm-starting impulses of contacts and joints, sleep timers, the last axes of
 joint drives, and the broad-phase tree, which fixes the order of contact
 pairs. Restoring a snapshot gives results bit-identical to those of the world
@@ -89,25 +91,25 @@ copies of one environment.
 ## Memory
 
 `World.step` allocates only when a scene needs more capacity than before.
-Scratch buffers for contacts and events grow to the peak size and are not
-shrunk. Body, shape and joint storage doubles when it is full, up to 1,048,576
-of each. `World.reserve` grows it ahead of time. Once storage fits the scene,
-a step does not allocate, continuous collision included.
+Scratch buffers for contacts and events grow to the peak size and do not
+shrink. Body, shape and joint storage doubles when it is full, up to
+1,048,576 of each. `World.reserve` grows it ahead of time. Once storage fits
+the scene, a step does not allocate, and this includes continuous collision.
 
 ## Solver
 
-- Soft-step solver with 4 substeps. Contacts are soft constraints, with a
-  stiffer constraint against static and kinematic bodies. Separation speed is
-  capped at 3 m/s.
-- Relax pass after integration: it removes the velocity that the solver added
+- The soft-step solver runs 4 substeps. Contacts are soft constraints, with
+  a stiffer constraint against static and kinematic bodies. Separation speed
+  is capped at 3 m/s.
+- After integration, a relax pass removes the velocity that the solver added
   to separate overlapping shapes, so resting bodies do not drift and loaded
   contacts do not jitter.
-- Warm starting for contacts and joints.
+- Contacts and joints are warm-started.
 - `world.jointSweeps` sets the joint iterations per contact iteration, for
   long joint chains such as ragdolls.
-- Broad phase: dynamic AABB tree. Narrow phase: GJK, EPA and manifold
-  clipping. Continuous collision by time of impact.
-- Union-find islands with sleeping.
+- The broad phase is a dynamic AABB tree. The narrow phase uses GJK, EPA and
+  manifold clipping. Continuous collision uses time of impact.
+- Union-find groups the bodies into islands, and islands sleep.
 
 ## Data layout and SIMD
 
@@ -120,12 +122,12 @@ substep in solve order. Without it, the same rows go through a scalar path.
 
 ## Joints
 
-Distance, hinge, prismatic, spherical and weld joints.
+hxnme-physics has distance, hinge, prismatic, spherical and weld joints.
 
 - Hinge: angle limits, motor, and a drive to a target angle.
 - Prismatic: limits and motor.
-- Spherical: swing and twist limits, and a drive to a target orientation. The
-  drive's torque limit is shared by its 3 axes.
+- Spherical: swing and twist limits, and a drive to a target orientation. Its
+  3 axes share the drive's torque limit.
 
 ## Water
 
@@ -139,23 +141,24 @@ stays deterministic and the renderer can sample the same surface.
 
 ## Other features
 
-- Sensors and per-step events: overlap begin and end, contact begin and end,
-  and impacts with approach speed.
-- `queryAABB`, `rayCast` and `shapeCast`.
-- `setBullet` for continuous collision on a chosen body.
-- Kinematic targets, teleports, impulses, and body type changes.
-- `FixedStep` for a fixed timestep, and `getInterpolatedTransform` for
-  rendering between steps.
-- Collision filtering by category, mask and group. Friction, restitution and
-  density for each shape.
-- Generational handles. Using a handle to a destroyed body throws.
-- `World.validate`, which reports invalid state with a fault code and a path.
+- Sensors report overlaps, and each step reports events: overlap begin and
+  end, contact begin and end, and impacts with their approach speed.
+- `queryAABB`, `rayCast` and `shapeCast` query the world.
+- `setBullet` turns on continuous collision for a chosen body.
+- Bodies take kinematic targets, teleports, impulses and changes of body
+  type.
+- `FixedStep` runs a fixed timestep, and `getInterpolatedTransform` gives the
+  transform between steps for rendering.
+- Shapes filter collisions by category, mask and group. Each shape has its
+  own friction, restitution and density.
+- Handles are generational. Using a handle to a destroyed body throws.
+- `World.validate` reports invalid state with a fault code and a path.
 
 ## Checks and benchmarks
 
 `tests/` holds the checks. Each check program has a program file for the
 [hxn](https://github.com/hx-n/hxn) command, which compiles it for the runtime
-that you name and runs it:
+that you select and runs it:
 
 ```
 cd tests
@@ -170,14 +173,14 @@ hxn run cpp --wasm --threads checks.hxml
 solver. The other programs are `concurrent-checks`, `island-parallel-checks`
 and `world-growth-checks`.
 
-`bench/` holds a benchmark that steps chains of 10
-hinged links. Its arguments are the chain count and a contact mode: `on`
-(adjacent links collide), `off` (no link collisions) or `gap` (narrower links
-that do not touch). It prints one JSON line with the sample times, the best
-time and the final energy. The energy is the same on every run of the same
-build.
+`bench/` holds a benchmark that steps chains of 10 hinged links. Its
+arguments are the chain count and a contact mode: `on` (adjacent links
+collide), `off` (no link collisions) or `gap` (narrower links that do not
+touch). It prints one JSON line with the sample times, the best time and the
+final energy. The energy is the same on every run of the same compiled
+program.
 
 ## Credits
 
-hxnme-physics is derived from the physics engine of the ChimpMonk game engine,
-privately maintained by [darmie](https://github.com/darmie).
+hxnme-physics derives from the physics engine of the ChimpMonk game engine,
+which [darmie](https://github.com/darmie) maintains privately.
