@@ -83,9 +83,10 @@ and each one is a haxelib under `packages/`. Read the
 - CI runs every check on macOS, Linux and Windows, in one workflow for each
   runtime: `ash.yml`, `hxcpp.yml` and `cppia.yml`. `checks.yml` lists the
   checks: the kernel, physics and plugin checks, and a game made with
-  `hxn me new`, on each platform's default GPU driver. When you add a check
-  program, add it there. A change is not known to work on Windows until CI
-  has run it.
+  `hxn me new`, on each platform's default GPU driver. `ios.yml` builds the
+  kernel and physics checks with Ash for an iPhone simulator, and compares
+  each with the desktop build. When you add a check program, add it to both.
+  A change is not known to work on Windows or iOS until CI has run it.
 - Report each runtime that you did not run.
 
 ## Issues and commits

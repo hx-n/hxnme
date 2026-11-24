@@ -225,7 +225,7 @@ with `-lib hxnme`. Before the first run, run
 
 Report each runtime that you did not run. Follow the
 [hxnme agent rules](https://github.com/hx-n/hxnme/blob/main/AGENTS.md), the
-[kernel README](https://github.com/hx-n/hxnme/blob/main/packages/hxnme/README.md)
+[kernel guides](https://github.com/hx-n/hxnme/tree/main/packages/hxnme/docs)
 and the [hxn conventions](https://github.com/hx-n/hxn/blob/main/docs/conventions.md).
 The issues are in hxn's git-bug tracker under `area:me`. Do not put AI
 attribution in commits or issues.

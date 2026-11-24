@@ -3,6 +3,7 @@
 [![Ash](https://github.com/hx-n/hxnme/actions/workflows/ash.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/ash.yml)
 [![hxcpp](https://github.com/hx-n/hxnme/actions/workflows/hxcpp.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/hxcpp.yml)
 [![CPPIA](https://github.com/hx-n/hxnme/actions/workflows/cppia.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/cppia.yml)
+[![iOS](https://github.com/hx-n/hxnme/actions/workflows/ios.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/ios.yml)
 
 hxnme is an engine framework, written in Haxe, for games and rich interactive
 apps and experiences. It is part of the [hxn](https://github.com/hx-n/hxn)
@@ -23,8 +24,22 @@ hxn run hl app.hxml
 ```
 
 To learn how to build an hxnme app, read the
-[kernel's README](packages/hxnme/README.md). It covers the project file,
+[kernel's guides](packages/hxnme/docs). They cover the project file,
 plugins, systems, running an app and assets in depth.
+
+## Platforms
+
+hxnme apps run on the desktop, in a web page and on mobile devices. On each
+platform, the GPU plugin uses that platform's graphics API:
+
+| Platform | Graphics API | Runtimes |
+|---|---|---|
+| macOS | Metal | hxcpp, CPPIA, HashLink and Ash |
+| Linux | Vulkan or OpenGL ES | hxcpp, CPPIA, HashLink and Ash |
+| Windows | Direct3D 12 | hxcpp, CPPIA, HashLink and Ash |
+| Web | WebGPU or WebGL2 | hxcpp or Ash, compiled to wasm |
+| Android | Vulkan or OpenGL ES | hxcpp, and Ash ahead of time |
+| iOS | Metal | hxcpp, and Ash ahead of time |
 
 ## Architecture
 
