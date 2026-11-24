@@ -15,9 +15,9 @@ package hxn.me.render2d;
 	- 4 is a line with round ends, from `radius.xy` to `radius.zw` in pixels
 	  from the quad's corner. Its radius is `shape.z` at its start and `shape.w`
 	  at its end.
-	- 5 is a nine-slice of the whole of `image`. `radius` holds its left, top,
-	  right and bottom borders in pixels, and `border` holds the same borders as
-	  fractions of the image.
+	- 5 is a nine-slice of the part of `image` in `uv`. `radius` holds its left,
+	  top, right and bottom borders in pixels, `shape.y` the pixels for each
+	  texel, and `shape.zw` the size of the part in texels.
 	- 6 is a shadow: a rectangle with the corner radii in `radius` and the
 	  `CornerShape` in `shape.z`, blurred by `shape.y` as with CSS
 	  `box-shadow`. The quad is larger than the rectangle by `shape.w` on each
@@ -66,6 +66,8 @@ class Shader implements hxn.gpu.Shader {
 		var edge : Vec4;
 		/** The fragment's position in the plane's coordinates. **/
 		var at : Vec2;
+		/** The part of `image` that a nine-slice shows. **/
+		var region : Vec4;
 
 		function vertex() {
 			var corner = vec2(float(vertexID % 2), float(vertexID / 2));
@@ -79,6 +81,7 @@ class Shader implements hxn.gpu.Shader {
 			kind = input.shape;
 			radii = input.radius;
 			edge = input.border;
+			region = input.uv;
 			// Glyphs are laid out from the top of their box,
 			// which starts at y = shape.z and is shape.w high. In a view with y up,
 			// the shader mirrors them within the box, so they read upright.
@@ -101,7 +104,10 @@ class Shader implements hxn.gpu.Shader {
 			var fromTop = vec2(local.x, flags.x > 0.5 ? local.y : size.y - local.y);
 			var nine = kind.x > 4.5 ? 1. : 0.;
 			// WGSL takes derivatives and samples textures only outside branches.
-			var sampled = image.get(mix(texel, sliceUv(fromTop, size, radii, edge), vec2(nine, nine)));
+			// The borders as fractions of the part of the image, from the borders in texels.
+			var texels = max(vec4(kind.y * kind.z, kind.y * kind.w, kind.y * kind.z, kind.y * kind.w), vec4(0.0001, 0.0001, 0.0001, 0.0001));
+			var sliced = mix(region.xy, region.zw, sliceUv(fromTop, size, radii, radii / texels));
+			var sampled = image.get(mix(texel, sliced, vec2(nine, nine)));
 			var pixel = max(length(fwidth(local)) * 0.7071, 0.0001);
 			var planePixel = max(length(fwidth(at)) * 0.7071, 0.0001);
 			var halfSize = size * 0.5;

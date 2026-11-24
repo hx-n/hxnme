@@ -1,0 +1,7 @@
+{
+	"image": "sheet.png",
+	"regions": {
+		"red": {"x": 0, "y": 0, "width": 16, "height": 16},
+		"panel": {"x": 100, "y": 20, "width": 30, "height": 30, "slice": [3, 3, 3, 3]}
+	}
+}

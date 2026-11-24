@@ -81,6 +81,8 @@ static function draw(draw:ResMut<Draw>) {
 | `sprite(texture, x, y, width, height, color, alpha, angle, u0, v0, u1, v1)` | Adds the texture stretched over the rectangle and multiplied by the color. `angle` turns it about its center. `u0` to `v1` select part of the texture. |
 | `nineSlice(texture, x, y, width, height, left, top, right, bottom, color, alpha, angle, scale)` | Adds the texture as a nine-slice, for panels and buttons. The corners keep their size, the edges stretch along their length, and the center stretches in both directions. `left` to `bottom` are the borders in texture pixels. Each texture pixel covers `scale` logical pixels. If the rectangle is smaller than its borders, the borders shrink to fit. |
 | `text(text, x, y, color, alpha, angle)` | Adds a `Text`. See [Text](#text). |
+| `region(region, x, y, width, height, color, alpha, angle)` | Adds a region of an atlas, at its own size unless `width` and `height` are given. See [Assets](#assets). |
+| `regionSlice(region, x, y, width, height, color, alpha, angle, scale)` | Adds a region of an atlas as a nine-slice with the region's borders. |
 
 Each nine-slice costs the same as one sprite, because the shader does the
 slicing on the GPU.
@@ -178,6 +180,7 @@ static function walk(sprites:ResMut<Sprites>, time:Res<Time>) {
 | `tint(sprite, color, alpha)` | Sets the color and alpha that multiply the texture. |
 | `region(sprite, u0, v0, u1, v1)` | Selects the part of the texture that the sprite shows. |
 | `xOf(sprite)`, `yOf(sprite)` | Return the sprite's corner. |
+| `addRegion(region, x, y, width, height, color, alpha, angle)` | Adds a region of an atlas as a sprite, at its own size unless `width` and `height` are given. |
 | `addText(text, x, y, color, alpha, angle)` | Adds a `Text` and returns its handle, which `move`, `turn`, `tint`, `xOf`, `yOf`, `exists` and `remove` take. |
 
 Text in `Sprites` keeps its glyph instances from frame to frame. The
@@ -226,6 +229,44 @@ draw.stroke(points, 3, 0x202020, 1, pressures);
 draw.plane = null;
 ```
 
+## Assets
+
+`hxn.me.render2d.RenderAssets` holds the asset types of the renderer, for
+the kernel's `hxn.me.Assets`:
+
+| Type | Loads |
+|---|---|
+| `RenderAssets.texture` | A PNG image as a `Texture`. When the asset is released, the texture draws nothing more, and its GPU texture is released at the start of the next frame, so what was drawn with it earlier in the frame still shows. |
+| `RenderAssets.font` | A TTF, OpenType or WOFF2 file as an `hxn.text.Font`, for `typesetter.text`. |
+| `RenderAssets.atlas` | A JSON file of named regions, and the image it lists, as an `Atlas`. |
+
+```haxe
+assets.load("ui/sheet.json", RenderAssets.atlas).then(a -> sheet = a);
+
+var atlas = sheet.value;
+draw.region(atlas.region("hero"), x, y);
+draw.regionSlice(atlas.region("panel"), 16, 16, 200, 80, 0xFFFFFF, 1, 0, 2);
+sprites.addRegion(atlas.region("tree"), 120, 40);
+```
+
+The atlas file lists the image, relative to the file, and each region's
+corner and size in texture pixels, top left first. `slice` gives a region's
+nine-slice borders, left, top, right and bottom:
+
+```json
+{
+	"image": "sheet.png",
+	"regions": {
+		"hero": {"x": 0, "y": 0, "width": 16, "height": 16},
+		"panel": {"x": 17, "y": 0, "width": 12, "height": 12, "slice": [4, 4, 4, 4]}
+	}
+}
+```
+
+Leave at least one pixel between regions, because linear filtering reads the
+texels next to a region at its edges. The atlas holds its texture, and
+releasing the atlas closes it.
+
 ## Textures
 
 `Texture` holds an image that sprites draw. Make it from `haxe.io.Bytes`
@@ -266,5 +307,10 @@ It also tests that:
 - The text changes from L to T after the first frame. The two text cameras show a T with its bar at the top, so the text was laid out again and is not mirrored. The top border of the nine-slice is at the top.
 - Text in `Sprites` that changes from L to T also shows a T, and uploads only its one new glyph.
 
-The check uses the font Noto Sans. Its license is listed in
+In `tests/assets`, the same command runs the asset check. It loads an atlas
+and a font through `Assets`, draws a region and a nine-slice region, and
+tests their pixels, the font's layout, and that releasing the atlas closes
+its texture.
+
+The checks use the font Noto Sans. Its license is listed in
 [third-party/NOTICES.md](third-party/NOTICES.md).

@@ -59,6 +59,17 @@ label.set("Score 10"); label.width; label.height;
 draw.text(label, x, y, color, alpha, angle);   // upright through y-up and Screen cameras
 ```
 
+Assets through the kernel's `ResMut<Assets>`, with `RenderAssets.texture`
+(PNG), `RenderAssets.font` (TTF, OTF, WOFF2) and `RenderAssets.atlas` (JSON
+of regions with an image; `slice: [l, t, r, b]` for nine-slices):
+
+```haxe
+assets.load("ui/sheet.json", RenderAssets.atlas).then(a -> sheet = a);   // sheet.release() closes it
+draw.region(sheet.value.region("hero"), x, y);
+draw.regionSlice(sheet.value.region("panel"), x, y, w, h, tint, alpha, angle, scale);
+sprites.addRegion(sheet.value.region("tree"), x, y);
+```
+
 `new Texture(width, height, rgbaPixels)` at any time; it uploads once the
 GPU is ready. `Texture.solid(color)` is a one-pixel texture.
 

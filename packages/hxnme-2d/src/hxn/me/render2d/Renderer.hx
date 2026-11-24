@@ -216,9 +216,18 @@ class Renderer {
 				drawRange(view, pass, pipeline, run.plane, run.clip, run.texture != null ? run.texture : white, buffers[set], run.start, run.count);
 	}
 
+	/** Closes the bind groups of `textures`, whose GPU textures were released. **/
+	public function forget(textures:Array<Texture>):Void
+		if (textures.length > 0)
+			for (view in views)
+				view.forget(textures);
+
 	// Draws `count` instances of `source` from index `start`, on `plane` inside `clip`, with `image`.
 	function drawRange(view:View, pass:RenderPass, pipeline:RenderPipeline, plane:Null<Plane>, clip:Null<Clip>, image:Texture, source:Array<Buffer>,
 			start:Int, count:Int):Void {
+		// A texture closed before it was uploaded draws nothing.
+		if (image.upload(device) == null)
+			return;
 		var shared = Shader.PARAMS_GROUP == Shader.TEXTURE_image_GROUP;
 		var on = view.on(plane != null ? plane : flat, clip != null ? clip : open, set, device);
 		if (!shared) {
@@ -291,6 +300,19 @@ private class View {
 
 	public function new(camera:Camera)
 		this.camera = camera;
+
+	/** Closes and removes the bind groups of `textures` in every plane view. **/
+	public function forget(textures:Array<Texture>):Void
+		for (sets in planes)
+			for (clips in sets)
+				for (on in clips)
+					for (t in textures) {
+						var group = on.groups.get(t);
+						if (group != null) {
+							group.close();
+							on.groups.remove(t);
+						}
+					}
 
 	/** Returns the plane view for `plane` and `clip` in buffer set `set`, and makes it on first use. **/
 	public function on(plane:Plane, clip:Clip, set:Int, device:GpuDevice):PlaneView {

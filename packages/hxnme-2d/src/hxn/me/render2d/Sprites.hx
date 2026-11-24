@@ -77,6 +77,15 @@ class Sprites {
 	}
 
 	/**
+		Adds `region` of an atlas over the rectangle at `x`, `y`, and returns
+		its handle. The rectangle is the region's size in texture pixels unless
+		`width` and `height` are given.
+	**/
+	public function addRegion(region:Region, x:Float, y:Float, ?width:Float, ?height:Float, color = 0xFFFFFF, alpha = 1.0, angle = 0.0):Sprite
+		return add(region.texture, x, y, width != null ? width : region.width, height != null ? height : region.height, color, alpha, angle, region.u0,
+			region.v0, region.u1, region.v1);
+
+	/**
 		Adds `text` in `color` and `alpha`, with the corner of its box that has
 		the smaller coordinates at `x`, `y`, and returns its handle. `angle`
 		turns it in radians about the center of the box. The store keeps the

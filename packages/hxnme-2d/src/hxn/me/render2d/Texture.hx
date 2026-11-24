@@ -18,8 +18,14 @@ class Texture {
 	/** The GPU texture, or null until the renderer uploads it. **/
 	public var texture(default, null):Null<GpuTexture>;
 
+	/** Whether `close` was called. **/
+	public var closed(default, null) = false;
+
 	var format:TextureFormat;
 	var pixels:Null<Bytes>;
+
+	// Closed textures whose GPU textures are released at the start of the next frame, because draws earlier in the frame still use them.
+	static final retired:Array<Texture> = [];
 
 	// Writes to parts of the texture that wait for the next upload.
 	var patches:Array<Patch>;
@@ -68,16 +74,36 @@ class Texture {
 	@:allow(hxn.me.render2d) function write(x:Int, y:Int, width:Int, height:Int, pixels:Bytes, stride:Int):Void
 		patches.push({x: x, y: y, width: width, height: height, pixels: pixels, stride: stride});
 
-	/** Releases the GPU texture. The texture cannot draw after this. **/
+	/**
+		Closes the texture. What was drawn with it earlier in the frame still
+		shows, and its GPU texture is released at the start of the next frame.
+		The texture draws nothing after this.
+	**/
 	@:allow(hxn.me.render2d) function close():Void {
-		if (texture != null)
-			texture.close();
-		texture = null;
+		if (closed)
+			return;
+		closed = true;
 		pixels = null;
 		patches.resize(0);
+		retired.push(this);
 	}
 
-	@:allow(hxn.me.render2d) function upload(device:GpuDevice):GpuTexture {
+	// Releases the GPU textures of the textures closed before this frame, and returns those textures.
+	@:allow(hxn.me.render2d) static function release():Array<Texture> {
+		var released = retired.copy();
+		for (t in released)
+			if (t.texture != null) {
+				t.texture.close();
+				t.texture = null;
+			}
+		retired.resize(0);
+		return released;
+	}
+
+	// Returns the GPU texture, made and uploaded on first use, or null for a texture closed before it was uploaded.
+	@:allow(hxn.me.render2d) function upload(device:GpuDevice):Null<GpuTexture> {
+		if (closed)
+			return texture;
 		if (texture == null) {
 			texture = device.createTexture({width: width, height: height, format: format, usage: Sampled});
 			device.writeTexture(texture, pixels);

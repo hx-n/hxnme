@@ -123,16 +123,40 @@ class Draw {
 		camera. `angle` turns the rectangle in radians about its center.
 	**/
 	public function nineSlice(texture:Texture, x:Float, y:Float, width:Float, height:Float, left:Float, top:Float, right:Float, bottom:Float,
-			color = 0xFFFFFF, alpha = 1.0, angle = 0.0, scale = 1.0):Void {
+			color = 0xFFFFFF, alpha = 1.0, angle = 0.0, scale = 1.0):Void
+		slice(texture, 0, 0, 1, 1, texture.width, texture.height, x, y, width, height, left, top, right, bottom, color, alpha, angle, scale);
+
+	/**
+		Adds `region` of an atlas stretched over the rectangle at `x`, `y`,
+		multiplied by `color` and `alpha`. The rectangle is the region's size
+		in texture pixels unless `width` and `height` are given. `angle` turns
+		it in radians about its center.
+	**/
+	public function region(region:Region, x:Float, y:Float, ?width:Float, ?height:Float, color = 0xFFFFFF, alpha = 1.0, angle = 0.0):Void
+		sprite(region.texture, x, y, width != null ? width : region.width, height != null ? height : region.height, color, alpha, angle, region.u0,
+			region.v0, region.u1, region.v1);
+
+	/**
+		Adds `region` of an atlas as a nine-slice over the rectangle at `x`,
+		`y`, with the region's borders, as `nineSlice` does with a whole
+		texture.
+	**/
+	public function regionSlice(region:Region, x:Float, y:Float, width:Float, height:Float, color = 0xFFFFFF, alpha = 1.0, angle = 0.0,
+			scale = 1.0):Void
+		slice(region.texture, region.u0, region.v0, region.u1, region.v1, region.width, region.height, x, y, width, height, region.left, region.top,
+			region.right, region.bottom, color, alpha, angle, scale);
+
+	// Adds a nine-slice of the part of `texture` from `u0`, `v0` to `u1`, `v1`, which is `texelsX` by `texelsY` texels.
+	function slice(texture:Texture, u0:Float, v0:Float, u1:Float, v1:Float, texelsX:Float, texelsY:Float, x:Float, y:Float, width:Float, height:Float,
+			left:Float, top:Float, right:Float, bottom:Float, color:Int, alpha:Float, angle:Float, scale:Float):Void {
 		var i = instances.add();
 		instances.set(Instances.RECT, i, x, y, width, height);
-		instances.set(Instances.UV, i, 0, 0, 1, 1);
+		instances.set(Instances.UV, i, u0, v0, u1, v1);
 		tint(Instances.COLOR, i, color, alpha);
 		instances.set(Instances.XFORM, i, Math.cos(angle), Math.sin(angle), 0.5, 0.5);
 		// The shader fits the borders to the rectangle and maps each pixel to its piece of the texture.
-		instances.set(Instances.SHAPE, i, 5, 0, 0, 0);
+		instances.set(Instances.SHAPE, i, 5, scale, texelsX, texelsY);
 		instances.set(Instances.RADIUS, i, left * scale, top * scale, right * scale, bottom * scale);
-		instances.set(Instances.BORDER, i, left / texture.width, top / texture.height, right / texture.width, bottom / texture.height);
 		textured(texture, i);
 	}
 
