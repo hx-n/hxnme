@@ -1,0 +1,53 @@
+name: ios-check
+description: >-
+  Builds a check program for the iOS simulator with Ash, runs it in the booted simulator,
+  and fails unless it prints what the same program prints as a desktop Ash executable.
+
+inputs:
+  directory:
+    description: The directory of the program file.
+    required: true
+  file:
+    description: The program file.
+    default: app.hxml
+  minutes:
+    description: The time limit for each build and run, in minutes.
+    default: "20"
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ inputs.directory }}
+      run: |
+        set +e
+        limit=$(( ${{ inputs.minutes }} * 60 ))
+        file=${{ inputs.file }}
+        status=0
+        # build <log> <options...>: builds the program and prints the executable's path,
+        # which hxn build prints on its last line.
+        build() {
+          local log=$1; shift
+          if ! timeout $limit hxn build hl $file --ash "$ASH" "$@" > $log 2>&1; then
+            cat $log >&2
+            return 1
+          fi
+          tail -1 $log | sed 's/^ *//'
+        }
+        echo "== desktop"
+        desktop=$(build desktop.txt) || { echo "::error::the desktop build failed in ${{ inputs.directory }}"; exit 1; }
+        timeout $limit "$desktop" > expected.txt 2> expected.err || { cat expected.err; echo "::error::the desktop executable failed in ${{ inputs.directory }}"; exit 1; }
+        echo "== iOS simulator"
+        # hxn-file links against Foundation, which Ash does not add itself.
+        simulator=$(ASH_LINK_ARGS="-framework Foundation -liconv -lobjc" build ios.txt --target aarch64-apple-ios-sim) \
+          || { echo "::error::the iOS build failed in ${{ inputs.directory }}"; exit 1; }
+        # simctl passes variables that start with SIMCTL_CHILD_ to the program.
+        timeout $limit env SIMCTL_CHILD_ASH_GC_TLAB="${ASH_GC_TLAB:-}" xcrun simctl spawn "$SIMULATOR" "$simulator" > out.txt 2> out.err
+        code=$?
+        cat out.txt
+        if [ $code -ne 0 ] || ! diff -u expected.txt out.txt; then
+          cat out.err
+          echo "::error::the iOS simulator run in ${{ inputs.directory }} differs from the desktop"
+          status=1
+        fi
+        exit $status

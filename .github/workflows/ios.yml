@@ -1,0 +1,89 @@
+name: iOS
+
+# The kernel and physics checks in an iPhone simulator, each built with Ash for
+# aarch64-apple-ios-sim and compared with the same program built for the desktop.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  simulator:
+    name: iOS simulator
+    runs-on: macos-15
+    timeout-minutes: 120
+    # Ash otherwise counts allocations only in whole 32 KiB regions, and the physics
+    # allocation checks can pass when the code allocates.
+    env:
+      ASH_GC_TLAB: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - id: setup
+        uses: ./.github/actions/setup
+      - name: Boot a simulator
+        run: |
+          device="$(xcrun simctl list devices available | sed -n 's/.*iPhone.*(\([0-9A-F-]\{36\}\)) (Shutdown).*/\1/p' | head -1)"
+          [ -n "$device" ] || { echo "::error::no iPhone simulator is installed"; exit 1; }
+          xcrun simctl boot "$device"
+          xcrun simctl bootstatus "$device" > /dev/null
+          echo "SIMULATOR=$device" >> "$GITHUB_ENV"
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme/tests
+          file: toml-checks.hxml
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme/tests/plugins
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme/tests/systems
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme/tests/loop
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme/tests/headless
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme/tests/libraries
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme/tests/libraries-override
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme/tests/assets
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme/tests/new
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme-physics/tests
+          file: checks.hxml
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme-physics/tests
+          file: concurrent-checks.hxml
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        uses: ./.github/actions/ios-check
+        with:
+          directory: packages/hxnme-physics/tests
+          file: world-growth-checks.hxml
