@@ -10,6 +10,22 @@ project. The engine has a small kernel and a set of plugins, and each one is
 published as its own haxelib. Apps depend on the kernel and add the plugins
 that they need.
 
+## Getting started
+
+`hxn me new <name>` creates a small 2D game in a new directory. The game
+uses the window, input, GPU and 2D plugins, and loads an atlas and a font
+from its assets:
+
+```
+hxn me new my-game
+cd my-game
+hxn run hl app.hxml
+```
+
+To learn how to build an hxnme app, read the
+[kernel's README](packages/hxnme/README.md). It covers the project file,
+plugins, systems, running an app and assets in depth.
+
 ## Architecture
 
 ```mermaid
@@ -56,14 +72,12 @@ flowchart TB
 
 ## Roadmap
 
-1. Core: app loop, input actions, 2D renderer, assets, and `new`, `run` and
-   `build` for desktop and web.
-2. Physics: a GPU solver, and the CPU solver for deterministic worlds.
-3. Dev loop: hot reload of code and assets, on desktop, Android and iOS.
-4. Entities: ECS, scenes, prefabs, serialization and audio.
-5. UI: layout, widgets, text input and accessibility.
-6. 3D: frame graph, meshes, materials and post-processing.
-7. Delivery: packaging, signing, and deployment to app stores and the web.
+1. Physics: a GPU solver, and the CPU solver for deterministic worlds.
+2. Dev loop: hot reload of code and assets, on desktop, Android and iOS.
+3. Entities: ECS, scenes, prefabs, serialization and audio.
+4. UI: layout, widgets, text input and accessibility.
+5. 3D: frame graph, meshes, materials and post-processing.
+6. Delivery: packaging, signing, and deployment to app stores and the web.
 
 ## Agent skills
 
