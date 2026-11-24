@@ -8,31 +8,43 @@ import sys.io.File;
 import sys.io.Process;
 
 /**
-	The hxn CLI hook of hxnme. Before a build, it reads the `hxnme.toml` that
-	is colocated with the program file, and returns what the build needs from it: the Ash options
-	of the app's metadata, the class paths, defines and macros of the plugins
-	it lists, and the path of the file as `-D hxnme_project`. `hxn run` and
-	`hxn check` also get `-D hxnme_reload`, which makes the app loop check
-	for a hot reload on HashLink each frame.
+	`Tool` answers the requests that the hxn command sends to hxnme. Before
+	hxn compiles the app, the hook reads the `hxnme.toml` that is colocated
+	with the program file, and returns what the compiler needs from it: the
+	Ash options of the app's metadata, the class paths, defines and macros of
+	the plugins that it lists, and the path of the file as
+	`-D hxnme_project`. `hxn run` and `hxn check` also get `-D hxnme_reload`,
+	which makes the app loop check for a hot reload on HashLink each frame.
 
-	Each plugin can also add haxelibs for the build's target. The plugin's
-	manifest lists them under `hxnme.libraries`, and `[libraries.<plugin>]`
-	in hxnme.toml replaces that list. This applies to the plugins that
-	hxnme.toml lists and to the plugins that the program file selects with
-	`-lib`.
+	Each plugin can also add haxelibs for the target that the app compiles
+	for. The plugin's manifest lists them under `hxnme.libraries`, and
+	`[libraries.<plugin>]` in hxnme.toml replaces that list. This applies to
+	the plugins that hxnme.toml lists and to the plugins that the program
+	file selects with `-lib`.
+
+	hxn runs build hooks only for the haxelibs that the program file selects.
+	For each haxelib that hxnme.toml brings in, this hook runs that haxelib's
+	hook for the same phase, and also returns what that hook returns, such as
+	the browser agent of hxn-window as a file for the web page. `command`
+	handles commands such as `new`.
 **/
 class Tool {
-	// The target triple of the build, such as `aarch64-apple-darwin`, or "" when
-	// the request has no target.
+	// Holds the target triple, such as `aarch64-apple-darwin`, or "" when the
+	// request has no target.
 	static var triple = "";
-	// The `[libraries]` table of hxnme.toml. For each plugin, it maps fragments of
-	// a triple to lists of haxelibs.
+	// Holds the `[libraries]` table of hxnme.toml. For each plugin, it maps
+	// fragments of a triple to lists of haxelibs.
 	static var overrides:Dynamic = {};
-	// The path of hxnme.toml, for error messages.
+	// Holds the path of hxnme.toml for error messages.
 	static var file = "";
+	// Holds the hook request. `forward` also sends it to the hooks of the haxelibs that hxnme.toml brings in.
+	static var request:Dynamic;
+	// These collect the Ash arguments and the web page files of the reply, including what those hooks return.
+	static final ashArgs:Array<Array<String>> = [];
+	static final pageFiles:Array<String> = [];
 
 	static function main() {
-		var request:Dynamic = Json.parse(Sys.stdin().readAll().toString());
+		request = Json.parse(Sys.stdin().readAll().toString());
 		if (request.kind == "command") {
 			command(request.arguments, request.cwd, request.root);
 			return;
@@ -56,15 +68,15 @@ class Tool {
 			var toml:Dynamic = try Toml.parse(File.getContent(file), file) catch (error:String) fail(error);
 			var app:Dynamic = toml.app;
 			if (app != null && app.preset != null)
-				reply.ash_args = [["--preset", string(app.preset, "app.preset", file)]];
+				ashArgs.push(["--preset", string(app.preset, "app.preset", file)]);
 			var plugins:Array<Dynamic> = toml.plugins == null ? [] : toml.plugins;
 			if (!Std.isOfType(plugins, Array))
 				fail('$file: `plugins` must be an array of haxelib names');
 			if (toml.libraries != null)
 				overrides = toml.libraries;
 			var selected = project.hxml == null ? [] : libraries(File.getContent(project.hxml));
-			// The program file already selects these plugins, but the build does not
-			// have their target libraries yet.
+			// The program file already selects these plugins, but the compiler does
+			// not have their target libraries yet.
 			var seen = selected.copy();
 			for (name in selected) {
 				var root = find(name);
@@ -76,6 +88,10 @@ class Tool {
 		}
 		if (args.length > 0)
 			reply.haxe_args = args;
+		if (ashArgs.length > 0)
+			reply.ash_args = ashArgs;
+		if (pageFiles.length > 0)
+			reply.page_files = pageFiles;
 		Sys.println(Json.stringify(reply));
 	}
 
@@ -126,7 +142,7 @@ class Tool {
 		}
 	}
 
-	// Adds the haxe arguments that `-lib` would give for `entry`, after those
+	// Adds the haxe arguments that `-lib` gives for `entry`, after those
 	// of the haxelibs it depends on. `entry` is a haxelib name, or the path of
 	// an in-project plugin's directory relative to `base`. Haxelibs in `seen`
 	// are already selected.
@@ -148,11 +164,48 @@ class Tool {
 			add(dependency, base, seen, args);
 		args.push(["-cp", Path.join([root, info.classPath == null ? "" : info.classPath])]);
 		args.push(["-D", '$name=${info.version}']);
+		forward(info, root, args);
 		var extra = Path.join([root, "extraParams.hxml"]);
 		if (FileSystem.exists(extra))
 			for (pair in pairs(File.getContent(extra), extra))
 				args.push(pair);
 		targetLibraries(info, root, base, seen, args);
+	}
+
+	// Runs the hook of the haxelib at `root` for this phase, if it registers one, as hxn does
+	// for a haxelib that the program file selects, and adds what the hook returns to the reply.
+	// hxn runs hooks only for the haxelibs that the program file selects, so a haxelib that
+	// hxnme.toml brings in, such as hxn-window with its browser agent, gets its hook here.
+	static function forward(info:Dynamic, root:String, args:Array<Array<String>>) {
+		var cli:Dynamic = info.hxn == null ? null : info.hxn.cli;
+		if (cli == null || cli.hooks == null || (cli.hooks : Array<String>).indexOf(request.phase) < 0)
+			return;
+		var command:Array<String> = [for (part in (cli.command : Array<String>)) StringTools.replace(part, "{root}", root)];
+		var forwarded = Json.parse(Json.stringify(request));
+		forwarded.library = info.name;
+		forwarded.root = root;
+		var process = new Process(command[0], command.slice(1));
+		process.stdin.writeString(Json.stringify(forwarded));
+		process.stdin.close();
+		var out = process.stdout.readAll().toString();
+		var err = process.stderr.readAll().toString();
+		var code = process.exitCode();
+		process.close();
+		if (err.length > 0)
+			Sys.stderr().writeString(err);
+		if (code != 0)
+			fail('the ${request.phase} hook of ${info.name}, which hxnme.toml brings in, failed with status $code');
+		var reply:Dynamic = try Json.parse(out) catch (e:Dynamic) fail('the ${request.phase} hook of ${info.name} returned no JSON reply: $out');
+		if (reply.haxe_args != null)
+			for (pair in (reply.haxe_args : Array<Array<String>>))
+				args.push(pair);
+		if (reply.ash_args != null)
+			for (flag in (reply.ash_args : Array<Array<String>>))
+				ashArgs.push(flag);
+		if (reply.page_files != null)
+			for (page in (reply.page_files : Array<String>))
+				if (pageFiles.indexOf(page) < 0)
+					pageFiles.push(page);
 	}
 
 	// Adds the haxelibs that a plugin's manifest lists for the target triple.
@@ -220,7 +273,7 @@ class Tool {
 		return value;
 	}
 
-	// The flags of an extraParams.hxml, each with its value. hxn's hooks take
+	// Returns the flags of an extraParams.hxml, each with its value. hxn's hooks take
 	// -D, -cp and --macro.
 	static function pairs(text:String, source:String):Array<Array<String>> {
 		var out = [];
@@ -245,7 +298,7 @@ class Tool {
 		return out;
 	}
 
-	// The haxelibs a program file selects with -lib, -L or --library.
+	// Returns the haxelibs that a program file selects with -lib, -L or --library.
 	static function libraries(text:String):Array<String> {
 		var found = [];
 		var words = [for (word in ~/\s+/g.split(text)) if (word != "") word];

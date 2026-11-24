@@ -19,9 +19,9 @@ width = 1280
 height = 720
 ```
 
-The keys are `title`, `width`, `height` (logical pixels), `resizable`,
-`fullscreen`, `visible`, and `rate`, the frames in a second if the
-platform does not report the monitor's refresh rate.
+The keys are `title`, `width` and `height` in logical pixels, `resizable`,
+`fullscreen`, `visible`, and `rate`. `rate` sets the frames in a second for
+a platform that does not report the monitor's refresh rate.
 
 ```haxe
 class Main {
@@ -32,25 +32,29 @@ class Main {
 
 ## Behavior
 
-The plugin provides `hxn.me.Host`, so it paces the app's frames. It opens
-the window when the app runs and runs a frame at each refresh of the
-window's monitor, which it sets in `Display.refresh`. While `Display.vsync`
-is true and the window is visible, the present paces the frames, and the
-host only keeps a frame from starting before nine tenths of a period.
-Between frames it reads the window's events:
+The plugin provides `hxn.me.Host`, so it paces the app's frames. When the
+app runs, it opens the window. It runs a frame at each refresh of the
+window's monitor, and sets `Display.refresh` to that refresh rate. While
+`Display.vsync` is true and the window is visible, the present paces the
+frames. The host then only keeps each frame from starting before nine
+tenths of a period. In a web page, the window is the page's canvas. When
+the app is compiled to wasm with Ash, it runs in a worker and the host waits
+as it does natively. When it is compiled to wasm with hxcpp, `run` returns
+and the browser runs each turn of the host. Between frames, the host reads
+the window's events:
 
 - `Display` gets the size in physical pixels and the scale.
 - `Lifecycle.focused` and `Lifecycle.visible` follow the window.
 - `Lifecycle.suspended` follows the platform. The app runs no frame while it is suspended.
-- Closing the window stops the app after the current frame.
+- When the user closes the window, the app stops after the current frame.
 
 Systems read these as `Res<hxn.me.Display>` and `Res<hxn.me.Lifecycle>`.
-Every window event is also in `Res<hxn.me.Events<hxn.window.Event>>`, which
-the plugin's `publish` system fills in `Begin`. Readers in `Begin` add
-`after = hxn.me.window.WindowPlugin`. `WindowPlugin.post(event)` queues a
-synthetic event, for checks and input replay.
-Other plugins reach the window as `hxn.me.Plugins.hxnme_window.window`, a
-`hxn.window.Window`.
+The plugin's `publish` system also puts every window event in
+`Res<hxn.me.Events<hxn.window.Event>>`, in `Begin`. Systems that read it in
+`Begin` add `after = hxn.me.window.WindowPlugin`. `WindowPlugin.post(event)`
+queues a synthetic event. Checks and input replay use it.
+Other plugins get the window, a `hxn.window.Window`, from
+`hxn.me.Plugins.hxnme_window.window`.
 
 ## Checks
 

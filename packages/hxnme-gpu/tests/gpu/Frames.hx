@@ -5,8 +5,8 @@ import hxn.me.gpu.Pass;
 import hxn.me.gpu.RenderTarget;
 
 /**
-	The check adds a pass that clears a 4x4 render target and a pass that
-	clears the frame. After the plugin presents three frames, the check reads
+	`Frames` adds a pass that clears a 4x4 render target and a pass that
+	clears the frame. After the plugin presents three frames, `Frames` reads
 	the target back and stops the app.
 **/
 class Frames {
@@ -37,6 +37,7 @@ class Frames {
 		var state:Lifecycle = lifecycle;
 		gpu.device.readTexture(target.texture).then(pixels -> {
 			Sys.println('frames presented: at least 3');
+			Sys.println('backend: ${gpu.device.backend}');
 			Sys.println('target: ${target.texture.width}x${target.texture.height} of ${[for (c in 0...4) pixels.get(c)].join(", ")}');
 			state.quit();
 		}, e -> {

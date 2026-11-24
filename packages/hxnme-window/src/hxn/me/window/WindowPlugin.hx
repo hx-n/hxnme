@@ -10,19 +10,24 @@ import hxn.window.Window;
 import hxn.window.WindowAttributes;
 
 /**
-	The window of the app, and the host that paces its frames. The window
-	opens when the app runs, with the keys of the `[window]` table in
-	`hxnme.toml`. The host runs a frame at each refresh of the monitor that
-	shows the window, and reads the window's events between frames. If
-	`Display.vsync` is true and the window is visible, the present waits for
-	the refresh, so the host runs each frame when the last one is presented.
-	It still waits until most of a period has passed, in case a driver's
-	present returns early. Otherwise the host waits on its own timer. It sets
-	`Display` from the window's size and scale. It sets `Lifecycle` from the
-	window's focus and visibility, and from the platform's suspend and resume.
-	Closing the window stops the app. Each event of the window is also in
-	`Events<hxn.window.Event>` for the frame that follows it, which the
-	plugin's system `publish` fills in `Begin`.
+	`WindowPlugin` opens the app's window and runs its frames as the app's
+	host. When the app runs, the plugin opens the window with the keys of the
+	`[window]` table in `hxnme.toml`. The host runs a frame at each refresh of
+	the monitor that shows the window, and reads the window's events between
+	frames. When the app is compiled to wasm with hxcpp, `run` returns, and
+	the browser runs each turn of the host.
+
+	If `Display.vsync` is true and the window is visible, the present waits
+	for the refresh. The host then runs each frame after the present of the
+	last frame returns. It still waits until most of a period has passed, in
+	case a driver's present returns early. Otherwise the host waits on its
+	own timer.
+
+	The host sets `Display` from the window's size and scale. It sets
+	`Lifecycle` from the window's focus and visibility, and from the
+	platform's suspend and resume. When the user closes the window, the app
+	stops. The plugin's system `publish` also puts each event of the window in
+	`Events<hxn.window.Event>`, in `Begin` of the frame that follows the event.
 **/
 @:plugin("hxnme-window", description = "Opens the app's window and paces its frames")
 @:provides(hxn.me.Host)
@@ -30,11 +35,12 @@ class WindowPlugin {
 	/** The window, after the app starts to run. **/
 	public var window(default, null):Null<Window>;
 
-	// The part of a refresh period after a frame starts before the next one
-	// is due, when the present waits for the refresh.
+	// When the present waits for the refresh, the next frame is due this part
+	// of a refresh period after the last frame starts.
 	static inline final PRESENT_SHARE = 0.9;
 
-	// The events since the last frame, which `publish` moves to the queue.
+	// `queued` holds the events since the last frame, until `publish` moves
+	// them to the queue.
 	static final queued:Array<Event> = [];
 
 	var suspended = false;
@@ -74,20 +80,53 @@ class WindowPlugin {
 		var period = 1 / loop.display.refresh;
 		var last = Timer.stamp();
 		var next = last;
+		#if emscripten
+		// The browser runs the frames. Each turn reads the window's events, runs
+		// the frame that is due, if any, and returns to the browser. The browser
+		// then delivers the next events.
+		function turn() {
+			while (loop.lifecycle.running) {
+				var event = window.poll();
+				switch event {
+					case None:
+						break;
+					case _:
+						handle(event, loop);
+				}
+			}
+			var now = Timer.stamp();
+			if (loop.lifecycle.running && !suspended && now >= next) {
+				loop.frame(now - last);
+				last = now;
+				next += period;
+				if (next < now)
+					next = now;
+			}
+			if (loop.lifecycle.running)
+				hxn.native.Emscripten.later(turn);
+			else {
+				window.close();
+				this.window = null;
+			}
+		}
+		hxn.native.Emscripten.later(turn);
+		return;
+		#end
 		while (loop.lifecycle.running) {
 			if (suspended) {
-				// While the app is suspended, it runs no frame, so wait for the
-				// platform to resume it.
+				// The app runs no frame while it is suspended, so the host waits for
+				// the platform to resume it.
 				handle(window.wait(-1), loop);
 				last = next = Timer.stamp();
 				continue;
 			}
-			// A hidden or occluded window does not wait for the refresh to
-			// present, so the timer paces it. When the present waits for the
-			// refresh, the next frame is due most of a period after the last
-			// one started. A present that waits returns after that, so the
-			// host does not wait. A present that returns early cannot run
-			// frames faster than the display shows them.
+			// The present of a hidden or occluded window does not wait for the
+			// refresh, so the timer paces that window. When the present waits
+			// for the refresh, the next frame is due most of a period after the
+			// last one started. Such a present returns after that time, so the
+			// host does not wait. If a present returns early, the host still
+			// waits until the frame is due, so the frames do not run faster
+			// than the display shows them.
 			var presentPaces = loop.display.vsync && visible;
 			var due = presentPaces ? last + period * PRESENT_SHARE : next;
 			var left = due - Timer.stamp();
@@ -112,8 +151,9 @@ class WindowPlugin {
 		this.window = null;
 	}
 
-	// The frames in a second: the refresh rate of the monitor that shows the
-	// window, or `window.rate` in hxnme.toml if the platform does not report it.
+	// Returns the frames in a second. That is the refresh rate of the monitor
+	// that shows the window, or `window.rate` in hxnme.toml for a platform
+	// that does not report the refresh rate.
 	function rate(window:Window):Float {
 		var monitor = window.currentMonitor();
 		var millihertz = monitor.valid() ? monitor.refreshRate() : 0;
