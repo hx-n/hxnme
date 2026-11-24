@@ -81,7 +81,9 @@ and each one is a haxelib under `packages/`. Read the
   with their own output from before the change.
 - Run every runtime that the changed code supports, under a timeout.
 - CI runs every check on macOS, Linux and Windows, in one workflow for each
-  runtime: `ash.yml`, `hxcpp.yml` and `cppia.yml`. `checks.yml` lists the
+  runtime: `ash.yml`, `hxcpp.yml` and `cppia.yml`, and `hashlink.yml` for
+  stock HashLink on Linux and Windows. Ash runs in hybrid mode, and each
+  check is also built ahead of time. `checks.yml` lists the
   checks: the kernel, physics and plugin checks, and a game made with
   `hxn me new`, on each platform's default GPU driver. `ios.yml` builds the
   kernel and physics checks with Ash for an iPhone simulator, and compares

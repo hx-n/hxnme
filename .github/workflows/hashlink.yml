@@ -1,0 +1,19 @@
+name: HashLink
+
+# Every check on stock HashLink 1.15, on Linux and Windows. checks.yml lists them.
+# HashLink's JIT has no arm64 build, and the macOS runners are arm64.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+    with:
+      runtime: hashlink
+      oses: '["ubuntu-latest", "windows-latest"]'

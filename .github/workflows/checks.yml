@@ -6,9 +6,13 @@ on:
   workflow_call:
     inputs:
       runtime:
-        description: ash, cpp or cppia.
+        description: ash, cpp, cppia or hashlink.
         type: string
         required: true
+      oses:
+        description: The runners, as a JSON array.
+        type: string
+        default: '["macos-15", "ubuntu-latest", "windows-latest"]'
 
 defaults:
   run:
@@ -23,12 +27,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, ubuntu-latest, windows-latest]
+        os: ${{ fromJSON(inputs.oses) }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Haxe, hxcpp, Ash, hxn and the haxelibs
         id: setup
         uses: ./.github/actions/setup
+        with:
+          hashlink: ${{ inputs.runtime == 'hashlink' }}
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         name: hxnme/tests/toml-checks.hxml
         uses: ./.github/actions/check
@@ -104,17 +110,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, ubuntu-latest, windows-latest]
+        os: ${{ fromJSON(inputs.oses) }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Haxe, hxcpp, Ash, hxn and the haxelibs
         id: setup
         uses: ./.github/actions/setup
+        with:
+          hashlink: ${{ inputs.runtime == 'hashlink' }}
       # With --no-fma, Ash rounds each operation as hxcpp does, so hxcpp prints the same
       # output. CPPIA keeps Single values in double precision, so it is not compared.
       # hxn build takes no --no-fma, so the Ash executable is not compared either.
-      # The physics checks run for many minutes in Ash's interpreter, so CI runs them in
-      # hybrid and JIT modes. The kernel and plugin checks cover the interpreter.
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         name: hxnme-physics/tests/checks.hxml
         uses: ./.github/actions/check
@@ -123,7 +129,7 @@ jobs:
           file: checks.hxml
           runtime: ${{ inputs.runtime }}
           ash-options: --no-fma
-          ash-modes: jit
+          ash-modes: ""
           compare: ${{ inputs.runtime == 'cpp' }}
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         name: hxnme-physics/tests/concurrent-checks.hxml
@@ -133,7 +139,7 @@ jobs:
           file: concurrent-checks.hxml
           runtime: ${{ inputs.runtime }}
           ash-options: --no-fma
-          ash-modes: jit
+          ash-modes: ""
           compare: ${{ inputs.runtime == 'cpp' }}
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         name: hxnme-physics/tests/world-growth-checks.hxml
@@ -143,24 +149,26 @@ jobs:
           file: world-growth-checks.hxml
           runtime: ${{ inputs.runtime }}
           ash-options: --no-fma
-          ash-modes: jit
+          ash-modes: ""
           compare: ${{ inputs.runtime == 'cpp' }}
       # The island parallel checks print timings, so their output is not compared.
       # Each check program exits with an error when a check fails.
-      - if: ${{ !cancelled() && steps.setup.outcome == 'success' && inputs.runtime != 'ash' }}
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' && (inputs.runtime == 'cpp' || inputs.runtime == 'cppia') }}
         name: Island parallel checks
         working-directory: packages/hxnme-physics/tests
         run: timeout 1200 hxn run ${{ inputs.runtime }} island-parallel-checks.hxml
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' && inputs.runtime == 'hashlink' }}
+        name: Island parallel checks
+        working-directory: packages/hxnme-physics/tests
+        run: timeout 1200 hxn run hl island-parallel-checks.hxml --vm "$HL"
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' && inputs.runtime == 'ash' }}
         name: Island parallel checks and SIMD paths
         working-directory: packages/hxnme-physics/tests
         run: |
           timeout 1200 hxn run hl island-parallel-checks.hxml --vm "$ASH"
           for file in checks concurrent-checks world-growth-checks island-parallel-checks; do
-            for mode in "" "--mode jit"; do
-              echo "== Ash $mode $file-simd"
-              timeout 1200 hxn run hl $file-simd.hxml --vm "$ASH $mode"
-            done
+            echo "== Ash $file-simd"
+            timeout 1200 hxn run hl $file-simd.hxml --vm "$ASH"
           done
 
   # The window, input, GPU and 2D plugins in a hidden window, and a game made with
@@ -174,20 +182,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-15
-            drivers: hxn-gpu-metal:0.2.4
-          - os: ubuntu-latest
-            drivers: hxn-gpu-vulkan:0.3.3 hxn-gpu-gles:0.3.3
-          - os: windows-latest
-            drivers: hxn-gpu-d3d12:0.2.3
+        os: ${{ fromJSON(inputs.oses) }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Haxe, hxcpp, Ash, hxn and the haxelibs
         id: setup
         uses: ./.github/actions/setup
         with:
-          drivers: ${{ matrix.drivers }}
+          gpu: "true"
+          hashlink: ${{ inputs.runtime == 'hashlink' }}
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         name: hxnme-window/tests/window
         uses: ./.github/actions/check

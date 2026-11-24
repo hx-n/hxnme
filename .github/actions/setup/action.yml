@@ -2,9 +2,12 @@ name: setup
 description: Haxe, hxcpp, Ash, the hxn command and the haxelibs hxnme runs on, with this checkout's packages as dev links.
 
 inputs:
-  drivers:
-    description: The GPU driver haxelibs to install at their versions, such as "hxn-gpu-metal:0.2.4". Empty for checks that open no window.
-    default: ""
+  gpu:
+    description: true to install the GPU drivers of the runner's platform, and on Linux the libraries a window and a GPU need.
+    default: "false"
+  hashlink:
+    description: true to install stock HashLink 1.15 and set HL to its command.
+    default: "false"
 
 runs:
   using: composite
@@ -49,8 +52,17 @@ runs:
     # same hxn and the same hxnme packages.
     - shell: bash
       run: |
+        # Each platform's default GPU drivers, as hxnme-gpu's manifest lists them.
+        drivers=""
+        if [ "${{ inputs.gpu }}" = true ]; then
+          case "$RUNNER_OS" in
+            macOS) drivers="hxn-gpu-metal:0.2.4" ;;
+            Linux) drivers="hxn-gpu-vulkan:0.3.3 hxn-gpu-gles:0.3.3" ;;
+            Windows) drivers="hxn-gpu-d3d12:0.2.3" ;;
+          esac
+        fi
         for lib in format:3.8.0 hashlink:1.15.0 ash-simd:0.1.1 hxnsl:0.2.1 hxn-file:0.2.1 hxn-assets:0.2.1 \
-          hxn-text:0.1.0 hxn-window:0.2.3 hxn-gpu:0.2.5 ${{ inputs.drivers }}; do
+          hxn-text:0.1.0 hxn-window:0.2.3 hxn-gpu:0.2.5 $drivers; do
           haxelib install "${lib%%:*}" "${lib##*:}" --always --skip-dependencies
         done
         haxelib dev hxn "$RUNNER_TEMP/hxn"
@@ -99,9 +111,28 @@ runs:
         } > "$RUNNER_TEMP/ash/libhl.def"
         "$bin/llvm-dlltool" -m i386:x86-64 -d "$RUNNER_TEMP/ash/libhl.def" -D libhl.dll -l "$RUNNER_TEMP/ash/libhl.dll.lib"
         echo "$(cygpath -w "$RUNNER_TEMP/ash")" >> "$GITHUB_PATH"
-    - if: runner.os == 'Linux' && inputs.drivers != ''
+    - if: runner.os == 'Linux' && inputs.gpu == 'true'
       shell: bash
       run: |
         sudo apt-get update
         sudo apt-get install -y libvulkan1 mesa-vulkan-drivers libegl1 libgles2 libegl-mesa0 libgl1-mesa-dri \
           libxkbcommon-x11-0 libxcursor1 libxrandr2 libxi6 libudev-dev xvfb xauth
+    # Stock HashLink 1.15, with fmt.hdll, which hxn-assets uses to decode PNG files.
+    # HashLink's JIT has no arm64 build, so it runs on the Linux and Windows runners.
+    - if: inputs.hashlink == 'true' && runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get install -y libpng-dev libturbojpeg0-dev libvorbis-dev zlib1g-dev > /dev/null
+        git clone -q --depth 1 --branch 1.15 https://github.com/HaxeFoundation/hashlink "$RUNNER_TEMP/hashlink"
+        make -C "$RUNNER_TEMP/hashlink" libhl hl fmt > /dev/null
+        echo "HL=$RUNNER_TEMP/hashlink/hl" >> "$GITHUB_ENV"
+        echo "LD_LIBRARY_PATH=$RUNNER_TEMP/hashlink${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+    - if: inputs.hashlink == 'true' && runner.os == 'Windows'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        temp="$(cygpath -u "$RUNNER_TEMP")"
+        gh release download 1.15 --repo HaxeFoundation/hashlink --pattern '*-win.zip' --dir "$temp"
+        unzip -q "$temp"/*-win.zip -d "$temp/hl"
+        echo "HL=$(cygpath -w "$(find "$temp/hl" -name hl.exe | head -1)")" >> "$GITHUB_ENV"
