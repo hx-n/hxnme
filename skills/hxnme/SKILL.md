@@ -119,7 +119,7 @@ callbacks.
 Every schedule has the kernel resources `hxn.me.Time` (`delta`, `elapsed`,
 `frame`, `step`, `steps`, `fixedElapsed`, `alpha`), `hxn.me.Lifecycle`
 (`running`, `suspended`, `visible`, `focused`, `quit()`) and
-`hxn.me.Display` (`width`, `height`, `scale`). Take them as `Res<T>` or
+`hxn.me.Display` (`width`, `height`, `scale`, `refresh`, `vsync`). Take them as `Res<T>` or
 `ResMut<T>`.
 
 The host paces the frames and calls `loop.frame(seconds)` on the

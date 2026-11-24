@@ -2,6 +2,7 @@ package hxn.me.gpu;
 
 import hxn.gpu.GpuDevice;
 import hxn.gpu.SurfaceTargets;
+import hxn.me.Display;
 import hxn.me.Lifecycle;
 import hxn.me.Project;
 import hxn.me.Res;
@@ -19,7 +20,8 @@ import hxn.me.window.WindowPlugin;
 	before `present`, so they add `before = hxn.me.gpu.GpuPlugin.present`.
 
 	`gpu.vsync` in hxnme.toml sets whether each frame waits for the display's
-	refresh before it shows. The default is true.
+	refresh before it shows. The default is true. The plugin copies it to
+	`Display.vsync`, so the host leaves the pacing of frames to the present.
 **/
 @:plugin("hxnme-gpu", description = "Opens the GPU on the app's window and draws a frame graph into each frame")
 class GpuPlugin {
@@ -28,7 +30,7 @@ class GpuPlugin {
 	public function start():Void {}
 
 	@:system(Begin, after = WindowPlugin.publish, description = "Opens the GPU on the window, then takes each frame's texture")
-	static function prepare(gpu:ResMut<Gpu>, lifecycle:Res<Lifecycle>) {
+	static function prepare(gpu:ResMut<Gpu>, lifecycle:Res<Lifecycle>, display:ResMut<Display>) {
 		var window = hxn.me.Plugins.hxnme_window.window;
 		if (window == null)
 			return;
@@ -55,8 +57,10 @@ class GpuPlugin {
 		if (width <= 0 || height <= 0)
 			return;
 		var surface = state.surface;
-		if (surface.width != width || surface.height != height)
+		if (surface.width != width || surface.height != height) {
 			surface.configure(width, height, state.format, Project.flag("gpu.vsync", true));
+			(display : Display).setVsync(surface.vsync);
+		}
 		state.take(surface.currentTexture());
 	}
 

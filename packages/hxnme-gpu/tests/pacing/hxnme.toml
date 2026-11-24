@@ -1,0 +1,7 @@
+# The check uses the window and GPU plugins of this checkout, with a visible window, because a hidden window does not wait for the refresh.
+plugins = ["../../../hxnme-window", "../.."]
+
+[window]
+title = "hxnme pacing check"
+width = 64
+height = 64

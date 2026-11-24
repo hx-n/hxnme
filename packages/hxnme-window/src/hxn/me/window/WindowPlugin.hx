@@ -13,7 +13,11 @@ import hxn.window.WindowAttributes;
 	The window of the app, and the host that paces its frames. The window
 	opens when the app runs, with the keys of the `[window]` table in
 	`hxnme.toml`. The host runs a frame at each refresh of the monitor that
-	shows the window, and reads the window's events between frames. It sets
+	shows the window, and reads the window's events between frames. If
+	`Display.vsync` is true and the window is visible, the present waits for
+	the refresh, so the host runs each frame when the last one is presented.
+	It still waits until most of a period has passed, in case a driver's
+	present returns early. Otherwise the host waits on its own timer. It sets
 	`Display` from the window's size and scale. It sets `Lifecycle` from the
 	window's focus and visibility, and from the platform's suspend and resume.
 	Closing the window stops the app. Each event of the window is also in
@@ -25,6 +29,10 @@ import hxn.window.WindowAttributes;
 class WindowPlugin {
 	/** The window, after the app starts to run. **/
 	public var window(default, null):Null<Window>;
+
+	// The part of a refresh period after a frame starts before the next one
+	// is due, when the present waits for the refresh.
+	static inline final PRESENT_SHARE = 0.9;
 
 	// The events since the last frame, which `publish` moves to the queue.
 	static final queued:Array<Event> = [];
@@ -62,7 +70,8 @@ class WindowPlugin {
 		visible = Project.flag("window.visible", true);
 		loop.display.set(window.width(), window.height(), window.scaleFactor());
 		loop.lifecycle.set(suspended, visible, focused);
-		var period = 1 / rate(window);
+		loop.display.setRefresh(rate(window));
+		var period = 1 / loop.display.refresh;
 		var last = Timer.stamp();
 		var next = last;
 		while (loop.lifecycle.running) {
@@ -73,7 +82,15 @@ class WindowPlugin {
 				last = next = Timer.stamp();
 				continue;
 			}
-			var left = next - Timer.stamp();
+			// A hidden or occluded window does not wait for the refresh to
+			// present, so the timer paces it. When the present waits for the
+			// refresh, the next frame is due most of a period after the last
+			// one started. A present that waits returns after that, so the
+			// host does not wait. A present that returns early cannot run
+			// frames faster than the display shows them.
+			var presentPaces = loop.display.vsync && visible;
+			var due = presentPaces ? last + period * PRESENT_SHARE : next;
+			var left = due - Timer.stamp();
 			var event = window.wait(left > 0 ? left : 0);
 			switch event {
 				case None:
@@ -81,7 +98,7 @@ class WindowPlugin {
 					handle(event, loop);
 					continue;
 			}
-			if (Timer.stamp() < next)
+			if (Timer.stamp() < due)
 				continue;
 			var now = Timer.stamp();
 			if (!loop.frame(now - last))

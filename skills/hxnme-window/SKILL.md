@@ -34,7 +34,10 @@ class Main {
 
 The plugin provides `hxn.me.Host`, so it paces the app's frames. It opens
 the window when the app runs and runs a frame at each refresh of the
-window's monitor. Between frames it reads the window's events:
+window's monitor, which it sets in `Display.refresh`. While `Display.vsync`
+is true and the window is visible, the present paces the frames, and the
+host only keeps a frame from starting before nine tenths of a period.
+Between frames it reads the window's events:
 
 - `Display` gets the size in physical pixels and the scale.
 - `Lifecycle.focused` and `Lifecycle.visible` follow the window.

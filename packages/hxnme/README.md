@@ -38,6 +38,7 @@ The kernel reads these keys:
 | `app.step_snap` | The tolerance for a whole number of fixed steps in a frame, as a part of one step. The default is 0.1, and 0 turns the correction off. |
 | `app.rate` | The number of frames in a second on `HeadlessHost`, the host of an app without a window. The default is 60. |
 | `display.width`, `display.height`, `display.scale` | The display on `HeadlessHost`. The defaults are 1280, 720 and 1. |
+| `display.refresh` | The refresh rate of the display, in frames a second, if the host does not set it. The default is 60. |
 | `libraries.<plugin>` | Replaces the haxelibs that the plugin's manifest lists for some targets. Each key is part of a target triple, such as `linux`, and its value is the list for every target whose triple contains it. The longest key that matches applies. Paths are relative to `hxnme.toml`. |
 
 Each plugin keeps its keys in its own table, such as `[window]`. Code reads
@@ -291,7 +292,7 @@ as other resources:
 |---|---|
 | `hxn.me.Time` | `delta`, the seconds of the last frame. `elapsed`, the seconds of all frames. `frame`, the number of frames. `step`, the seconds of a fixed step. `steps`, the fixed steps of this frame. `fixedElapsed`, the seconds of all fixed steps. `alpha`, the fraction of a fixed step, from 0 to 1, that the clock counted and did not run yet. |
 | `hxn.me.Lifecycle` | `running`, `suspended`, `visible` and `focused`. `quit()` stops the app after the current frame. |
-| `hxn.me.Display` | `width` and `height` in physical pixels, and `scale`, the physical pixels for each logical pixel. |
+| `hxn.me.Display` | `width` and `height` in physical pixels, `scale`, the physical pixels for each logical pixel, `refresh`, the frames that the display shows in a second, and `vsync`, whether presenting a frame waits for the refresh. |
 
 The host reads the events of the platform, and it sets `Lifecycle` and
 `Display`. `hxn.me.Host` is a service, which is an interface with `@:service`. Plugins provide a service with `@:provides` on the plugin class, and the class has the methods of the interface. As with

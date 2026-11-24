@@ -49,7 +49,7 @@ suspended.
 
 | Key | Effect |
 |---|---|
-| `gpu.vsync` | Whether each frame waits for the display's refresh to show. The default is `true`. |
+| `gpu.vsync` | Whether each frame waits for the display's refresh to show. The default is `true`. The plugin copies it to `Display.vsync`, and the window host then leaves the pacing of frames to the present. |
 
 ## Cameras
 
@@ -125,3 +125,9 @@ submission.
 In `tests/gpu`, run `hxn check hl cpp cppia app.hxml --vm ash`. The check
 opens a hidden window, clears a render target and the frame for three
 frames, and reads the render target back.
+
+In `tests/pacing`, run the same command. The check opens a visible window,
+because a hidden window does not wait for the refresh. It presents with
+vsync and records how long each frame takes after the first 30 frames. The
+mean frame time must be within a tenth of the refresh period, and fewer
+than one frame in twenty may take more than one and a half periods.

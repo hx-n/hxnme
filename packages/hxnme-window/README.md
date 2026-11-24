@@ -25,8 +25,15 @@ height = 720
 | `window.visible` | Whether the window shows. The default is `true`. |
 | `window.rate` | The frames in a second if the platform does not report the refresh rate of the monitor. The default is 60. |
 
-The host runs a frame at each refresh of the monitor that shows the window.
-It sets the kernel resources from the window:
+The host runs a frame at each refresh of the monitor that shows the window,
+and sets `Display.refresh` to the monitor's refresh rate. If the GPU plugin
+presents with vsync, it sets `Display.vsync`. While `Display.vsync` is true
+and the window is visible, the present paces the frames. The host then
+starts each frame when the last one is presented, but not before nine
+tenths of a refresh period. Otherwise the host paces the frames with its
+own timer.
+
+The host sets the kernel resources from the window:
 
 | Event | Effect |
 |---|---|
