@@ -61,14 +61,19 @@ draw.text(label, x, y, color, alpha, angle);   // upright through y-up and Scree
 
 Assets through the kernel's `hxn.me.Assets`: declare `AssetRef<Texture>`
 (PNG), `AssetRef<hxn.text.Font>` (TTF, OTF, WOFF2) and `AssetRef<Atlas>`
-(JSON of regions with an image; `slice: [l, t, r, b]` for nine-slices) fields
+(JSON of regions with an image; `slice: [l, t, r, b]` for nine-slices;
+`pivot: [fx, fy]` from the top left, default center, which region, shadowOf
+and addRegion place at x, y) fields
 on an `@:build(hxn.me.Assets.build())` class, and declare the atlas image too:
 
 ```haxe
-assets.load(GameAssets.Sheet).then(a -> sheet = a);   // sheet.release() closes it
-draw.region(sheet.value.region("hero"), x, y);
-draw.regionSlice(sheet.value.region("panel"), x, y, w, h, tint, alpha, angle, scale);
-sprites.addRegion(sheet.value.region("tree"), x, y);
+assets.load(GameAssets.Sheet).then(a -> sheet = a);   // Asset<GameAssetsSheetAtlas>; sheet.release() closes it
+draw.region(sheet.value.hero, x, y);   // a property for each region, from the JSON at compile time
+draw.regionSlice(sheet.value.panel, x, y, w, h, tint, alpha, angle, scale);
+static final ground = new Shadow(offsetX, offsetY, blur, color, alpha, squash);   // made once
+draw.region(sheet.value.hero, x, y, ground);   // the shadow first, from the same pivot
+sprites.addRegion(sheet.value.tree, x, y, ground);   // the shadow moves and is removed with the sprite
+draw.shadowOf(sheet.value.hero, x, y, offsetX, offsetY, blur, color, alpha, squash);   // a silhouette on its own
 ```
 
 `new Texture(width, height, rgbaPixels)` at any time; it uploads once the

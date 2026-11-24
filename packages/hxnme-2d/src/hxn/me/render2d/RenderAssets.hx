@@ -25,6 +25,12 @@ class RenderAssets {
 	/** A JSON file of regions, and the image it lists, as an `Atlas`. The image must be declared too, so that it is bundled. **/
 	public static final atlas = new AssetType<Atlas>("hxnme-2d atlas", decodeAtlas);
 
+	static function sortedNames(regions:Dynamic):Array<String> {
+		var names = Reflect.fields(regions);
+		names.sort(Reflect.compare);
+		return names;
+	}
+
 	static function decodeAtlas(bytes:Bytes, context:AssetContext):Future<Atlas> {
 		var data:Dynamic = try haxe.Json.parse(bytes.toString()) catch (e:haxe.Exception) return Future.rejected(e);
 		if (!Std.isOfType(data.image, String))
@@ -32,11 +38,14 @@ class RenderAssets {
 		return context.load(context.resolve(data.image), texture).map(image -> {
 			var made = new Atlas(image);
 			var regions:Dynamic = data.regions;
+			var pivot:Array<Float> = data.pivot != null ? data.pivot : [0.5, 0.5];
 			if (regions != null)
-				for (name in Reflect.fields(regions)) {
+				// In the order of their names, which the properties of a declared atlas index.
+				for (name in sortedNames(regions)) {
 					var r:Dynamic = Reflect.field(regions, name);
 					var slice:Array<Int> = r.slice != null ? r.slice : [0, 0, 0, 0];
-					made.add(new Region(name, image, r.x, r.y, r.width, r.height, slice[0], slice[1], slice[2], slice[3]));
+					var p:Array<Float> = r.pivot != null ? r.pivot : pivot;
+					made.add(new Region(name, image, r.x, r.y, r.width, r.height, slice[0], slice[1], slice[2], slice[3], p[0], p[1]));
 				}
 			made;
 		});

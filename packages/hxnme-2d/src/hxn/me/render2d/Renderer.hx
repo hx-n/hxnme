@@ -208,9 +208,9 @@ class Renderer {
 		}
 		var pipeline = pipelineFor(into.format, camera.depth);
 		pass.setPipeline(pipeline);
-		for (group in sprites.groups)
-			if (group.layer & camera.layers != 0 && group.instances.length > 0)
-				drawRange(view, pass, pipeline, group.plane, group.clip, group.texture, group.buffers[set], 0, group.instances.length);
+		// Shadows first, so that no shadow covers a sprite.
+		drawGroups(view, pass, pipeline, true);
+		drawGroups(view, pass, pipeline, false);
 		for (run in draw.runs)
 			if (run.layer & camera.layers != 0)
 				drawRange(view, pass, pipeline, run.plane, run.clip, run.texture != null ? run.texture : white, buffers[set], run.start, run.count);
@@ -221,6 +221,12 @@ class Renderer {
 		if (textures.length > 0)
 			for (view in views)
 				view.forget(textures);
+
+	// Draws the sprite groups in the camera's layers that hold shadows, or the groups that do not.
+	function drawGroups(view:View, pass:RenderPass, pipeline:RenderPipeline, shadows:Bool):Void
+		for (group in sprites.groups)
+			if (group.shadows == shadows && group.layer & view.camera.layers != 0 && group.instances.length > 0)
+				drawRange(view, pass, pipeline, group.plane, group.clip, group.texture, group.buffers[set], 0, group.instances.length);
 
 	// Draws `count` instances of `source` from index `start`, on `plane` inside `clip`, with `image`.
 	function drawRange(view:View, pass:RenderPass, pipeline:RenderPipeline, plane:Null<Plane>, clip:Null<Clip>, image:Texture, source:Array<Buffer>,

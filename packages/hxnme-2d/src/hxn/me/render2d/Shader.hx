@@ -22,6 +22,15 @@ package hxn.me.render2d;
 	  `CornerShape` in `shape.z`, blurred by `shape.y` as with CSS
 	  `box-shadow`. The quad is larger than the rectangle by `shape.w` on each
 	  side, to hold the blur.
+	- 7 is the silhouette of the part of `image` in `uv`: its alpha, blurred by
+	  `shape.y`, in `color`. The quad is larger than the silhouette, which is
+	  `radius.xy` large, by `shape.z` on each side.
+
+	For kinds 0 and 7, when `radius.w` is 1, `rect.xy` is the position of the
+	pivot, and `xform.zw` the pivot as a fraction of the quad, measured from
+	the image's top left. The shader places the quad's corner from it, for the
+	view's orientation. Otherwise `rect.xy` is the corner with the smaller
+	coordinates, and `xform.zw` only the point that `angle` turns about.
 
 	For kinds 2 to 4, when `shape.y` is above 0, the shape has a border of that
 	width in the color in `border`. For kinds 0 and 1, when `shape.w` is above
@@ -90,11 +99,19 @@ class Shader implements hxn.gpu.Shader {
 				mirror = 1.;
 			var cornerY = mix(r.y, 2. * input.shape.z + input.shape.w - r.y - r.w, mirror);
 			var pivot = vec2(input.xform.z, mix(input.xform.w, 1. - input.xform.w, mirror));
+			// A sprite or silhouette with `radius.w` set is placed by its pivot: `rect.xy` is
+			// the pivot's position, and `xform.zw` the pivot as a fraction of the quad, top
+			// first in the image. The image's top is the quad's larger y in a view with y up.
+			if ((input.shape.x < 0.5 || input.shape.x > 6.5) && input.radius.w > 0.5) {
+				pivot = vec2(input.xform.z, flags.x > 0.5 ? input.xform.w : 1. - input.xform.w);
+				cornerY = r.y - pivot.y * r.w;
+			}
+			var cornerX = (input.shape.x < 0.5 || input.shape.x > 6.5) && input.radius.w > 0.5 ? r.x - pivot.x * r.z : r.x;
 			var origin = pivot * r.zw;
 			var d = local - origin;
 			var c = input.xform.x;
 			var s = input.xform.y;
-			var world = vec2(r.x, cornerY) + origin + vec2(d.x * c - d.y * s, d.x * s + d.y * c);
+			var world = vec2(cornerX, cornerY) + origin + vec2(d.x * c - d.y * s, d.x * s + d.y * c);
 			at = world;
 			output.position = matrix0 * world.x + matrix1 * world.y + matrix3;
 		}
@@ -126,7 +143,25 @@ class Shader implements hxn.gpu.Shader {
 				result = sampled * tint;
 			else if (kind.x < 1.5)
 				result = vec4(tint.rgb, tint.a * sampled.r);
-			else if (kind.x > 5.5)
+			else if (kind.x > 6.5) {
+				// The sprite's silhouette, its alpha blurred over a 5 by 5 grid of samples.
+				// Samples outside the sprite's part of the image count as transparent.
+				var spriteSize = max(radii.xy, vec2(0.0001, 0.0001));
+				var base = (fromTop - vec2(kind.z, kind.z)) / spriteSize;
+				var spread = vec2(kind.y, kind.y) * 0.5 / spriteSize;
+				var sum = 0.;
+				var weights = 0.;
+				for (i in 0...5)
+					for (j in 0...5) {
+						var o = vec2(float(i) - 2., float(j) - 2.);
+						var w = exp(-dot(o, o) * 0.25);
+						var f = base + o * spread;
+						var inside = step(0., f.x) * step(f.x, 1.) * step(0., f.y) * step(f.y, 1.);
+						sum += image.getLod(mix(region.xy, region.zw, clamp(f, vec2(0., 0.), vec2(1., 1.))), 0.).a * inside * w;
+						weights += w;
+					}
+				result = vec4(tint.rgb, tint.a * sum / weights);
+			} else if (kind.x > 5.5)
 				result = vec4(tint.rgb, tint.a * (kind.y > 0.001 ? 0.5 * (1. - erf(box / (0.7071 * kind.y))) : fill));
 			else if (kind.x > 4.5)
 				result = sampled * tint;

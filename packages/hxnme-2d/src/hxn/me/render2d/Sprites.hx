@@ -45,6 +45,10 @@ class Sprites {
 	final slotGroup:Array<Null<SpriteGroup>> = [];
 	// For each slot that holds a text: its entry.
 	final slotText:Array<Null<TextEntry>> = [];
+	// For each slot of a region with a shadow: the shadow's slot, or -1, its style, and the region.
+	final slotShadow:Array<Int> = [];
+	final slotStyle:Array<Null<Shadow>> = [];
+	final slotRegion:Array<Null<Region>> = [];
 	final slotIndex:Array<Int> = [];
 	final slotGeneration:Array<Int> = [];
 	final free:Array<Int> = [];
@@ -77,13 +81,43 @@ class Sprites {
 	}
 
 	/**
-		Adds `region` of an atlas over the rectangle at `x`, `y`, and returns
-		its handle. The rectangle is the region's size in texture pixels unless
-		`width` and `height` are given.
+		Adds `region` of an atlas with its pivot at `x`, `y`, and returns its
+		handle. It is the region's size in texture pixels unless `width` and
+		`height` are given. `move`, `xOf` and `yOf` then use the pivot. With a
+		`shadow`, the sprite casts it: `move`, `resize` and `remove` move,
+		size and remove the shadow with the sprite, and the shadow does not
+		turn. Shadows draw before the sprites of their layer.
 	**/
-	public function addRegion(region:Region, x:Float, y:Float, ?width:Float, ?height:Float, color = 0xFFFFFF, alpha = 1.0, angle = 0.0):Sprite
-		return add(region.texture, x, y, width != null ? width : region.width, height != null ? height : region.height, color, alpha, angle, region.u0,
-			region.v0, region.u1, region.v1);
+	public function addRegion(region:Region, x:Float, y:Float, ?shadow:Shadow, ?width:Float, ?height:Float, color = 0xFFFFFF, alpha = 1.0,
+			angle = 0.0):Sprite {
+		var w = width != null ? width : region.width, h = height != null ? height : region.height;
+		var shadowSlot = -1;
+		if (shadow != null) {
+			// The shadow is an instance of its own in a group of shadows, which draws before the other groups.
+			var group = groupFor(region.texture, true);
+			var at = group.instances.add();
+			Draw.silhouette(group.instances, at, region, x, y, w, h, shadow.offsetX, shadow.offsetY, shadow.blur, shadow.color, shadow.alpha,
+				shadow.squash);
+			for (field in 0...Instances.FIELDS)
+				group.changed(field, at);
+			shadowSlot = take();
+			// A shadow is not counted as a sprite.
+			length--;
+			slotGroup[shadowSlot] = group;
+			slotIndex[shadowSlot] = at;
+			group.slots[at] = shadowSlot;
+		}
+		var sprite = add(region.texture, x, y, w, h, color, alpha, angle, region.u0, region.v0, region.u1, region.v1);
+		slotShadow[sprite.slot] = shadowSlot;
+		slotStyle[sprite.slot] = shadow;
+		slotRegion[sprite.slot] = region;
+		// Placed by the pivot, as `Draw.region` places it.
+		var group = slotGroup[sprite.slot];
+		var i = slotIndex[sprite.slot];
+		group.instances.set(Instances.XFORM, i, Math.cos(angle), Math.sin(angle), region.pivotX, region.pivotY);
+		group.instances.set(Instances.RADIUS, i, 0, 0, 0, 1);
+		return sprite;
+	}
 
 	/**
 		Adds `text` in `color` and `alpha`, with the corner of its box that has
@@ -107,6 +141,9 @@ class Sprites {
 		var slot = free.length > 0 ? free.pop() : slotGroup.length;
 		slotGroup[slot] = null;
 		slotText[slot] = null;
+		slotShadow[slot] = -1;
+		slotStyle[slot] = null;
+		slotRegion[slot] = null;
 		if (slotGeneration.length <= slot)
 			slotGeneration[slot] = 0;
 		length++;
@@ -116,6 +153,12 @@ class Sprites {
 	/** Removes `sprite`. Its handle and every copy of it become invalid. **/
 	public function remove(sprite:Sprite):Void {
 		var slot = slotOf(sprite);
+		var shadow = slotShadow[slot];
+		if (shadow >= 0) {
+			slotShadow[slot] = -1;
+			length++;
+			remove(new Sprite(shadow, slotGeneration[shadow]));
+		}
 		var entry = slotText[slot];
 		if (entry != null) {
 			texts.remove(entry);
@@ -165,8 +208,20 @@ class Sprites {
 			entry.x = x;
 			entry.y = y;
 			entry.stale = true;
-		} else
-			pair(sprite, Instances.RECT, 0, x, y);
+			return;
+		}
+		pair(sprite, Instances.RECT, 0, x, y);
+		var shadow = slotShadow[sprite.slot];
+		if (shadow >= 0) {
+			var style = slotStyle[sprite.slot];
+			moveSlot(shadow, x + style.offsetX, y + style.offsetY);
+		}
+	}
+
+	function moveSlot(slot:Int, x:Float, y:Float):Void {
+		var group = slotGroup[slot];
+		group.instances.setPair(Instances.RECT, slotIndex[slot], 0, x, y);
+		group.changed(Instances.RECT, slotIndex[slot]);
 	}
 
 	/** Sets the width and height of `sprite`. **/
@@ -174,6 +229,14 @@ class Sprites {
 		if (textOf(sprite) != null)
 			throw "a text takes its size from its layout";
 		pair(sprite, Instances.RECT, 2, width, height);
+		var shadow = slotShadow[sprite.slot];
+		if (shadow >= 0) {
+			var style = slotStyle[sprite.slot], group = slotGroup[shadow], at = slotIndex[shadow];
+			Draw.silhouette(group.instances, at, slotRegion[sprite.slot], xOf(sprite), yOf(sprite), width, height, style.offsetX, style.offsetY,
+				style.blur, style.color, style.alpha, style.squash);
+			for (field in 0...Instances.FIELDS)
+				group.changed(field, at);
+		}
 	}
 
 	/** Turns `sprite` to `angle` radians about its center. **/
@@ -246,11 +309,11 @@ class Sprites {
 		return sprite.slot;
 	}
 
-	function groupFor(texture:Texture):SpriteGroup {
+	function groupFor(texture:Texture, shadows = false):SpriteGroup {
 		for (group in groups)
-			if (group.texture == texture && group.layer == layer && group.plane == plane && group.clip == clip)
+			if (group.texture == texture && group.layer == layer && group.plane == plane && group.clip == clip && group.shadows == shadows)
 				return group;
-		var group = new SpriteGroup(texture, layer, plane, clip);
+		var group = new SpriteGroup(texture, layer, plane, clip, shadows);
 		groups.push(group);
 		return group;
 	}
@@ -278,6 +341,8 @@ class SpriteGroup {
 	final layer:Int;
 	final plane:Null<Plane>;
 	final clip:Null<Clip>;
+	// Whether the group holds shadows, which draw before the other groups.
+	final shadows:Bool;
 	final instances = new Instances(64);
 
 	// The slot of the sprite at each index.
@@ -292,7 +357,8 @@ class SpriteGroup {
 	final buffers:Array<Array<Buffer>> = [for (_ in 0...Renderer.SETS) []];
 	final capacities = [for (_ in 0...Renderer.SETS) 0];
 
-	function new(texture:Texture, layer:Int, plane:Null<Plane>, clip:Null<Clip>) {
+	function new(texture:Texture, layer:Int, plane:Null<Plane>, clip:Null<Clip>, shadows = false) {
+		this.shadows = shadows;
 		this.texture = texture;
 		this.layer = layer;
 		this.plane = plane;

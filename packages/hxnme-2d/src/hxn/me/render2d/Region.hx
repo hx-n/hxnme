@@ -25,6 +25,16 @@ class Region {
 	public final right:Int;
 	public final bottom:Int;
 
+	/**
+		The point of the region that `Draw.region`, `Draw.shadowOf` and
+		`Sprites.addRegion` place at their `x`, `y`, and that `angle` turns
+		about: a fraction of the region's width and height, from its top left
+		in the image. The default is the center, 0.5 and 0.5.
+	**/
+	public final pivotX:Float;
+
+	public final pivotY:Float;
+
 	/** The region's texture coordinates, from 0 to 1, with `v0` at its top. **/
 	public final u0:Float;
 
@@ -32,7 +42,10 @@ class Region {
 	public final u1:Float;
 	public final v1:Float;
 
-	public function new(name:String, texture:Texture, x:Int, y:Int, width:Int, height:Int, left = 0, top = 0, right = 0, bottom = 0) {
+	public function new(name:String, texture:Texture, x:Int, y:Int, width:Int, height:Int, left = 0, top = 0, right = 0, bottom = 0, pivotX = 0.5,
+			pivotY = 0.5) {
+		this.pivotX = pivotX;
+		this.pivotY = pivotY;
 		this.name = name;
 		this.texture = texture;
 		this.x = x;

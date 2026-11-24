@@ -73,6 +73,7 @@ static function draw(draw:ResMut<Draw>) {
 | Method | Effect |
 |---|---|
 | `rect(x, y, width, height, color, alpha, radius, border, borderColor, borderAlpha, corner)` | Adds a rectangle. `radius` is the radius of its corners, and `corner` is their `CornerShape`: `Round` (the default), `Squircle`, `Bevel`, `Scoop`, `Square` or `Notch`. If `border` is above 0, the rectangle has a border. |
+| `shadowOf(region, x, y, offsetX, offsetY, blur, color, alpha, squash, width, height)` | Adds the shadow of a region drawn with its pivot at `x`, `y`, on its own: its silhouette, moved by the offset and blurred. `squash` scales its height about the pivot, such as 0.4 for a shadow on the ground. Add it before the region. The shader samples the region's alpha, so any shape casts its own shadow. |
 | `shadow(x, y, width, height, blur, color, alpha, radius, corner)` | Adds the shadow of a rectangle, blurred by `blur` as with CSS `box-shadow`. Add it before the shape that casts it, at the shadow's offset. The shadow is one instance, and the shader computes its blur for each pixel. |
 | `circle(x, y, radius, color, alpha, border, borderColor, borderAlpha)` | Adds a circle with its center at `x`, `y`. |
 | `ellipse(x, y, width, height, color, alpha)` | Adds an ellipse that fills the rectangle. |
@@ -81,7 +82,7 @@ static function draw(draw:ResMut<Draw>) {
 | `sprite(texture, x, y, width, height, color, alpha, angle, u0, v0, u1, v1)` | Adds the texture stretched over the rectangle and multiplied by the color. `angle` turns it about its center. `u0` to `v1` select part of the texture. |
 | `nineSlice(texture, x, y, width, height, left, top, right, bottom, color, alpha, angle, scale)` | Adds the texture as a nine-slice, for panels and buttons. The corners keep their size, the edges stretch along their length, and the center stretches in both directions. `left` to `bottom` are the borders in texture pixels. Each texture pixel covers `scale` logical pixels. If the rectangle is smaller than its borders, the borders shrink to fit. |
 | `text(text, x, y, color, alpha, angle)` | Adds a `Text`. See [Text](#text). |
-| `region(region, x, y, width, height, color, alpha, angle)` | Adds a region of an atlas, at its own size unless `width` and `height` are given. See [Assets](#assets). |
+| `region(region, x, y, shadow, width, height, color, alpha, angle)` | Adds a region of an atlas with its pivot at `x`, `y`, at its own size unless `width` and `height` are given. `angle` turns it about the pivot. With a `Shadow`, it draws the region's shadow first, from the same position. See [Assets](#assets). |
 | `regionSlice(region, x, y, width, height, color, alpha, angle, scale)` | Adds a region of an atlas as a nine-slice with the region's borders. |
 
 Each nine-slice costs the same as one sprite, because the shader does the
@@ -180,7 +181,7 @@ static function walk(sprites:ResMut<Sprites>, time:Res<Time>) {
 | `tint(sprite, color, alpha)` | Sets the color and alpha that multiply the texture. |
 | `region(sprite, u0, v0, u1, v1)` | Selects the part of the texture that the sprite shows. |
 | `xOf(sprite)`, `yOf(sprite)` | Return the sprite's corner. |
-| `addRegion(region, x, y, width, height, color, alpha, angle)` | Adds a region of an atlas as a sprite, at its own size unless `width` and `height` are given. |
+| `addRegion(region, x, y, shadow, width, height, color, alpha, angle)` | Adds a region of an atlas as a sprite with its pivot at `x`, `y`, at its own size unless `width` and `height` are given. `move`, `xOf` and `yOf` then use the pivot. With a `Shadow`, the sprite casts it: `move`, `resize` and `remove` keep the shadow with the sprite, and shadows draw before the sprites of their layer. |
 | `addText(text, x, y, color, alpha, angle)` | Adds a `Text` and returns its handle, which `move`, `turn`, `tint`, `xOf`, `yOf`, `exists` and `remove` take. |
 
 Text in `Sprites` keeps its glyph instances from frame to frame. The
@@ -247,22 +248,48 @@ class GameAssets {
 	@:asset("ui/sheet.json") public static var Sheet:AssetRef<Atlas>;
 }
 
+static var sheet:Null<Asset<GameAssetsSheetAtlas>>;
+
 assets.load(GameAssets.Sheet).then(a -> sheet = a);
 
 var atlas = sheet.value;
-draw.region(atlas.region("hero"), x, y);
-draw.regionSlice(atlas.region("panel"), 16, 16, 200, 80, 0xFFFFFF, 1, 0, 2);
-sprites.addRegion(atlas.region("tree"), 120, 40);
+draw.region(atlas.hero, x, y);
+draw.regionSlice(atlas.panel, 16, 16, 200, 80, 0xFFFFFF, 1, 0, 2);
+sprites.addRegion(atlas.tree, 120, 40);
 ```
+
+A `Shadow` holds how a region casts its shadow: its offset, blur, color,
+alpha and `squash`, which scales the silhouette's height about the pivot.
+Make one for each style and keep it, so no frame allocates one:
+
+```haxe
+static final ground = new Shadow(0, -14, 4, 0x000000, 0.45, 0.4);
+
+draw.region(atlas.player, x, y, ground);
+```
+
+The asset macro reads the atlas file at compile time and gives the atlas a
+property for each region, so `atlas.hero` reads the region by index, and a
+wrong name is a compile error. The atlas's type is named after the class and
+the field, such as `GameAssetsSheetAtlas`. Characters of a region name that
+cannot be in a Haxe name become `_`. `atlas.region(name)` finds a region by
+name at run time.
 
 The atlas file lists the image, relative to the file, and each region's
 corner and size in texture pixels, top left first. `slice` gives a region's
-nine-slice borders, left, top, right and bottom. Declare the image as well,
-because only declared files are bundled:
+nine-slice borders, left, top, right and bottom. `pivot` gives the point
+that `region`, `shadowOf` and `addRegion` place at `x`, `y` and turn about,
+as a fraction of the region from its top left: `[0.5, 1]` is the middle of
+its bottom edge. The atlas's `pivot` applies to every region, a region's
+own `pivot` replaces it, and the default is the center. The shader applies
+the pivot, so it works through cameras with y up and through screen
+cameras. Declare the image as well, because only declared files are
+bundled:
 
 ```json
 {
 	"image": "sheet.png",
+	"pivot": [0.5, 0.5],
 	"regions": {
 		"hero": {"x": 0, "y": 0, "width": 16, "height": 16},
 		"panel": {"x": 17, "y": 0, "width": 12, "height": 12, "slice": [4, 4, 4, 4]}
@@ -315,9 +342,12 @@ It also tests that:
 - Text in `Sprites` that changes from L to T also shows a T, and uploads only its one new glyph.
 
 In `tests/assets`, the same command runs the asset check. It loads an atlas
-and a font through `Assets`, draws a region and a nine-slice region, and
-tests their pixels, the font's layout, and that releasing the atlas closes
-its texture.
+and a font through `Assets`, draws a region, a nine-slice region and the
+region's shadow, sharp and blurred, through the atlas's region properties.
+It tests their pixels, the font's layout, and that releasing the atlas closes
+its texture. In `tests`, `haxe asset-errors.hxml` compiles atlas
+declarations that are wrong, a misspelled region and two regions that become
+one property, and checks each compile error.
 
 The checks use the font Noto Sans. Its license is listed in
 [third-party/NOTICES.md](third-party/NOTICES.md).

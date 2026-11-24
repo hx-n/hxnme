@@ -18,10 +18,13 @@ import hxn.text.Font;
 	wrong part of the image shows magenta.
 **/
 class Loads {
-	static final target = new RenderTarget(64, 64);
-	static var atlas:Null<Asset<Atlas>>;
+	static final target = new RenderTarget(64, 96);
+	static var atlas:Null<Asset<ArtSheetAtlas>>;
 	static var font:Null<Asset<Font>>;
 	static var shown = -1;
+	// A sprite of the store whose shadow is white and to its right, so it shows on the black target.
+	static var kept:Null<hxn.me.render2d.Sprite>;
+	static final beside = new hxn.me.render2d.Shadow(12, 0, 0, 0xFFFFFF, 1);
 	static var reading = false;
 
 	@:system(Start)
@@ -37,18 +40,30 @@ class Loads {
 
 	// Draws the red region at its own size, and the panel as a nine-slice twice its border.
 	@:system(Update)
-	static function draw(draw:ResMut<Draw>, gpu:ResMut<Gpu>, typesetter:ResMut<Typesetter>, lifecycle:ResMut<Lifecycle>) {
+	static function draw(draw:ResMut<Draw>, gpu:ResMut<Gpu>, typesetter:ResMut<Typesetter>, lifecycle:ResMut<Lifecycle>,
+			sprites:ResMut<hxn.me.render2d.Sprites>) {
 		if (gpu.failure != null) {
 			Sys.println('no GPU: ${gpu.failure}');
 			Sys.exit(1);
 		}
 		if (atlas == null || font == null)
 			return;
+		// The atlas has a property for each region, from its file at compile time.
 		var sheet = atlas.value;
-		draw.region(sheet.region("red"), 2, 2);
-		draw.regionSlice(sheet.region("panel"), 24, 4, 36, 40, 0xFFFFFF, 1, 0, 2);
-		if (shown < 0)
+		// Regions are placed by their pivot: the center, unless the atlas gives another.
+		draw.region(sheet.red, 10, 10);
+		draw.region(sheet.feet, 10, 90);
+		draw.regionSlice(sheet.panel, 24, 4, 36, 40, 0xFFFFFF, 1, 0, 2);
+		// White silhouettes of the red region, sharp and blurred, so they show on the black target.
+		draw.shadowOf(sheet.red, 10, 54, 0, 0, 0, 0xFFFFFF, 1);
+		draw.shadowOf(sheet.red, 52, 54, 0, 0, 4, 0xFFFFFF, 1);
+		var store:hxn.me.render2d.Sprites = sprites;
+		if (shown < 0) {
 			shown = gpu.presented;
+			kept = store.addRegion(sheet.red, 34, 66, beside);
+		} else if (gpu.presented == shown + 1)
+			// The shadow moves with the sprite.
+			store.move(kept, 34, 80);
 		if (gpu.presented < shown + 3 || reading)
 			return;
 		reading = true;
@@ -73,6 +88,20 @@ class Loads {
 		expect("nine-slice top border", 42, 6, [0, 255, 0]);
 		expect("nine-slice center", 42, 24, [0, 0, 255]);
 		expect("nine-slice edge of the center", 31, 24, [0, 0, 255]);
+		expect("region with its pivot at its feet", 9, 82, [255, 0, 0]);
+		expect("above the feet region", 9, 70, [0, 0, 0]);
+		expect("below the feet region", 9, 93, [0, 0, 0]);
+		expect("sprite of the store over its shadow", 40, 80, [255, 0, 0]);
+		expect("shadow of the sprite beside it", 50, 80, [255, 255, 255]);
+		expect("where the shadow was before the sprite moved", 50, 66, [0, 0, 0]);
+		expect("sharp shadow of the region", 9, 54, [255, 255, 255]);
+		expect("beside the sharp shadow", 20, 54, [0, 0, 0]);
+		expect("middle of the blurred shadow", 52, 54, [255, 255, 255]);
+		var edge = pixels.get((54 * 64 + 44) * 4);
+		var blurred = edge > 60 && edge < 200;
+		if (!blurred)
+			failed++;
+		Sys.println('edge of the blurred shadow: ${blurred ? "part covered" : 'got $edge'}');
 		Sys.println('text in the loaded font: ${laidOut ? "laid out" : "not laid out"}');
 		if (!laidOut)
 			failed++;
