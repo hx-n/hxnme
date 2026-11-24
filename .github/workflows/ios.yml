@@ -26,7 +26,8 @@ jobs:
       ASH_GC_TLAB: "0"
     steps:
       - uses: actions/checkout@v4
-      - id: setup
+      - name: Set up Haxe, hxcpp, Ash, hxn and the haxelibs
+        id: setup
         uses: ./.github/actions/setup
       - name: Boot a simulator
         run: |
@@ -36,53 +37,65 @@ jobs:
           xcrun simctl bootstatus "$device" > /dev/null
           echo "SIMULATOR=$device" >> "$GITHUB_ENV"
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/toml-checks.hxml
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme/tests
           file: toml-checks.hxml
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/plugins
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme/tests/plugins
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/systems
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme/tests/systems
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/loop
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme/tests/loop
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/headless
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme/tests/headless
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/libraries
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme/tests/libraries
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/libraries-override
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme/tests/libraries-override
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/assets
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme/tests/assets
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/new
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme/tests/new
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-physics/tests/checks.hxml
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme-physics/tests
           file: checks.hxml
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-physics/tests/concurrent-checks.hxml
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme-physics/tests
           file: concurrent-checks.hxml
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-physics/tests/world-growth-checks.hxml
         uses: ./.github/actions/ios-check
         with:
           directory: packages/hxnme-physics/tests
