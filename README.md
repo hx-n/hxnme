@@ -1,5 +1,9 @@
 # hxnme
 
+[![Ash](https://github.com/hx-n/hxnme/actions/workflows/ash.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/ash.yml)
+[![hxcpp](https://github.com/hx-n/hxnme/actions/workflows/hxcpp.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/hxcpp.yml)
+[![CPPIA](https://github.com/hx-n/hxnme/actions/workflows/cppia.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/cppia.yml)
+
 hxnme is an engine framework, written in Haxe, for games and rich interactive
 apps and experiences. It is part of the [hxn](https://github.com/hx-n/hxn)
 project. The engine has a small kernel and a set of plugins, and each one is

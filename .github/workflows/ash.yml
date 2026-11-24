@@ -1,0 +1,17 @@
+name: Ash
+
+# Every check on Ash, on macOS, Linux and Windows. checks.yml lists them.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+    with:
+      runtime: ash

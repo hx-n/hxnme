@@ -80,10 +80,12 @@ and each one is a haxelib under `packages/`. Read the
   wasm differs from the native one. Compare the output of CPPIA and of wasm
   with their own output from before the change.
 - Run every runtime that the changed code supports, under a timeout.
-- CI runs the checks on macOS, Linux and Windows. `kernel.yml` runs the
-  kernel and physics checks, and `plugins.yml` runs the plugin checks and a
-  game made with `hxn me new`, on each platform's default GPU driver. A
-  change is not known to work on Windows until CI has run it.
+- CI runs every check on macOS, Linux and Windows, in one workflow for each
+  runtime: `ash.yml`, `hxcpp.yml` and `cppia.yml`. `checks.yml` lists the
+  checks: the kernel, physics and plugin checks, and a game made with
+  `hxn me new`, on each platform's default GPU driver. When you add a check
+  program, add it there. A change is not known to work on Windows until CI
+  has run it.
 - Report each runtime that you did not run.
 
 ## Issues and commits

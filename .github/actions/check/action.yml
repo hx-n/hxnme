@@ -1,8 +1,8 @@
 name: check
 description: >-
-  Runs a check program on Ash, hxcpp and CPPIA with hxn check, then in Ash's JIT and
-  interpreter modes and as an Ash executable built ahead of time, and fails unless each
-  of those prints what Ash printed.
+  Runs a check program on one runtime. On Ash, the program runs in hybrid mode, and its
+  JIT, interpreter and ahead-of-time runs must print the same output. On hxcpp and CPPIA,
+  hxn check runs it there and on Ash, and fails unless both print the same output.
 
 inputs:
   directory:
@@ -11,15 +11,18 @@ inputs:
   file:
     description: The program file.
     default: app.hxml
-  runtimes:
-    description: The runtimes for hxn check.
-    default: hl cpp cppia
-  modes:
-    description: The other Ash runs, from "jit interp aot".
+  runtime:
+    description: ash, cpp or cppia.
+    required: true
+  ash-modes:
+    description: The Ash runs compared with hybrid mode, from "jit interp aot".
     default: jit interp aot
   ash-options:
     description: Options for every Ash run, such as --no-fma.
     default: ""
+  compare:
+    description: false to run on hxcpp or CPPIA without comparing with Ash.
+    default: "true"
   minutes:
     description: The time limit for each run, in minutes.
     default: "20"
@@ -33,40 +36,53 @@ runs:
         # Every run is reported, so one failure does not hide the others.
         set +e
         limit=$(( ${{ inputs.minutes }} * 60 ))
+        file=${{ inputs.file }}
+        vm="$ASH ${{ inputs.ash-options }}"
         wrap=()
         # On Linux, windows open on a virtual X display when the setup installed one.
         if [ "$RUNNER_OS" = Linux ] && command -v xvfb-run > /dev/null; then wrap=(xvfb-run -a); fi
         status=0
-        echo "== hxn check ${{ inputs.runtimes }} ${{ inputs.file }}"
-        timeout $limit "${wrap[@]}" hxn check ${{ inputs.runtimes }} ${{ inputs.file }} --vm "$ASH ${{ inputs.ash-options }}" 2>&1 | tee check.txt
-        [ "${PIPESTATUS[0]}" -eq 0 ] || { echo "::error::hxn check failed in ${{ inputs.directory }}"; status=1; }
-        # The program's output is on stdout. Ash and hxn write their own messages to stderr.
-        timeout $limit "${wrap[@]}" hxn run hl ${{ inputs.file }} --vm "$ASH ${{ inputs.ash-options }}" > ash.txt 2> ash.err
-        # same <name> <code> <file> <errors>: fails unless the run exited with 0 and printed what Ash printed.
-        same() {
-          if [ "$2" -ne 0 ] || ! diff -u ash.txt "$3"; then
-            cat "$4"
-            echo "::error::$1 in ${{ inputs.directory }} differs from Ash"
-            status=1
-          fi
-        }
-        for mode in ${{ inputs.modes }}; do
-          echo "== $mode"
-          case $mode in
-            jit|interp)
-              timeout $limit "${wrap[@]}" hxn run hl ${{ inputs.file }} --vm "$ASH ${{ inputs.ash-options }} --mode $mode" > $mode.txt 2> $mode.err
-              same "Ash $mode mode" $? $mode.txt $mode.err ;;
-            aot)
-              if ! timeout $limit hxn build hl ${{ inputs.file }} --ash "$ASH" > build.txt 2>&1; then
-                cat build.txt
-                echo "::error::the Ash build failed in ${{ inputs.directory }}"
-                status=1
-                continue
-              fi
-              # hxn build prints the executable's path on its last line.
-              program=$(tail -1 build.txt | sed 's/^ *//')
-              timeout $limit "${wrap[@]}" "$program" > aot.txt 2> aot.err
-              same "the Ash executable" $? aot.txt aot.err ;;
-          esac
-        done
+        # fail <message>: reports a failure and carries on.
+        fail() { echo "::error::$1 in ${{ inputs.directory }}"; status=1; }
+        case ${{ inputs.runtime }} in
+          ash)
+            # The program's output is on stdout. Ash and hxn write their own messages to stderr.
+            echo "== Ash"
+            timeout $limit "${wrap[@]}" hxn run hl $file --vm "$vm" > ash.txt 2> ash.err
+            code=$?
+            cat ash.txt
+            [ $code -eq 0 ] || { cat ash.err; fail "the check failed on Ash"; }
+            # same <name> <code> <file> <errors>: fails unless the run exited with 0 and printed what hybrid mode printed.
+            same() {
+              if [ "$2" -ne 0 ] || ! diff -u ash.txt "$3"; then cat "$4"; fail "$1 differs from hybrid mode"; fi
+            }
+            for mode in ${{ inputs.ash-modes }}; do
+              echo "== $mode"
+              case $mode in
+                jit|interp)
+                  timeout $limit "${wrap[@]}" hxn run hl $file --vm "$vm --mode $mode" > $mode.txt 2> $mode.err
+                  same "Ash $mode mode" $? $mode.txt $mode.err ;;
+                aot)
+                  if ! timeout $limit hxn build hl $file --ash "$ASH" > build.txt 2>&1; then
+                    cat build.txt
+                    fail "the Ash build failed"
+                    continue
+                  fi
+                  # hxn build prints the executable's path on its last line.
+                  program=$(tail -1 build.txt | sed 's/^ *//')
+                  timeout $limit "${wrap[@]}" "$program" > aot.txt 2> aot.err
+                  same "the Ash executable" $? aot.txt aot.err ;;
+              esac
+            done ;;
+          cpp|cppia)
+            if [ "${{ inputs.compare }}" = true ]; then
+              echo "== hxn check hl ${{ inputs.runtime }} $file"
+              timeout $limit "${wrap[@]}" hxn check hl ${{ inputs.runtime }} $file --vm "$vm" || fail "hxn check failed"
+            else
+              echo "== hxn run ${{ inputs.runtime }} $file"
+              timeout $limit "${wrap[@]}" hxn run ${{ inputs.runtime }} $file || fail "the check failed on ${{ inputs.runtime }}"
+            fi ;;
+          *)
+            fail "unknown runtime ${{ inputs.runtime }}" ;;
+        esac
         exit $status
