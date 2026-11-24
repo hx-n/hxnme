@@ -21,7 +21,8 @@ import hxn.me.gpu.Pass;
 	uploads what `Draw` holds each frame. Each camera has a view of its own:
 	a pass in the frame graph, and for each plane that the frame draws on, a
 	uniform buffer with the camera's matrix times the plane's. The pass draws
-	the runs of the camera's layers, with one instanced draw for each run.
+	the sprite groups of `Sprites` in the camera's layers, then the runs of
+	`Draw`, with one instanced draw for each group and each run.
 **/
 class Renderer {
 	final device:GpuDevice;
@@ -36,23 +37,31 @@ class Renderer {
 	final matrix = [for (_ in 0...16) 0.0];
 	final model = [for (_ in 0...16) 0.0];
 	final combined = [for (_ in 0...16) 0.0];
+	// The planes whose uniforms the current camera wrote this frame.
+	final written:Array<Plane> = [];
 	// The world's XY plane, for runs without a plane.
 	final flat = new Plane();
 	final draw:Draw;
+	final sprites:Sprites;
 	var capacity = 0;
 
-	public function new(gpu:Gpu, draw:Draw) {
+	public function new(gpu:Gpu, draw:Draw, sprites:Sprites) {
 		this.gpu = gpu;
 		device = gpu.device;
 		this.draw = draw;
+		this.sprites = sprites;
 		shader = device.createShader(Shader);
 		sampler = device.createSampler({filter: Linear});
 	}
 
-	/** Uploads the instances that `draw` holds, for the passes of this frame. **/
+	/**
+		Uploads the instances that `draw` holds, and the parts of the sprite
+		groups that changed, for the passes of this frame.
+	**/
 	public function upload():Void {
 		for (view in views)
 			view.pass.enabled = false;
+		uploadSprites();
 		var instances = draw.instances;
 		if (instances.length == 0)
 			return;
@@ -71,6 +80,43 @@ class Renderer {
 				run.texture.upload(device);
 	}
 
+	function uploadSprites():Void {
+		var bytes = 0;
+		for (group in sprites.groups) {
+			var instances = group.instances;
+			var length = instances.length;
+			if (length == 0) {
+				group.settle();
+				continue;
+			}
+			group.texture.upload(device);
+			if (instances.capacity > group.bufferCapacity) {
+				// New buffers start empty, so every instance goes up.
+				for (b in group.buffers)
+					b.close();
+				group.buffers.resize(0);
+				group.bufferCapacity = instances.capacity;
+				for (i in 0...Instances.FIELDS) {
+					group.buffers.push(device.createBuffer({size: group.bufferCapacity * Instances.STRIDE, usage: Vertex}));
+					device.writeBuffer(group.buffers[i], 0, instances.fields[i].sub(0, length * Instances.STRIDE));
+					bytes += length * Instances.STRIDE;
+				}
+			} else
+				for (i in 0...Instances.FIELDS) {
+					// Indices past the end changed before a removal shortened the group.
+					var high = group.high[i] < length ? group.high[i] : length;
+					var low = group.low[i];
+					if (low >= high)
+						continue;
+					var at = low * Instances.STRIDE, size = (high - low) * Instances.STRIDE;
+					device.writeBuffer(group.buffers[i], at, instances.fields[i].sub(at, size));
+					bytes += size;
+				}
+			group.settle();
+		}
+		sprites.count(bytes);
+	}
+
 	/**
 		Uploads `camera`'s matrix for a view `width` by `height` logical pixels,
 		and turns on its pass for this frame.
@@ -86,27 +132,33 @@ class Renderer {
 			gpu.graph.add(view.pass);
 			views.set(camera, view);
 		}
-		view.pass.enabled = draw.instances.length > 0;
+		view.pass.enabled = draw.instances.length > 0 || sprites.length > 0;
 		camera.writeMatrix(width, height, matrix);
 		params.setFloat(Shader.PARAMS_flags, camera.yDown() ? 1 : 0);
-		var last:Null<Plane> = null;
-		var first = true;
-		for (run in draw.runs) {
-			if (run.layer & camera.layers == 0 || (!first && run.plane == last))
-				continue;
-			first = false;
-			last = run.plane;
-			var plane = run.plane != null ? run.plane : flat;
-			plane.writeMatrix(model);
-			multiply(matrix, model, combined);
-			// Each column goes to its own offset, since the shader's uniform block lays them out.
-			for (i in 0...4) {
-				params.setFloat(Shader.PARAMS_matrix0 + i * 4, combined[i]);
-				params.setFloat(Shader.PARAMS_matrix1 + i * 4, combined[4 + i]);
-				params.setFloat(Shader.PARAMS_matrix3 + i * 4, combined[12 + i]);
-			}
-			device.writeBuffer(view.on(plane, device).uniforms, 0, params);
+		written.resize(0);
+		for (group in sprites.groups)
+			if (group.layer & camera.layers != 0 && group.instances.length > 0)
+				writePlane(view, group.plane);
+		for (run in draw.runs)
+			if (run.layer & camera.layers != 0)
+				writePlane(view, run.plane);
+	}
+
+	// Writes the camera's matrix times `plane`'s into the camera's uniforms for that plane, once a frame.
+	function writePlane(view:View, plane:Null<Plane>):Void {
+		var plane = plane != null ? plane : flat;
+		if (written.indexOf(plane) >= 0)
+			return;
+		written.push(plane);
+		plane.writeMatrix(model);
+		multiply(matrix, model, combined);
+		// Each column goes to its own offset, since the shader's uniform block lays them out.
+		for (i in 0...4) {
+			params.setFloat(Shader.PARAMS_matrix0 + i * 4, combined[i]);
+			params.setFloat(Shader.PARAMS_matrix1 + i * 4, combined[4 + i]);
+			params.setFloat(Shader.PARAMS_matrix3 + i * 4, combined[12 + i]);
 		}
+		device.writeBuffer(view.on(plane, device).uniforms, 0, params);
 	}
 
 	// Writes a times b into out; all three are 4x4, column after column.
@@ -131,26 +183,32 @@ class Renderer {
 		}
 		var pipeline = pipelineFor(into.format, camera.depth);
 		pass.setPipeline(pipeline);
+		for (group in sprites.groups)
+			if (group.layer & camera.layers != 0 && group.instances.length > 0)
+				drawRange(view, pass, pipeline, group.plane, group.texture, group.buffers, 0, group.instances.length);
+		for (run in draw.runs)
+			if (run.layer & camera.layers != 0)
+				drawRange(view, pass, pipeline, run.plane, run.texture != null ? run.texture : white, buffers, run.start, run.count);
+	}
+
+	// Draws `count` instances from `start` of `source`, on `plane`, with `image`.
+	function drawRange(view:View, pass:RenderPass, pipeline:RenderPipeline, plane:Null<Plane>, image:Texture, source:Array<Buffer>, start:Int,
+			count:Int):Void {
 		var shared = Shader.PARAMS_GROUP == Shader.TEXTURE_image_GROUP;
-		for (run in draw.runs) {
-			if (run.layer & camera.layers == 0)
-				continue;
-			var on = view.on(run.plane != null ? run.plane : flat, device);
-			if (!shared) {
-				if (on.params == null)
-					on.params = device.createBindGroup({
-						pipeline: pipeline,
-						group: Shader.PARAMS_GROUP,
-						entries: [{binding: Shader.PARAMS_BINDING, buffer: on.uniforms}]
-					});
-				pass.setBindGroup(Shader.PARAMS_GROUP, on.params);
-			}
-			var image = run.texture != null ? run.texture : white;
-			pass.setBindGroup(Shader.TEXTURE_image_GROUP, groupOf(on, image, pipeline, shared));
-			for (i in 0...Instances.FIELDS)
-				pass.setVertexBuffer(i, buffers[i], run.start * Instances.STRIDE);
-			pass.draw(4, run.count);
+		var on = view.on(plane != null ? plane : flat, device);
+		if (!shared) {
+			if (on.params == null)
+				on.params = device.createBindGroup({
+					pipeline: pipeline,
+					group: Shader.PARAMS_GROUP,
+					entries: [{binding: Shader.PARAMS_BINDING, buffer: on.uniforms}]
+				});
+			pass.setBindGroup(Shader.PARAMS_GROUP, on.params);
 		}
+		pass.setBindGroup(Shader.TEXTURE_image_GROUP, groupOf(on, image, pipeline, shared));
+		for (i in 0...Instances.FIELDS)
+			pass.setVertexBuffer(i, source[i], start * Instances.STRIDE);
+		pass.draw(4, count);
 	}
 
 	function groupOf(view:PlaneView, image:Texture, pipeline:RenderPipeline, shared:Bool):BindGroup {

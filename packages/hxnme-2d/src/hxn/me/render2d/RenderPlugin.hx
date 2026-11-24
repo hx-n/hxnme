@@ -10,9 +10,9 @@ import hxn.me.gpu.GpuPlugin;
 /**
 	`RenderPlugin` draws the app's 2D content with the GPU of hxnme-gpu,
 	through the cameras of `Cameras`. In each frame, `reset` empties `Draw` in
-	`Begin`, systems add to it in `Update`, and `upload` sends the instances
-	and each camera's matrix to the GPU in `Render`, before hxnme-gpu draws the
-	frame. Each enabled camera has a pass in the frame graph, into the frame or
+	`Begin`, systems add to it and change `Sprites` in `Update`, and `upload`
+	sends the instances, the changed parts of `Sprites` and each camera's
+	matrix to the GPU in `Render`, before hxnme-gpu draws the frame. Each enabled camera has a pass in the frame graph, into the frame or
 	into its render target.
 **/
 @:plugin("hxnme-2d", description = "Draws sprites and shapes with one instanced shader")
@@ -28,13 +28,13 @@ class RenderPlugin {
 		(draw : Draw).clear();
 	}
 
-	@:system(Render, before = GpuPlugin.present, description = "Uploads the instances and each camera's matrix for this frame")
-	static function upload(gpu:Res<Gpu>, cameras:Res<Cameras>, draw:Res<Draw>, display:Res<Display>) {
+	@:system(Render, before = GpuPlugin.present, description = "Uploads the instances, the changed sprites and each camera's matrix for this frame")
+	static function upload(gpu:Res<Gpu>, cameras:Res<Cameras>, draw:Res<Draw>, sprites:Res<Sprites>, display:Res<Display>) {
 		var state:Gpu = gpu;
 		if (!state.ready())
 			return;
 		if (renderer == null)
-			renderer = new Renderer(state, draw);
+			renderer = new Renderer(state, draw, sprites);
 		renderer.upload();
 		for (camera in cameras.sorted()) {
 			var target = camera.target;

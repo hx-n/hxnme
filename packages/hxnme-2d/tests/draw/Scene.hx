@@ -8,6 +8,8 @@ import hxn.me.gpu.Gpu;
 import hxn.me.gpu.RenderTarget;
 import hxn.me.render2d.Draw;
 import hxn.me.render2d.Plane;
+import hxn.me.render2d.Sprite;
+import hxn.me.render2d.Sprites;
 import hxn.me.render2d.Texture;
 
 /**
@@ -25,9 +27,12 @@ import hxn.me.render2d.Texture;
 	far side narrower than its near side. The fifth is an orthographic camera
 	with depth: it sees a red square on a plane 10 units nearer, drawn first,
 	and a blue square on the world's plane, drawn after over the same area, and
-	the red square stays in front. After the plugin
-	presents three frames, the check reads both targets back, compares one
-	pixel of each shape with the color it expects, and stops the app.
+	the red square stays in front. The sixth is a screen camera that shows
+	sprites of `Sprites`: after the first frame, the check moves one sprite
+	and removes another, and counts the bytes that the next two frames
+	upload. After the plugin presents three frames, the check reads every
+	target back, compares one pixel of each shape with the color it expects,
+	and stops the app.
 **/
 class Scene {
 	static final screen = new RenderTarget(64, 64);
@@ -35,6 +40,11 @@ class Scene {
 	static final perspective = new RenderTarget(64, 64);
 	static final tilted = new RenderTarget(128, 128);
 	static final deep = new RenderTarget(64, 64);
+	static final kept = new RenderTarget(64, 64);
+	static var moved:Sprite;
+	static var removed:Sprite;
+	static var changed = false;
+	static var uploadedAfterChange = -1;
 	static final near = new Plane();
 	static var image:Texture;
 	static var halves:Texture;
@@ -67,11 +77,21 @@ class Scene {
 		{target: perspective, name: "above the square through the perspective camera", x: 8, y: 8, rgb: [0, 0, 0]},
 		{target: perspective, name: "top of the image through the perspective camera", x: 44, y: 17, rgb: [255, 0, 0]},
 		{target: perspective, name: "bottom of the image through the perspective camera", x: 44, y: 22, rgb: [0, 0, 255]},
-		{target: deep, name: "nearer square drawn first, through the camera with depth", x: 32, y: 32, rgb: [255, 0, 0]}
+		{target: deep, name: "nearer square drawn first, through the camera with depth", x: 32, y: 32, rgb: [255, 0, 0]},
+		{target: kept, name: "where the moved sprite was", x: 4, y: 4, rgb: [0, 0, 0]},
+		{target: kept, name: "moved sprite", x: 36, y: 36, rgb: [0, 255, 0]},
+		{target: kept, name: "where the removed sprite was", x: 20, y: 4, rgb: [0, 0, 0]},
+		{target: kept, name: "sprite that took the removed sprite's place", x: 52, y: 4, rgb: [0, 0, 255]},
+		{target: kept, name: "sprite of a second texture", x: 4, y: 52, rgb: [40, 80, 120]}
 	];
 
+	// Moving the first sprite writes its rect, and the sprite that fills the
+	// removed one's place writes all seven fields: the rects of indices 0 and
+	// 1, and one instance of each other field.
+	static inline final CHANGED_BYTES = 2 * 16 + 6 * 16;
+
 	@:system(Start)
-	static function setup(cameras:ResMut<Cameras>) {
+	static function setup(cameras:ResMut<Cameras>, sprites:ResMut<Sprites>) {
 		var main = cameras.main;
 		main.projection = Screen;
 		main.target = screen;
@@ -117,12 +137,49 @@ class Scene {
 		fifth.target = deep;
 		fifth.clear = {r: 0, g: 0, b: 0, a: 1};
 		cameras.add(fifth);
+		var sixth = new Camera();
+		sixth.projection = Screen;
+		sixth.layers = 16;
+		sixth.order = 5;
+		sixth.target = kept;
+		sixth.clear = {r: 0, g: 0, b: 0, a: 1};
+		cameras.add(sixth);
 		near.z = 10;
 		turned.rotate(Math.PI / 2, 0, 0, 1);
 		turned.x = 20;
 		turned.y = 40;
 		image = new Texture(2, 2, pixels([40, 80, 120], [40, 80, 120]));
 		halves = new Texture(1, 2, pixels([255, 0, 0], [0, 0, 255], 1));
+		var store:Sprites = sprites;
+		var blank = Texture.solid(0xFFFFFF);
+		store.layer = 16;
+		// A handle stays invalid after another sprite takes its slot.
+		var gone = store.add(blank, 0, 0, 1, 1);
+		store.remove(gone);
+		var reused = store.add(blank, 0, 0, 1, 1);
+		if (store.exists(gone) || !store.exists(reused))
+			fail("a removed sprite's handle is still valid after its slot was reused");
+		store.remove(reused);
+		moved = store.add(blank, 0, 0, 8, 8, 0x00FF00);
+		removed = store.add(blank, 16, 0, 8, 8, 0xFF0000);
+		store.add(blank, 48, 0, 8, 8, 0x0000FF);
+		store.add(image, 0, 48, 8, 8);
+	}
+
+	@:system(Update)
+	static function change(gpu:Res<Gpu>, sprites:ResMut<Sprites>) {
+		var store:Sprites = sprites;
+		if (gpu.presented == 1 && !changed) {
+			changed = true;
+			store.move(moved, 32, 32);
+			store.remove(removed);
+		} else if (gpu.presented == 2 && uploadedAfterChange < 0)
+			uploadedAfterChange = store.uploaded;
+	}
+
+	static function fail(message:String) {
+		Sys.println(message);
+		Sys.exit(1);
 	}
 
 	// Rows of `width` pixels: the first half of the rows in `top`, the rest in `bottom`.
@@ -173,7 +230,7 @@ class Scene {
 	}
 
 	@:system(Update)
-	static function check(gpu:Res<Gpu>, lifecycle:ResMut<Lifecycle>) {
+	static function check(gpu:Res<Gpu>, lifecycle:ResMut<Lifecycle>, sprites:Res<Sprites>) {
 		if (gpu.failure != null) {
 			Sys.println('no GPU: ${gpu.failure}');
 			lifecycle.quit();
@@ -184,35 +241,56 @@ class Scene {
 		reading = true;
 		var state:Lifecycle = lifecycle;
 		var device = gpu.device;
-		device.readTexture(screen.texture).then(onScreen -> device.readTexture(world.texture).then(inWorld -> device.readTexture(perspective.texture).then(seen -> device.readTexture(tilted.texture).then(tilt -> device.readTexture(deep.texture).then(depthPixels -> {
-			var failed = 0;
-			var rows = [for (y in 0...128) width(tilt, 128, y)];
-			var first = 0;
-			while (first < 128 && rows[first] == 0)
-				first++;
-			var last = 127;
-			while (last > 0 && rows[last] == 0)
-				last--;
-			var far = rows[first + 2], near = rows[last - 2];
-			var foreshortened = first < last && far > 0 && far < near * 0.8;
-			if (!foreshortened)
+		var targets = [screen, world, perspective, tilted, deep, kept];
+		var read:Array<Bytes> = [];
+		function next() {
+			if (read.length < targets.length) {
+				device.readTexture(targets[read.length].texture).then(pixels -> {
+					read.push(pixels);
+					next();
+				}, failure);
+				return;
+			}
+			compare(targets, read, sprites, state);
+		}
+		next();
+	}
+
+	static function compare(targets:Array<RenderTarget>, read:Array<Bytes>, sprites:Sprites, state:Lifecycle) {
+		var failed = 0;
+		var tilt = read[targets.indexOf(tilted)];
+		var rows = [for (y in 0...128) width(tilt, 128, y)];
+		var first = 0;
+		while (first < 128 && rows[first] == 0)
+			first++;
+		var last = 127;
+		while (last > 0 && rows[last] == 0)
+			last--;
+		var far = rows[first + 2], near = rows[last - 2];
+		var foreshortened = first < last && far > 0 && far < near * 0.8;
+		if (!foreshortened)
+			failed++;
+		Sys.println('tilted square: ${foreshortened ? "its far side is narrower than its near side" : 'far side $far pixels, near side $near'}');
+		for (e in expected) {
+			var pixels = read[targets.indexOf(e.target)];
+			var at = (e.y * 64 + e.x) * 4;
+			var got = [for (c in 0...3) pixels.get(at + c)];
+			var close = [for (c in 0...3) Math.abs(got[c] - e.rgb[c]) <= 2].indexOf(false) < 0;
+			if (!close)
 				failed++;
-			Sys.println('tilted square: ${foreshortened ? "its far side is narrower than its near side" : 'far side $far pixels, near side $near'}');
-			for (e in expected) {
-				var pixels = e.target == screen ? onScreen : e.target == world ? inWorld : e.target == perspective ? seen : depthPixels;
-				var at = (e.y * 64 + e.x) * 4;
-				var got = [for (c in 0...3) pixels.get(at + c)];
-				var close = [for (c in 0...3) Math.abs(got[c] - e.rgb[c]) <= 2].indexOf(false) < 0;
-				if (!close)
-					failed++;
-				Sys.println('${e.name}: ${close ? "as expected" : 'got ${got.join(", ")}, not ${e.rgb.join(", ")}'}');
-			}
-			if (failed > 0) {
-				Sys.println('$failed pixels differ');
-				Sys.exit(1);
-			}
-			state.quit();
-		}, failure), failure), failure), failure), failure);
+			Sys.println('${e.name}: ${close ? "as expected" : 'got ${got.join(", ")}, not ${e.rgb.join(", ")}'}');
+		}
+		var changes = uploadedAfterChange == CHANGED_BYTES;
+		if (!changes)
+			failed++;
+		Sys.println('sprite upload after the change: ${changes ? "only the changed parts" : '$uploadedAfterChange bytes, not $CHANGED_BYTES'}');
+		var still = sprites.uploaded == 0;
+		if (!still)
+			failed++;
+		Sys.println('sprite upload without a change: ${still ? "nothing" : '${sprites.uploaded} bytes'}');
+		if (failed > 0)
+			fail('$failed checks failed');
+		state.quit();
 	}
 
 	static function failure(e:haxe.Exception) {

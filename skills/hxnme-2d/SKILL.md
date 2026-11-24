@@ -1,6 +1,6 @@
 ---
 name: hxnme-2d
-description: Draw sprites and shapes in an hxnme app with the hxnme-2d haxelib (package `hxn.me.render2d`), the 2D renderer of the hxn media engine, through hxnme-gpu on HashLink, Ash, hxcpp and CPPIA. Use when an app draws 2D shapes, sprites or textures, moves a 2D camera, or draws 2D into a render target, or when changing the renderer itself.
+description: Draw sprites and shapes, and keep sprites from frame to frame, in an hxnme app with the hxnme-2d haxelib (package `hxn.me.render2d`), the 2D renderer of the hxn media engine, through hxnme-gpu on HashLink, Ash, hxcpp and CPPIA. Use when an app draws 2D shapes, sprites or textures, moves a 2D camera, or draws 2D into a render target, or when changing the renderer itself.
 ---
 
 # hxnme-2d
@@ -34,6 +34,17 @@ draw.plane = plane;   // hxn.me.render2d.Plane: x, y, z, rx..rw or rotate(), sca
 draw.sprite(texture, x, y, w, h, tint, alpha, angle, u0, v0, u1, v1);
 ```
 
+Sprites that stay from frame to frame go in `ResMut<Sprites>`. Only the
+parts that change are uploaded, so sprites that stand still cost nothing:
+
+```haxe
+sprites.layer = 1; sprites.plane = null;   // for the sprites added next
+var s:Sprite = sprites.add(texture, x, y, w, h, tint, alpha, angle, u0, v0, u1, v1);
+sprites.move(s, x, y); sprites.resize(s, w, h); sprites.turn(s, angle);
+sprites.tint(s, color, alpha); sprites.region(s, u0, v0, u1, v1);
+sprites.xOf(s); sprites.yOf(s); sprites.exists(s); sprites.remove(s);
+```
+
 `new Texture(width, height, rgbaPixels)` at any time; it uploads once the
 GPU is ready. `Texture.solid(color)` is a one-pixel texture.
 
@@ -41,6 +52,10 @@ Rules:
 
 - Order is draw order. Sprites with the same texture, and shapes between
   them, share one instanced draw; a texture change starts another.
+- `Sprites` groups sprites by texture, layer and plane, with one draw for
+  each group. Groups draw before `Draw`, in the order of their first
+  sprites. `remove` moves the group's last sprite into the removed one's
+  place, which changes the order within the group.
 - Shapes are signed distance functions in `Shader`, so they stay smooth
   at any zoom and angle.
 

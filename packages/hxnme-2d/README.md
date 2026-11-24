@@ -58,6 +58,47 @@ static function draw(draw:ResMut<Draw>) {
 | `stroke(points, width, color, alpha, widths)` | Adds lines through the x, y pairs of `points`, with the width at each point from `widths`, such as a pen's pressure. |
 | `sprite(texture, x, y, width, height, color, alpha, angle, u0, v0, u1, v1)` | Adds the texture stretched over the rectangle and multiplied by the color, turned by `angle` about its center. `u0` to `v1` select part of the texture. |
 
+## Sprites
+
+The resource `Sprites` holds sprites that stay from frame to frame, such as
+the tiles and characters of a scene. `add` returns a handle to the new
+sprite, and the methods that take the handle change that sprite. The
+renderer uploads only the parts that changed since the last frame, so
+sprites that stand still cost no upload.
+
+```haxe
+static var hero:Sprite;
+
+@:system(Start)
+static function setup(sprites:ResMut<Sprites>) {
+	hero = sprites.add(heroTexture, 160, 60, 32, 32);
+}
+
+@:system(Update)
+static function walk(sprites:ResMut<Sprites>, time:Res<Time>) {
+	sprites.move(hero, sprites.xOf(hero) + 60 * time.delta, sprites.yOf(hero));
+}
+```
+
+| Method | Effect |
+|---|---|
+| `add(texture, x, y, width, height, color, alpha, angle, u0, v0, u1, v1)` | Adds a sprite with the arguments of `draw.sprite`, and returns its handle. |
+| `remove(sprite)` | Removes the sprite. Its handle stays invalid after another sprite takes its place. |
+| `exists(sprite)` | Returns whether the sprite is still in the store. |
+| `move(sprite, x, y)`, `resize(sprite, width, height)` | Sets the sprite's corner and size. |
+| `turn(sprite, angle)` | Turns the sprite to `angle` radians about its center. |
+| `tint(sprite, color, alpha)` | Sets the color and alpha that multiply the texture. |
+| `region(sprite, u0, v0, u1, v1)` | Selects the part of the texture that the sprite shows. |
+| `xOf(sprite)`, `yOf(sprite)` | Return the sprite's corner. |
+
+`sprites.layer` and `sprites.plane` set the layer and plane of the sprites
+added next, as in `Draw`. Sprites with the same texture, layer and plane form
+a group, and each group draws with one instanced draw. Groups draw in the
+order that their first sprites were added, and before what `Draw` holds.
+Sprites in one group draw in the order they were added, until one is
+removed: `remove` moves the group's last sprite into the removed sprite's
+place.
+
 ## Planes
 
 `draw.plane` sets the plane that what is added next lies on, and null puts
@@ -94,6 +135,9 @@ draw.
 
 In `tests/draw`, run `hxn check hl cpp cppia app.hxml --vm ash`. The check
 draws through a screen camera, an orthographic camera, a perspective camera
-and a perspective camera tilted back 45 degrees, each into a render target.
+a perspective camera tilted back 45 degrees, an orthographic camera with
+depth, and a screen camera that shows `Sprites`, each into a render target.
 It compares pixels of each shape with the colors it expects, and checks that
 the tilted camera sees the far side of a square narrower than its near side.
+After it moves one sprite and removes another, it checks that the next frame
+uploads only the changed parts, and the frame after that uploads nothing.
