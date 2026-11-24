@@ -12,10 +12,11 @@ import hxn.me.gpu.GpuPlugin;
 	through the cameras of `Cameras`. In each frame, `reset` empties `Draw` in
 	`Begin`, systems add to it and change `Sprites` in `Update`, and `upload`
 	sends the instances, the changed parts of `Sprites` and each camera's
-	matrix to the GPU in `Render`, before hxnme-gpu draws the frame. Each enabled camera has a pass in the frame graph, into the frame or
-	into its render target.
+	matrix to the GPU in `Render`, before hxnme-gpu draws the frame. Each
+	enabled camera has a pass in the frame graph, into the frame or into its
+	render target.
 **/
-@:plugin("hxnme-2d", description = "Draws sprites and shapes with one instanced shader")
+@:plugin("hxnme-2d", description = "Draws sprites, shapes and text with one instanced shader")
 class RenderPlugin {
 	static var renderer:Null<Renderer>;
 
@@ -23,9 +24,10 @@ class RenderPlugin {
 
 	public function start():Void {}
 
-	@:system(Begin, description = "Empties Draw for the new frame")
-	static function reset(draw:ResMut<Draw>) {
+	@:system(Begin, description = "Empties Draw for the new frame, and sets the scale that text is rasterized at")
+	static function reset(draw:ResMut<Draw>, typesetter:ResMut<Typesetter>, display:Res<Display>) {
 		(draw : Draw).clear();
+		(typesetter : Typesetter).begin(display.scale);
 	}
 
 	@:system(Render, before = GpuPlugin.present, description = "Uploads the instances, the changed sprites and each camera's matrix for this frame")

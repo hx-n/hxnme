@@ -7,11 +7,12 @@
   "contributors": [
     "darmie"
   ],
-  "releasenote": "Draws sprites and shapes with one instanced shader, through hxnme-gpu.",
+  "releasenote": "Draws sprites, shapes and text with one instanced shader, through hxnme-gpu.",
   "classPath": "src",
   "dependencies": {
     "hxnme": "0.0.1",
-    "hxnme-gpu": "0.0.1"
+    "hxnme-gpu": "0.0.1",
+    "hxn-text": "0.1.0"
   },
   "tags": [
     "hashlink",

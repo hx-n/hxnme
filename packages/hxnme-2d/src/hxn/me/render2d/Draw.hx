@@ -1,5 +1,7 @@
 package hxn.me.render2d;
 
+import hxn.text.AtlasKind;
+
 /**
 	`Draw` is the resource for drawing that the app repeats every frame,
 	such as shapes and debug lines. Systems call its methods in each frame,
@@ -11,8 +13,8 @@ package hxn.me.render2d;
 	`alpha` from 0 to 1.
 
 	Shapes have edges from signed distance functions, so they stay smooth at
-	any size, zoom and angle. Each change of texture between sprites starts a
-	new batch, and shapes never start one.
+	any size, zoom and angle. Each change of texture between sprites and text
+	starts a new batch, and shapes never start one.
 **/
 class Draw {
 	@:allow(hxn.me.render2d) final instances = new Instances();
@@ -84,6 +86,44 @@ class Draw {
 		instances.set(Instances.UV, i, u0, v0, u1, v1);
 		tint(Instances.COLOR, i, color, alpha);
 		instances.set(Instances.XFORM, i, Math.cos(angle), Math.sin(angle), 0.5, 0.5);
+		textured(texture, i);
+	}
+
+	/**
+		Adds `text` with its box's corner with the smaller coordinates at `x`,
+		`y`, in `color` and `alpha`. `angle` turns it in radians about the
+		box's center. The text reads upright through a camera with y up and
+		through a screen camera. Color glyphs, such as emoji, keep their own
+		colors and take only `alpha`.
+	**/
+	public function text(text:Text, x:Float, y:Float, color = 0xFFFFFF, alpha = 1.0, angle = 0.0):Void {
+		var laid = text.layout();
+		var w = laid.width, h = laid.height;
+		var c = Math.cos(angle), s = Math.sin(angle);
+		for (g in laid.glyphs) {
+			var atlas = text.atlas(g.kind);
+			if (atlas == null || g.width <= 0 || g.height <= 0)
+				continue;
+			var i = instances.add();
+			// Glyph rects are laid out from the top of the box. The shader mirrors
+			// them within the box, given in `shape.zw`, for a view with y up.
+			var gx = x + g.x, gy = y + g.y;
+			instances.set(Instances.RECT, i, gx, gy, g.width, g.height);
+			instances.set(Instances.UV, i, g.atlasX / atlas.width, g.atlasY / atlas.height, (g.atlasX + g.atlasWidth) / atlas.width,
+				(g.atlasY + g.atlasHeight) / atlas.height);
+			if (g.kind == Coverage)
+				tint(Instances.COLOR, i, color, alpha);
+			else
+				instances.set(Instances.COLOR, i, 1, 1, 1, alpha);
+			// Every glyph turns about the box's center, so the text turns as one piece.
+			instances.set(Instances.XFORM, i, c, s, (x + w / 2 - gx) / g.width, (y + h / 2 - gy) / g.height);
+			instances.set(Instances.SHAPE, i, g.kind == Coverage ? 1 : 0, 0, y, h);
+			textured(atlas, i);
+		}
+	}
+
+	// Adds instance `i`, drawn with `texture`, to the last run, or starts a run when the texture, layer or plane differs.
+	function textured(texture:Texture, i:Int):Void {
 		var last = runs.length > 0 ? runs[runs.length - 1] : null;
 		if (last == null || last.layer != layer || last.plane != plane || (last.texture != null && last.texture != texture))
 			runs.push({texture: texture, layer: layer, plane: plane, start: i, count: 1});

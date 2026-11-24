@@ -1,6 +1,6 @@
 ---
 name: hxnme-2d
-description: Draw sprites and shapes, and keep sprites from frame to frame, in an hxnme app with the hxnme-2d haxelib (package `hxn.me.render2d`), the 2D renderer of the hxn media engine, through hxnme-gpu on HashLink, Ash, hxcpp and CPPIA. Use when an app draws 2D shapes, sprites or textures, moves a 2D camera, or draws 2D into a render target, or when changing the renderer itself.
+description: Draw sprites, shapes and text, and keep sprites from frame to frame, in an hxnme app with the hxnme-2d haxelib (package `hxn.me.render2d`), the 2D renderer of the hxn media engine, through hxnme-gpu on HashLink, Ash, hxcpp and CPPIA. Use when an app draws 2D shapes, sprites or textures, moves a 2D camera, or draws 2D into a render target, or when changing the renderer itself.
 ---
 
 # hxnme-2d
@@ -45,6 +45,16 @@ sprites.tint(s, color, alpha); sprites.region(s, u0, v0, u1, v1);
 sprites.xOf(s); sprites.yOf(s); sprites.exists(s); sprites.remove(s);
 ```
 
+Text goes through `ResMut<Typesetter>` (hxn-text). Keep the `Text` and
+`set` its string; it lays itself out again only when the string, the
+display's scale or the atlases change:
+
+```haxe
+var label:Text = typesetter.text(font /* hxn.text.Font */, "Score 0", {size: 24});
+label.set("Score 10"); label.width; label.height;
+draw.text(label, x, y, color, alpha, angle);   // upright through y-up and Screen cameras
+```
+
 `new Texture(width, height, rgbaPixels)` at any time; it uploads once the
 GPU is ready. `Texture.solid(color)` is a one-pixel texture.
 
@@ -56,6 +66,9 @@ Rules:
   each group. Groups draw before `Draw`, in the order of their first
   sprites. `remove` moves the group's last sprite into the removed one's
   place, which changes the order within the group.
+- Glyphs sample hxn-text's coverage atlas, rasterized at the display's
+  scale, in the same shader. Text shares runs with sprites on the atlas
+  texture.
 - Shapes are signed distance functions in `Shader`, so they stay smooth
   at any zoom and angle.
 

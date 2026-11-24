@@ -1,7 +1,8 @@
 # hxnme-2d
 
-The 2D renderer of an hxnme app, in `hxn.me.render2d`. It draws sprites and
-shapes with one instanced shader, through the frame graph of `hxnme-gpu`.
+The 2D renderer of an hxnme app, in `hxn.me.render2d`. It draws sprites,
+shapes and text with one instanced shader, through the frame graph of
+`hxnme-gpu`.
 Shapes take their edges from signed distance functions, so they stay smooth
 at any size, zoom and angle.
 
@@ -57,6 +58,43 @@ static function draw(draw:ResMut<Draw>) {
 | `line(x0, y0, x1, y1, width, color, alpha, endWidth)` | Adds a line with round ends, `width` wide at its start and `endWidth` wide at its end. |
 | `stroke(points, width, color, alpha, widths)` | Adds lines through the x, y pairs of `points`, with the width at each point from `widths`, such as a pen's pressure. |
 | `sprite(texture, x, y, width, height, color, alpha, angle, u0, v0, u1, v1)` | Adds the texture stretched over the rectangle and multiplied by the color, turned by `angle` about its center. `u0` to `v1` select part of the texture. |
+
+## Text
+
+The resource `Typesetter` lays out text with hxn-text and keeps its glyph
+atlases. `typesetter.text(font, value, options)` returns a `Text`, and
+`draw.text(text, x, y, color, alpha, angle)` adds it to the frame. The font
+is an `hxn.text.Font`, and the options are hxn-text's `TextOptions`, such as
+`{size: 24}` or `{size: 14, maxWidth: 200}`.
+
+```haxe
+static var score:Text;
+
+@:system(Start)
+static function setup(typesetter:ResMut<Typesetter>) {
+	var font = new Font(haxe.Resource.getBytes("ui-font"), {});
+	score = typesetter.text(font, "Score 0", {size: 24});
+}
+
+@:system(Update)
+static function hud(draw:ResMut<Draw>, game:Res<Game>) {
+	score.set('Score ${game.score}');
+	draw.layer = 2;
+	draw.text(score, 16, 16, 0xFFFFFF);
+}
+```
+
+`x`, `y` is the corner of the text's box with the smaller coordinates, as
+for shapes, and the text reads upright through cameras with y up and
+through screen cameras. `angle` turns the text about the center of its box.
+`text.width` and `text.height` give the size of the box in logical pixels.
+
+A `Text` lays itself out when it is first drawn or measured, and again after
+`set` changes its string. Glyphs are rasterized at the display's scale, so
+they stay sharp through a camera that shows one world unit for each logical
+pixel. When the display's scale changes, each `Text` lays itself out again
+at the new scale. Color glyphs, such as emoji, keep their own colors and
+take only `alpha`.
 
 ## Sprites
 
@@ -136,8 +174,12 @@ draw.
 In `tests/draw`, run `hxn check hl cpp cppia app.hxml --vm ash`. The check
 draws through a screen camera, an orthographic camera, a perspective camera
 a perspective camera tilted back 45 degrees, an orthographic camera with
-depth, and a screen camera that shows `Sprites`, each into a render target.
+depth, a screen camera that shows `Sprites`, and a screen camera and an
+orthographic camera that show the same text, each into a render target.
 It compares pixels of each shape with the colors it expects, and checks that
 the tilted camera sees the far side of a square narrower than its near side.
 After it moves one sprite and removes another, it checks that the next frame
 uploads only the changed parts, and the frame after that uploads nothing.
+It changes the text from L to T after the first frame, and checks that both
+text cameras show an upright T. The check's font is Noto Sans, under the
+license listed in [third-party/NOTICES.md](third-party/NOTICES.md).

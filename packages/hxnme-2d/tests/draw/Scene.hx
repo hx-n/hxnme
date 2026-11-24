@@ -10,7 +10,10 @@ import hxn.me.render2d.Draw;
 import hxn.me.render2d.Plane;
 import hxn.me.render2d.Sprite;
 import hxn.me.render2d.Sprites;
+import hxn.me.render2d.Text;
 import hxn.me.render2d.Texture;
+import hxn.me.render2d.Typesetter;
+import hxn.text.Font;
 
 /**
 	The check draws through two cameras, each into a 64x64 render target. The
@@ -30,7 +33,10 @@ import hxn.me.render2d.Texture;
 	the red square stays in front. The sixth is a screen camera that shows
 	sprites of `Sprites`: after the first frame, the check moves one sprite
 	and removes another, and counts the bytes that the next two frames
-	upload. After the plugin presents three frames, the check reads every
+	upload. The seventh and eighth cameras show the same text, a screen
+	camera and an orthographic camera with y up. The text is "L" in the first
+	frame and "T" after, so its widest row is at its top only when it was
+	laid out again and reads upright. After the plugin presents three frames, the check reads every
 	target back, compares one pixel of each shape with the color it expects,
 	and stops the app.
 **/
@@ -45,6 +51,9 @@ class Scene {
 	static var removed:Sprite;
 	static var changed = false;
 	static var uploadedAfterChange = -1;
+	static final lettered = new RenderTarget(64, 64);
+	static final letteredUp = new RenderTarget(64, 64);
+	static var label:Text;
 	static final near = new Plane();
 	static var image:Texture;
 	static var halves:Texture;
@@ -91,7 +100,7 @@ class Scene {
 	static inline final CHANGED_BYTES = 2 * 16 + 6 * 16;
 
 	@:system(Start)
-	static function setup(cameras:ResMut<Cameras>, sprites:ResMut<Sprites>) {
+	static function setup(cameras:ResMut<Cameras>, sprites:ResMut<Sprites>, typesetter:ResMut<Typesetter>) {
 		var main = cameras.main;
 		main.projection = Screen;
 		main.target = screen;
@@ -144,6 +153,24 @@ class Scene {
 		sixth.target = kept;
 		sixth.clear = {r: 0, g: 0, b: 0, a: 1};
 		cameras.add(sixth);
+		var seventh = new Camera();
+		seventh.projection = Screen;
+		seventh.layers = 32;
+		seventh.order = 6;
+		seventh.target = lettered;
+		seventh.clear = {r: 0, g: 0, b: 0, a: 1};
+		cameras.add(seventh);
+		var eighth = new Camera();
+		eighth.projection = Orthographic(64, -1000, 1000);
+		eighth.x = 32;
+		eighth.y = 32;
+		eighth.layers = 32;
+		eighth.order = 7;
+		eighth.target = letteredUp;
+		eighth.clear = {r: 0, g: 0, b: 0, a: 1};
+		cameras.add(eighth);
+		var font = new Font(haxe.Resource.getBytes("font"), {});
+		label = (typesetter : Typesetter).text(font, "L", {size: 40});
 		near.z = 10;
 		turned.rotate(Math.PI / 2, 0, 0, 1);
 		turned.x = 20;
@@ -173,6 +200,7 @@ class Scene {
 			changed = true;
 			store.move(moved, 32, 32);
 			store.remove(removed);
+			label.set("T");
 		} else if (gpu.presented == 2 && uploadedAfterChange < 0)
 			uploadedAfterChange = store.uploaded;
 	}
@@ -218,6 +246,27 @@ class Scene {
 		draw.rect(16, 16, 32, 32, 0xFF0000);
 		draw.plane = null;
 		draw.rect(16, 16, 32, 32, 0x0000FF);
+		draw.layer = 32;
+		draw.text(label, 8, 4, 0xFFFFFF);
+	}
+
+	// Returns whether the lit pixels of `pixels`, 64 wide, form a T: some lit
+	// rows, the widest of them in the top fifth.
+	static function upright(pixels:Bytes):Bool {
+		var rows = [for (y in 0...64) width(pixels, 64, y)];
+		var first = 0;
+		while (first < 64 && rows[first] == 0)
+			first++;
+		var last = 63;
+		while (last > first && rows[last] == 0)
+			last--;
+		if (first >= last)
+			return false;
+		var widest = first;
+		for (y in first...last + 1)
+			if (rows[y] > rows[widest])
+				widest = y;
+		return widest - first < (last - first + 1) / 5 && rows[widest] > rows[last] * 2;
 	}
 
 	// Returns how many pixels of row `y` in a `size`-wide readback are white.
@@ -241,7 +290,7 @@ class Scene {
 		reading = true;
 		var state:Lifecycle = lifecycle;
 		var device = gpu.device;
-		var targets = [screen, world, perspective, tilted, deep, kept];
+		var targets = [screen, world, perspective, tilted, deep, kept, lettered, letteredUp];
 		var read:Array<Bytes> = [];
 		function next() {
 			if (read.length < targets.length) {
@@ -279,6 +328,12 @@ class Scene {
 			if (!close)
 				failed++;
 			Sys.println('${e.name}: ${close ? "as expected" : 'got ${got.join(", ")}, not ${e.rgb.join(", ")}'}');
+		}
+		for (target in [lettered, letteredUp]) {
+			var ok = upright(read[targets.indexOf(target)]);
+			if (!ok)
+				failed++;
+			Sys.println('text through the ${target == lettered ? "screen camera" : "camera with y up"}: ${ok ? "an upright T" : "not an upright T"}');
 		}
 		var changes = uploadedAfterChange == CHANGED_BYTES;
 		if (!changes)
