@@ -10,7 +10,8 @@
   "releasenote": "Math types.",
   "classPath": "src",
   "dependencies": {
-    "hxn": ""
+    "hxn": "",
+    "hxn-assets": "0.2.0"
   },
   "tags": [
     "hashlink",

@@ -1,0 +1,4 @@
+# The check loads files from assets/ on the headless host.
+[app]
+id = "hxnme-assets-check"
+rate = 120

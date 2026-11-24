@@ -37,6 +37,7 @@ The kernel reads these keys:
 | `app.step` | The number of fixed steps in a second. The default is 60. |
 | `app.step_snap` | The tolerance for a whole number of fixed steps in a frame, as a part of one step. The default is 0.1, and 0 turns the correction off. |
 | `app.rate` | The number of frames in a second on `HeadlessHost`, the host of an app without a window. The default is 60. |
+| `app.id` | The name of the app's storage, for its bundled files and saves. The default is `hxnme`. |
 | `display.width`, `display.height`, `display.scale` | The display on `HeadlessHost`. The defaults are 1280, 720 and 1. |
 | `display.refresh` | The refresh rate of the display, in frames a second, if the host does not set it. The default is 60. |
 | `libraries.<plugin>` | Replaces the haxelibs that the plugin's manifest lists for some targets. Each key is part of a target triple, such as `linux`, and its value is the list for every target whose triple contains it. The longest key that matches applies. Paths are relative to `hxnme.toml`. |
@@ -317,3 +318,47 @@ Each service has one provider in an app at most. Two providers of one
 service are a compile error. If no plugin provides `Host`, the app runs on
 `hxn.me.HeadlessHost`. That host runs `app.rate` frames a second without a
 window, with the display that the `display` keys set.
+
+## Assets
+
+The kernel resource `hxn.me.Assets` loads the app's assets with
+[hxn-assets](https://github.com/hx-n/hxn-assets). `load(address, type)`
+reads the asset and decodes it with an `AssetType`, and its future gives an
+`Asset` handle. `asset.value` is the decoded value. Call `release()` when the
+handle is no longer needed:
+
+```haxe
+static var level:Null<Asset<Dynamic>>;
+
+@:system(Start)
+static function setup(assets:ResMut<Assets>) {
+	assets.load("levels/start.json", AssetTypes.json).then(a -> level = a);
+}
+```
+
+Loads of one address and type share one decoded value. After the last
+handle to it is released, the value closes and its bytes are unloaded.
+`AssetTypes` has `bytes`, `text` and `json`. Plugins provide types for their
+own objects, such as the textures and fonts of hxnme-2d.
+
+Bundled files come from the `assets` directory of the app, which hxn-assets
+copies beside the program at compile time. If the app declares no
+hxn-assets catalog class, every file in `assets` is bundled. If it declares
+one, only the files that its catalogs list are bundled. `assets.add(catalog)`
+adds a catalog, such as `GameAssets.catalog()`, and its addresses then load
+with the catalog's dependencies and content checks. Any other address is a
+path in `assets`.
+
+An `AssetType` is made from a name, a `decode` function and an optional
+`close` function. `decode` takes the bytes and an `AssetContext`, and returns
+a future of the value. Through the context, it loads the other assets that
+the value holds, such as an image next to the file, and the context releases
+them after the value closes:
+
+```haxe
+final pair = new AssetType<String>("pair", (bytes, context) ->
+	context.load(context.resolve("other.txt"), AssetTypes.text).map(other -> bytes.toString() + other));
+```
+
+The check in `tests/assets` loads JSON, text and catalog addresses, and
+tests what handles share, close and release.

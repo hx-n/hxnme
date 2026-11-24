@@ -145,6 +145,13 @@ system. Read it to see the order the kernel chose.
   runs the job for each index on the calling thread.
 - `hxn.me.project.Toml`: the reader for `hxnme.toml`. It refuses dates,
   arrays of tables and multi-line strings, with the file and line in the error.
+- `hxn.me.Assets` (resource): `load(address, type)` returns
+  `Future<Asset<T>>`. Loads of one address and type share one value, and
+  `release()` on the last handle closes it. Types: `AssetTypes.bytes`, `text`
+  and `json`, and plugin types such as hxnme-2d's. `add(GameAssets.catalog())`
+  adds an hxn-assets catalog. With a catalog class, only listed files are
+  bundled. `new AssetType<T>(name, (bytes, context) -> future, ?close)` makes a
+  type, and `context.load` holds what the value depends on.
 
 ## Rules for engine and plugin code
 
