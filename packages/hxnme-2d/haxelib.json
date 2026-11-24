@@ -18,7 +18,11 @@
     "hashlink",
     "hxcpp",
     "2d",
-    "engine"
+    "engine",
+    "native",
+    "cppia",
+    "wasm",
+    "cross"
   ],
   "hxnme": {"plugin": "hxn.me.render2d.RenderPlugin", "requires": ["hxnme-gpu"]}
 }

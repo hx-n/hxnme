@@ -18,7 +18,11 @@
     "hashlink",
     "hxcpp",
     "input",
-    "engine"
+    "engine",
+    "native",
+    "cppia",
+    "wasm",
+    "cross"
   ],
   "hxnme": {"plugin": "hxn.me.input.InputPlugin", "requires": ["hxnme-window"]}
 }

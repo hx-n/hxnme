@@ -15,6 +15,10 @@
   "tags": [
     "hashlink",
     "hxcpp",
+    "native",
+    "cppia",
+    "wasm",
+    "cross",
     "engine"
   ],
   "hxn": {

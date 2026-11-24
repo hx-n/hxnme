@@ -18,7 +18,11 @@
     "hashlink",
     "hxcpp",
     "gpu",
-    "engine"
+    "engine",
+    "native",
+    "cppia",
+    "wasm",
+    "cross"
   ],
   "hxnme": {
     "plugin": "hxn.me.gpu.GpuPlugin",
