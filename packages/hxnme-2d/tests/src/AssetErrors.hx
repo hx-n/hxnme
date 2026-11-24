@@ -24,7 +24,7 @@ class AssetErrors {
 	// Writes an atlas file, a class that declares it and a program with `use`, compiles them for
 	// HashLink without output, and makes sure that the compile fails with `error`.
 	static function expect(what:String, atlas:String, use:String, error:String) {
-		var dir = FileSystem.absolutePath(Path.join([out, StringTools.replace(what, " ", "-")]));
+		var dir = FileSystem.absolutePath(Path.join([out, directoryName(what)]));
 		FileSystem.createDirectory(Path.join([dir, "assets"]));
 		File.saveContent(Path.join([dir, "assets", "sheet.json"]), atlas);
 		File.saveContent(Path.join([dir, "Art.hx"]),
@@ -66,4 +66,8 @@ class AssetErrors {
 		var paths = [for (dir in ["binding", "sources"]) if (FileSystem.exists(Path.join([root, dir]))) Path.join([root, dir])];
 		return paths.length > 0 ? paths : [root];
 	}
+
+	// Keeps letters and digits, so that the name is a valid directory on every system.
+	static function directoryName(what:String):String
+		return ~/[^A-Za-z0-9]+/g.replace(what, "-");
 }

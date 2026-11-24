@@ -70,7 +70,7 @@ class SystemErrors {
 	// Writes the app, compiles it for HashLink, and makes sure that the compile
 	// fails with `error` in its output. `run` is the body of `main`.
 	static function expect(what:String, files:Map<String, String>, run:String, error:String) {
-		var dir = Path.join([out, StringTools.replace(what, " ", "-")]);
+		var dir = Path.join([out, directoryName(what)]);
 		for (name => source in files) {
 			var file = Path.join([dir, '$name.hx']);
 			FileSystem.createDirectory(Path.directory(file));
@@ -90,4 +90,8 @@ class SystemErrors {
 		}
 		Sys.println('$what: $error');
 	}
+
+	// Keeps letters and digits, so that the name is a valid directory on every system.
+	static function directoryName(what:String):String
+		return ~/[^A-Za-z0-9]+/g.replace(what, "-");
 }

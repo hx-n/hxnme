@@ -95,7 +95,7 @@ class PluginErrors {
 	// Writes the app and its plugins, compiles it for HashLink, and checks the
 	// compile fails with `error` in its output.
 	static function expect(what:String, fixtures:Array<Fixture>, error:String) {
-		var dir = Path.join([out, StringTools.replace(what, " ", "-")]);
+		var dir = Path.join([out, directoryName(what)]);
 		var args = ["-cp", "../src", "--macro", "hxn.me.macro.Registry.install()"];
 		for (fixture in fixtures) {
 			var root = Path.join([dir, fixture.name]);
@@ -119,4 +119,8 @@ class PluginErrors {
 		}
 		Sys.println('$what: $error');
 	}
+
+	// Keeps letters and digits, so that the name is a valid directory on every system.
+	static function directoryName(what:String):String
+		return ~/[^A-Za-z0-9]+/g.replace(what, "-");
 }

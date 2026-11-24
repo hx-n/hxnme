@@ -35,7 +35,7 @@ class ActionErrors {
 	// Writes `actions` and a program that creates its input, compiles it for
 	// HashLink without output, and makes sure that the compile fails with `error`.
 	static function expect(what:String, actions:String, error:String) {
-		var dir = Path.join([out, StringTools.replace(what, " ", "-")]);
+		var dir = Path.join([out, directoryName(what)]);
 		FileSystem.createDirectory(dir);
 		File.saveContent(Path.join([dir, "Action.hx"]), actions + "\n");
 		File.saveContent(Path.join([dir, "Main.hx"]),
@@ -68,4 +68,8 @@ class ActionErrors {
 		// hxn libraries keep their classes in `binding`, which `hxn.Bind.lib` adds.
 		return FileSystem.exists(Path.join([root, "binding"])) ? Path.join([root, "binding"]) : root;
 	}
+
+	// Keeps letters and digits, so that the name is a valid directory on every system.
+	static function directoryName(what:String):String
+		return ~/[^A-Za-z0-9]+/g.replace(what, "-");
 }
