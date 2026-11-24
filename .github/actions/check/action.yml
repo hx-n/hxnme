@@ -1,8 +1,9 @@
 name: check
 description: >-
-  Runs a check program on one runtime. On Ash, the program runs in hybrid mode, and its
-  JIT, interpreter and ahead-of-time runs must print the same output. On hxcpp and CPPIA,
-  hxn check runs it there and on Ash, and fails unless both print the same output.
+  Runs a check program on one runtime. On Ash, the program runs in hybrid mode, and the
+  executable that Ash builds ahead of time must print the same output. On hxcpp and CPPIA,
+  hxn check runs it there and on Ash, and fails unless both print the same output. On
+  stock HashLink, it runs there and on Ash, and fails unless both print the same output.
 
 inputs:
   directory:
@@ -12,11 +13,11 @@ inputs:
     description: The program file.
     default: app.hxml
   runtime:
-    description: ash, cpp or cppia.
+    description: ash, cpp, cppia or hashlink.
     required: true
   ash-modes:
-    description: The Ash runs compared with hybrid mode, from "jit interp aot".
-    default: jit interp aot
+    description: The Ash runs compared with hybrid mode, from "jit interp aot". Hybrid mode covers CI. JIT and interpreter runs isolate one tier when debugging.
+    default: aot
   ash-options:
     description: Options for every Ash run, such as --no-fma.
     default: ""
@@ -82,6 +83,14 @@ runs:
               echo "== hxn run ${{ inputs.runtime }} $file"
               timeout $limit "${wrap[@]}" hxn run ${{ inputs.runtime }} $file || fail "the check failed on ${{ inputs.runtime }}"
             fi ;;
+          hashlink)
+            echo "== HashLink"
+            timeout $limit "${wrap[@]}" hxn run hl $file --vm "$HL" > hl.txt 2> hl.err
+            code=$?
+            cat hl.txt
+            [ $code -eq 0 ] || { cat hl.err; fail "the check failed on HashLink"; }
+            timeout $limit "${wrap[@]}" hxn run hl $file --vm "$vm" > ash.txt 2> ash.err
+            diff -u ash.txt hl.txt || fail "HashLink differs from Ash" ;;
           *)
             fail "unknown runtime ${{ inputs.runtime }}" ;;
         esac
