@@ -3,24 +3,24 @@ package hxn.me.render2d;
 import hxn.gpu.Buffer;
 
 /**
-	`Sprites` is the resource for sprites that stay from frame to frame, such
-	as the tiles and characters of a scene. `add` returns a handle, and the
-	methods that take a handle change that one sprite. The renderer uploads
-	only the part of each field that changed since the last frame, so sprites
-	that stand still cost no upload.
+	`Sprites` keeps sprites from frame to frame, for example the tiles and
+	characters of a scene. `add` returns a handle to the new sprite, and the
+	other methods take that handle. In each frame, the renderer uploads only the
+	part of each field that changed since the last frame. Sprites that do not
+	change cost no upload.
 
-	Sprites with the same texture, layer and plane form a group, and each
-	group draws with one instanced draw. Groups draw in the order that their
-	first sprites were added, before what `Draw` holds in the same frame.
-	Sprites in one group draw in the order they were added, until one is
-	removed: `remove` moves the group's last sprite into the removed sprite's
-	place.
+	Sprites with the same texture, layer and plane form a group, and each group
+	draws with one instanced draw. Groups draw in the order that their first
+	sprites were added, and before the contents of `Draw` in the same frame. The
+	sprites of one group draw in the order that they were added. `remove`
+	changes that order, because it moves the last sprite of the group into the
+	place of the removed sprite.
 **/
 class Sprites {
 	/** The layer bits of the sprites added next. Cameras show the layers in their `layers`. **/
 	public var layer = 1;
 
-	/** The plane that the sprites added next lie on, or null for the world's XY plane. **/
+	/** The plane of the sprites added next, or null for the XY plane of the world. **/
 	public var plane:Null<Plane>;
 
 	/** The number of sprites. **/

@@ -10,14 +10,15 @@ import hxn.text.TextException;
 import hxn.text.TextOptions;
 
 /**
-	`Typesetter` is the resource that lays out text with hxn-text and keeps
-	its glyph atlases: one of coverage for plain glyphs, and one of RGBA for
-	color glyphs such as emoji. `text` returns a `Text` for `Draw.text`. Glyphs
-	are rasterized at the display's scale, so they cover whole device pixels
-	through a camera that shows one world unit for each logical pixel.
+	`Typesetter` lays out text with hxn-text and keeps the glyph atlases. The
+	coverage atlas holds one byte for each pixel of plain glyphs. The color
+	atlas holds RGBA pixels for color glyphs, such as emoji. `text` returns a
+	`Text` for `Draw.text`. Glyphs are rasterized at the display's scale, so
+	they cover whole device pixels through a camera that shows one world unit
+	for each logical pixel.
 **/
 class Typesetter {
-	/** The device pixels for each logical pixel that glyphs are rasterized at. The plugin sets it from `Display` in each frame. **/
+	/** The number of device pixels for each logical pixel, at which glyphs are rasterized. The plugin sets it from `Display` in each frame. **/
 	public var scale(default, null) = 1.0;
 
 	var engine:Null<TextEngine>;
@@ -30,17 +31,17 @@ class Typesetter {
 	public function new() {}
 
 	/**
-		Returns `value` laid out in `font` with `options`, such as
-		`{size: 24}`, for `Draw.text`. The text lays itself out again when
-		`set` changes its string, and when the scale or the atlases change.
+		Returns `value` laid out in `font` with `options`, for example `{size:
+		24}`, for `Draw.text`. After `set` changes the string, or after the
+		scale or the atlases change, the text lays itself out again.
 	**/
 	public function text(font:Font, value:String, ?options:TextOptions):Text
 		return new Text(this, font, value, options != null ? options : {size: 16});
 
 	/**
 		Lays out `value` and brings the atlas textures up to date with the
-		glyphs it needs. When an atlas is full, the typesetter clears both and
-		lays the text out again.
+		glyphs that it needs. If an atlas is full, the typesetter clears both
+		atlases and lays the text out again.
 	**/
 	@:allow(hxn.me.render2d) function prepare(font:Font, value:String, options:TextOptions):PreparedText {
 		var prepared = try layout(font, value, options) catch (e:TextException) {
@@ -96,7 +97,7 @@ class Typesetter {
 		atlas.revision = 0;
 	}
 
-	// Copies the atlas's changes since the last pull into its texture, or makes a new texture when its size changed.
+	// Copies the atlas's changes since the last pull into its texture, or makes a new texture if its size changed.
 	function pull(atlas:Atlas):Void {
 		var update:AtlasUpdate = engine.atlas(atlas.kind, atlas.revision);
 		atlas.revision = update.revision;
@@ -105,7 +106,7 @@ class Typesetter {
 		var current = atlas.texture;
 		var resized = current == null || current.width != update.width || current.height != update.height;
 		if (resized && !(update.full && update.patchWidth == update.width && update.patchHeight == update.height)) {
-			// A partial patch cannot fill a new texture, so ask for the whole atlas.
+			// Partial patches cannot fill a new texture, so ask for the whole atlas.
 			update = engine.atlas(atlas.kind, 0);
 			atlas.revision = update.revision;
 		}

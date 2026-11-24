@@ -3,13 +3,14 @@ package hxn.me.render2d;
 import haxe.io.Bytes;
 
 /**
-	`Instances` stores the instances of the 2D shader as structure of arrays:
-	one array of four floats for each field, in the order of `Shader`'s
-	inputs. Each array becomes one per-instance vertex buffer, so a change to
-	one field uploads only that field.
+	`Instances` stores the instances of the 2D shader as a structure of arrays.
+	Each field, such as `RECT` or `COLOR`, has its own array with four floats
+	for each instance, in the order of the inputs of `Shader`. Each array
+	becomes one per-instance vertex buffer, so a change to one field uploads
+	only that field.
 **/
 class Instances {
-	/** The number of fields, each four floats. **/
+	/** The number of fields. Each field is four floats. **/
 	public static inline final FIELDS = 7;
 
 	public static inline final RECT = 0;
@@ -54,7 +55,7 @@ class Instances {
 		bytes.setFloat(at + 12, d);
 	}
 
-	/** Writes two floats of `field` for `index`, at float `at` of the four. **/
+	/** Writes `a` and `b` into `field` of instance `index`, from float `at` of the four. **/
 	public inline function setPair(field:Int, index:Int, at:Int, a:Float, b:Float):Void {
 		var bytes = fields[field];
 		var offset = index * STRIDE + at * 4;
@@ -62,7 +63,7 @@ class Instances {
 		bytes.setFloat(offset + 4, b);
 	}
 
-	/** Returns float `at` of the four of `field` for `index`. **/
+	/** Returns float `at` of `field` of instance `index`. **/
 	public inline function get(field:Int, index:Int, at:Int):Float
 		return fields[field].getFloat(index * STRIDE + at * 4);
 

@@ -6,10 +6,10 @@ import hxn.gpu.Texture as GpuTexture;
 import hxn.gpu.TextureFormat;
 
 /**
-	`Texture` is an image that sprites draw. The app makes it from RGBA
-	pixels, 4 bytes for each pixel and rows top first, at any time. The 2D
-	renderer uploads it to the GPU in the first frame after the device opens,
-	and then releases the pixels.
+	`Texture` is an image that sprites draw. The app can make it at any time,
+	from RGBA pixels with 4 bytes for each pixel and the top row first. In the
+	first frame after the GPU device opens, the 2D renderer uploads it and
+	releases the pixels.
 **/
 class Texture {
 	public var width(default, null):Int;
@@ -21,7 +21,7 @@ class Texture {
 	var format:TextureFormat;
 	var pixels:Null<Bytes>;
 
-	// Writes into part of the texture that wait for the next upload.
+	// Writes to parts of the texture that wait for the next upload.
 	var patches:Array<Patch>;
 
 	public function new(width:Int, height:Int, pixels:Bytes) {

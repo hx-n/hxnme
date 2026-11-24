@@ -1,6 +1,6 @@
 ---
 name: hxnme-2d
-description: Draw sprites, shapes, nine-slices and text, and keep sprites from frame to frame, in an hxnme app with the hxnme-2d haxelib (package `hxn.me.render2d`), the 2D renderer of the hxn media engine, through hxnme-gpu on HashLink, Ash, hxcpp and CPPIA. Use when an app draws 2D shapes, sprites or textures, moves a 2D camera, or draws 2D into a render target, or when changing the renderer itself.
+description: Draw sprites, shapes (with round, squircle and other corner shapes), nine-slices and text, and keep sprites from frame to frame, in an hxnme app with the hxnme-2d haxelib (package `hxn.me.render2d`), the 2D renderer of the hxn media engine, through hxnme-gpu on HashLink, Ash, hxcpp and CPPIA. Use when an app draws 2D shapes, sprites or textures, moves a 2D camera, or draws 2D into a render target, or when changing the renderer itself.
 ---
 
 # hxnme-2d
@@ -24,7 +24,7 @@ Draw through `ResMut<Draw>` in `Update`, every frame; it is emptied in
 `Begin`. Colors are 0xRRGGBB with `alpha` 0 to 1.
 
 ```haxe
-draw.rect(x, y, w, h, 0x3366CC, 1, radius, border, borderColor);
+draw.rect(x, y, w, h, 0x3366CC, 1, radius, border, borderColor, borderAlpha, Squircle /* CornerShape */);
 draw.circle(cx, cy, r, 0xFFCC00);
 draw.ellipse(x, y, w, h, color);
 draw.line(x0, y0, x1, y1, width, color, alpha, endWidth);
@@ -70,8 +70,14 @@ Rules:
 - Glyphs sample hxn-text's coverage atlas, rasterized at the display's
   scale, in the same shader. Text shares runs with sprites on the atlas
   texture.
-- Shapes are signed distance functions in `Shader`, so they stay smooth
-  at any zoom and angle.
+- Shapes are signed distance functions in `Sdf`, so they stay smooth at
+  any zoom and angle. `Sdf.shapedBox` takes a radius and a `CornerShape`
+  for each corner. The UI imports the same module.
+- Each nine-slice is one instance. `Slice` fits the borders and maps the
+  pieces on the GPU.
+- `Shader` keeps only the vertex and fragment stages. Put new shader
+  functions in a module of functions that `Shader` brings in with hxnsl's
+  `@:import`, as `Sdf` and `Slice` are.
 
 ## Checks
 

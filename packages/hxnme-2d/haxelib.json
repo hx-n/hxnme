@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "license": "Apache",
   "url": "https://github.com/hx-n/hxnme",
-  "description": "The 2D renderer of an hxnme app: sprites, shapes and text, drawn by the GPU with one instanced shader",
+  "description": "2D renderer for hxnme apps: sprites, shapes, nine-slices and text, drawn on the GPU",
   "contributors": [
     "darmie"
   ],

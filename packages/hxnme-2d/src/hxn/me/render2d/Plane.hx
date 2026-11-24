@@ -1,11 +1,10 @@
 package hxn.me.render2d;
 
 /**
-	`Plane` places 2D content in the 3D world. Content drawn on a plane lies
-	in the plane's own XY plane, at its own coordinates, and the plane moves,
-	turns and scales it into the world: by `scale`, then by the quaternion
-	`rx`, `ry`, `rz`, `rw`, then to `x`, `y`, `z`. Perspective cameras that
-	turn around a plane see its content in perspective.
+	`Plane` places 2D content in the 3D world. Content drawn on a plane lies in
+	the plane's own XY plane. The plane maps that content into the world in
+	three steps: it scales it by `scale`, turns it by the quaternion `rx`, `ry`,
+	`rz`, `rw`, and moves it to `x`, `y`, `z`.
 **/
 class Plane {
 	public var x = 0.0;

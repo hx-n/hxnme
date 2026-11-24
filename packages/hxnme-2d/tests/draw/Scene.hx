@@ -33,7 +33,9 @@ import hxn.text.Font;
 	the red square stays in front. The sixth is a screen camera that shows
 	sprites of `Sprites`: after the first frame, the check moves one sprite
 	and removes another, and counts the bytes that the next two frames
-	upload. The seventh and eighth cameras show the same text, a screen
+	upload. It also shows a rectangle with squircle corners and one with
+	round corners, and the check tests a pixel near each corner. The seventh
+	and eighth cameras show the same text, a screen
 	camera and an orthographic camera with y up. The text is "L" in the first
 	frame and "T" after, so its widest row is at its top only when it was
 	laid out again and reads upright. Right of the text, both cameras show a
@@ -95,6 +97,8 @@ class Scene {
 		{target: kept, name: "where the removed sprite was", x: 20, y: 4, rgb: [0, 0, 0]},
 		{target: kept, name: "sprite that took the removed sprite's place", x: 52, y: 4, rgb: [0, 0, 255]},
 		{target: kept, name: "sprite of a second texture", x: 4, y: 52, rgb: [40, 80, 120]},
+		{target: kept, name: "near the corner of the squircle", x: 12, y: 12, rgb: [255, 255, 255]},
+		{target: kept, name: "same place near a round corner", x: 36, y: 12, rgb: [0, 0, 0]},
 		{target: lettered, name: "nine-slice corner on the screen", x: 38, y: 8, rgb: [255, 0, 0]},
 		{target: lettered, name: "nine-slice top edge on the screen", x: 48, y: 8, rgb: [0, 255, 0]},
 		{target: lettered, name: "nine-slice side on the screen", x: 38, y: 24, rgb: [0, 255, 255]},
@@ -274,6 +278,10 @@ class Scene {
 		draw.rect(16, 16, 32, 32, 0xFF0000);
 		draw.plane = null;
 		draw.rect(16, 16, 32, 32, 0x0000FF);
+		draw.layer = 16;
+		// Squircle corners reach nearer the corner of the box than round ones, along the diagonal.
+		draw.rect(10, 10, 20, 20, 0xFFFFFF, 1, 10, 0, 0, 1, Squircle);
+		draw.rect(34, 10, 20, 20, 0xFFFFFF, 1, 10);
 		draw.layer = 32;
 		draw.text(label, 8, 4, 0xFFFFFF);
 		draw.nineSlice(panel, 34, 4, 28, 40, 4, 4, 4, 4, 0xFFFFFF, 1, 0, 2);

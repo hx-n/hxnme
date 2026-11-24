@@ -8,15 +8,19 @@ import hxn.me.gpu.Gpu;
 import hxn.me.gpu.GpuPlugin;
 
 /**
-	`RenderPlugin` draws the app's 2D content with the GPU of hxnme-gpu,
-	through the cameras of `Cameras`. In each frame, `reset` empties `Draw` in
-	`Begin`, systems add to it and change `Sprites` in `Update`, and `upload`
-	sends the instances, the changed parts of `Sprites` and each camera's
-	matrix to the GPU in `Render`, before hxnme-gpu draws the frame. Each
-	enabled camera has a pass in the frame graph, into the frame or into its
-	render target.
+	`RenderPlugin` draws the 2D content of the app on the GPU of hxnme-gpu,
+	through the cameras in `Cameras`. Each frame has three stages:
+
+	- In `Begin`, `reset` empties `Draw`.
+	- In `Update`, the systems of the app add to `Draw` and change `Sprites`.
+	- In `Render`, before hxnme-gpu draws the frame, `upload` sends the
+	  instances, the changed parts of `Sprites` and the matrix of each camera to
+	  the GPU.
+
+	Each enabled camera has a pass in the frame graph. The pass draws into the
+	frame, or into the render target of the camera.
 **/
-@:plugin("hxnme-2d", description = "Draws sprites, shapes and text with one instanced shader")
+@:plugin("hxnme-2d", description = "Draws sprites, shapes, nine-slices and text on the GPU")
 class RenderPlugin {
 	static var renderer:Null<Renderer>;
 
@@ -24,7 +28,7 @@ class RenderPlugin {
 
 	public function start():Void {}
 
-	@:system(Begin, description = "Empties Draw for the new frame, and sets the scale that text is rasterized at")
+	@:system(Begin, description = "Empties Draw for the new frame, and sets the scale for rasterizing text")
 	static function reset(draw:ResMut<Draw>, typesetter:ResMut<Typesetter>, display:Res<Display>) {
 		(draw : Draw).clear();
 		(typesetter : Typesetter).begin(display.scale);

@@ -3,38 +3,41 @@ package hxn.me.render2d;
 import hxn.text.AtlasKind;
 
 /**
-	`Draw` is the resource for drawing that the app repeats every frame,
-	such as shapes and debug lines. Systems call its methods in each frame,
-	and the renderer draws what they added in that frame, in the order they
-	added it, through each camera that shows its layer. Positions are in the
-	world's XY plane, and `x`, `y` is the corner of a shape with the smaller
-	coordinates: the bottom-left corner in a world with y up, and the top-left
-	corner through a screen camera. Colors are 0xRRGGBB with a separate
-	`alpha` from 0 to 1.
+	`Draw` holds what the app draws again in every frame, for example shapes and
+	debug lines. Systems call its methods in each frame. The renderer draws what
+	they added in that frame, in the order that they added it, through each
+	camera that shows its layer.
 
-	Shapes have edges from signed distance functions, so they stay smooth at
-	any size, zoom and angle. Each change of texture between sprites and text
-	starts a new batch, and shapes never start one.
+	Positions are in the XY plane of the world. Each shape's `x`, `y` is its
+	corner with the smaller coordinates. With y up, that is the bottom-left
+	corner. Through a screen camera, it is the top-left corner. Colors are
+	0xRRGGBB, with a separate `alpha` from 0 to 1.
+
+	Shapes get their edges from signed distance functions, so they stay smooth
+	at any size, zoom and angle. Each change of texture between sprites and text
+	starts a new batch. Shapes never start a batch.
 **/
 class Draw {
 	@:allow(hxn.me.render2d) final instances = new Instances();
 	@:allow(hxn.me.render2d) final runs:Array<Run> = [];
 
-	/** The layer bits of what is added next. Cameras show the layers in their `layers`. **/
+	/** The layer bits of the content added next. Cameras show the layers in their `layers`. **/
 	public var layer = 1;
 
-	/** The plane that what is added next lies on, or null for the world's XY plane. **/
+	/** The plane of the content added next, or null for the XY plane of the world. **/
 	public var plane:Null<Plane>;
 
 	public function new() {}
 
 	/**
-		Adds a rectangle. `radius` rounds its corners. With `border` above 0,
-		the rectangle has a border of that width in `borderColor`.
+		Adds a rectangle. `radius` is the radius of its corners, and `corner`
+		is their shape, such as `Squircle`. If `border` is above 0, the
+		rectangle has a border of that width in `borderColor`.
 	**/
 	public function rect(x:Float, y:Float, width:Float, height:Float, color = 0xFFFFFF, alpha = 1.0, radius = 0.0, border = 0.0, borderColor = 0x000000,
-			borderAlpha = 1.0):Void {
+			borderAlpha = 1.0, corner:CornerShape = Round):Void {
 		var i = shape(2, x, y, width, height, color, alpha, border, borderColor, borderAlpha);
+		instances.set(Instances.SHAPE, i, 2, border, corner, 0);
 		instances.set(Instances.RADIUS, i, radius, radius, radius, radius);
 	}
 
@@ -47,8 +50,9 @@ class Draw {
 		shape(3, x, y, width, height, color, alpha, 0, 0, 1);
 
 	/**
-		Adds a line from `x0`, `y0` to `x1`, `y1` with round ends. It is `width`
-		wide at its start and `endWidth` wide at its end, by default `width`.
+		Adds a line with round ends from `x0`, `y0` to `x1`, `y1`. It is
+		`width` wide at its start and `endWidth` wide at its end. `endWidth`
+		defaults to `width`.
 	**/
 	public function line(x0:Float, y0:Float, x1:Float, y1:Float, width:Float, color = 0xFFFFFF, alpha = 1.0, ?endWidth:Float):Void {
 		var ra = width / 2;
@@ -61,9 +65,10 @@ class Draw {
 	}
 
 	/**
-		Adds a stroke through the points of `points`, given as x, y pairs, as
-		lines with round ends. `widths` gives the width at each point, such as
-		from a pen's pressure; without it, the stroke is `width` wide.
+		Adds a stroke through `points`, which holds x, y pairs. The stroke
+		is made of lines with round ends. `widths` gives the width at each
+		point, for example from the pressure of a pen. Without `widths`, the
+		stroke is `width` wide.
 	**/
 	public function stroke(points:Array<Float>, width:Float, color = 0xFFFFFF, alpha = 1.0, ?widths:Array<Float>):Void {
 		var n = points.length >> 1;
@@ -90,51 +95,35 @@ class Draw {
 	}
 
 	/**
-		Adds `texture` as a nine-slice over the rectangle at `x`, `y`: the
-		corners keep their size, the edges stretch along their length, and the
-		center stretches both ways. `left`, `top`, `right` and `bottom` are the
-		widths of the borders in texture pixels, drawn `scale` logical pixels
-		for each texture pixel. When the rectangle is smaller than its borders,
-		the borders shrink to fit. The top border reads at the top through a
-		camera with y up and through a screen camera. `angle` turns the
-		rectangle in radians about its center.
+		Adds `texture` as a nine-slice over the rectangle at `x`, `y`. The
+		corners keep their size, the edges stretch along their length, and
+		the center stretches in both directions. `left`, `top`, `right` and
+		`bottom` are the widths of the borders in texture pixels. Each
+		texture pixel covers `scale` logical pixels. If the rectangle is
+		smaller than its borders, the borders shrink to fit. The top border
+		stays at the top through a camera with y up and through a screen
+		camera. `angle` turns the rectangle in radians about its center.
 	**/
 	public function nineSlice(texture:Texture, x:Float, y:Float, width:Float, height:Float, left:Float, top:Float, right:Float, bottom:Float,
 			color = 0xFFFFFF, alpha = 1.0, angle = 0.0, scale = 1.0):Void {
-		var l = left * scale, r = right * scale, t = top * scale, b = bottom * scale;
-		var fitX = l + r > width ? width / (l + r) : 1.0;
-		var fitY = t + b > height ? height / (t + b) : 1.0;
-		l *= fitX;
-		r *= fitX;
-		t *= fitY;
-		b *= fitY;
-		var xs = [x, x + l, x + width - r, x + width];
-		// Rows run from the top of the box, as for text, and the shader mirrors them for a view with y up.
-		var ys = [y, y + t, y + height - b, y + height];
-		var us = [0, left / texture.width, 1 - right / texture.width, 1];
-		var vs = [0, top / texture.height, 1 - bottom / texture.height, 1];
-		var c = Math.cos(angle), s = Math.sin(angle);
-		for (row in 0...3)
-			for (col in 0...3) {
-				var pw = xs[col + 1] - xs[col], ph = ys[row + 1] - ys[row];
-				if (pw <= 0 || ph <= 0)
-					continue;
-				var i = instances.add();
-				instances.set(Instances.RECT, i, xs[col], ys[row], pw, ph);
-				instances.set(Instances.UV, i, us[col], vs[row], us[col + 1], vs[row + 1]);
-				tint(Instances.COLOR, i, color, alpha);
-				instances.set(Instances.XFORM, i, c, s, (x + width / 2 - xs[col]) / pw, (y + height / 2 - ys[row]) / ph);
-				instances.set(Instances.SHAPE, i, 0, 0, y, height);
-				textured(texture, i);
-			}
+		var i = instances.add();
+		instances.set(Instances.RECT, i, x, y, width, height);
+		instances.set(Instances.UV, i, 0, 0, 1, 1);
+		tint(Instances.COLOR, i, color, alpha);
+		instances.set(Instances.XFORM, i, Math.cos(angle), Math.sin(angle), 0.5, 0.5);
+		// The shader fits the borders to the rectangle and maps each pixel to its piece of the texture.
+		instances.set(Instances.SHAPE, i, 5, 0, 0, 0);
+		instances.set(Instances.RADIUS, i, left * scale, top * scale, right * scale, bottom * scale);
+		instances.set(Instances.BORDER, i, left / texture.width, top / texture.height, right / texture.width, bottom / texture.height);
+		textured(texture, i);
 	}
 
 	/**
-		Adds `text` with its box's corner with the smaller coordinates at `x`,
-		`y`, in `color` and `alpha`. `angle` turns it in radians about the
-		box's center. The text reads upright through a camera with y up and
-		through a screen camera. Color glyphs, such as emoji, keep their own
-		colors and take only `alpha`.
+		Adds `text` in `color` and `alpha`, with the corner of its box that
+		has the smaller coordinates at `x`, `y`. `angle` turns it in radians
+		about the center of the box. The text reads upright through a camera
+		with y up and through a screen camera. Color glyphs, such as emoji,
+		keep their own colors and use only `alpha`.
 	**/
 	public function text(text:Text, x:Float, y:Float, color = 0xFFFFFF, alpha = 1.0, angle = 0.0):Void {
 		var laid = text.layout();
@@ -162,7 +151,7 @@ class Draw {
 		}
 	}
 
-	// Adds instance `i`, drawn with `texture`, to the last run, or starts a run when the texture, layer or plane differs.
+	// Adds instance `i`, which draws with `texture`, to the last run. If the texture, layer or plane differs, it starts a new run.
 	function textured(texture:Texture, i:Int):Void {
 		var last = runs.length > 0 ? runs[runs.length - 1] : null;
 		if (last == null || last.layer != layer || last.plane != plane || (last.texture != null && last.texture != texture))

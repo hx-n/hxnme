@@ -16,13 +16,15 @@ import hxn.me.gpu.Gpu;
 import hxn.me.gpu.Pass;
 
 /**
-	`Renderer` holds the GPU objects of the 2D renderer: the shader, a pipeline
-	for each target format, and one vertex buffer for each instance field. It
-	uploads what `Draw` holds each frame. Each camera has a view of its own:
-	a pass in the frame graph, and for each plane that the frame draws on, a
-	uniform buffer with the camera's matrix times the plane's. The pass draws
-	the sprite groups of `Sprites` in the camera's layers, then the runs of
-	`Draw`, with one instanced draw for each group and each run.
+	`Renderer` holds the GPU objects of the 2D renderer: the shader, one
+	pipeline for each target format, and one vertex buffer for each instance
+	field. In each frame, it uploads the contents of `Draw`.
+
+	Each camera has its own view, with a pass in the frame graph. For each plane
+	that the frame draws on, the view also has a uniform buffer with the matrix
+	of the camera times the matrix of the plane. The pass draws the sprite
+	groups of `Sprites` in the layers of the camera, then the runs of `Draw`.
+	Each group and each run is one instanced draw.
 **/
 class Renderer {
 	final device:GpuDevice;
@@ -54,10 +56,7 @@ class Renderer {
 		sampler = device.createSampler({filter: Linear});
 	}
 
-	/**
-		Uploads the instances that `draw` holds, and the parts of the sprite
-		groups that changed, for the passes of this frame.
-	**/
+	/** Uploads the instances in `draw` and the changed parts of the sprite groups, for the passes of this frame. **/
 	public function upload():Void {
 		for (view in views)
 			view.pass.enabled = false;
@@ -91,7 +90,7 @@ class Renderer {
 			}
 			group.texture.upload(device);
 			if (instances.capacity > group.bufferCapacity) {
-				// New buffers start empty, so every instance goes up.
+				// New buffers start empty, so every instance is uploaded.
 				for (b in group.buffers)
 					b.close();
 				group.buffers.resize(0);
@@ -103,7 +102,7 @@ class Renderer {
 				}
 			} else
 				for (i in 0...Instances.FIELDS) {
-					// Indices past the end changed before a removal shortened the group.
+					// After a removal, the changed range can end past the group, so it is cut to the group's length.
 					var high = group.high[i] < length ? group.high[i] : length;
 					var low = group.low[i];
 					if (low >= high)
@@ -144,7 +143,7 @@ class Renderer {
 				writePlane(view, run.plane);
 	}
 
-	// Writes the camera's matrix times `plane`'s into the camera's uniforms for that plane, once a frame.
+	// Writes the camera's matrix times the matrix of `plane` into the camera's uniforms for that plane, once in each frame.
 	function writePlane(view:View, plane:Null<Plane>):Void {
 		var plane = plane != null ? plane : flat;
 		if (written.indexOf(plane) >= 0)
@@ -152,7 +151,7 @@ class Renderer {
 		written.push(plane);
 		plane.writeMatrix(model);
 		multiply(matrix, model, combined);
-		// Each column goes to its own offset, since the shader's uniform block lays them out.
+		// The uniform block of the shader gives each column its own offset.
 		for (i in 0...4) {
 			params.setFloat(Shader.PARAMS_matrix0 + i * 4, combined[i]);
 			params.setFloat(Shader.PARAMS_matrix1 + i * 4, combined[4 + i]);
@@ -161,7 +160,7 @@ class Renderer {
 		device.writeBuffer(view.on(plane, device).uniforms, 0, params);
 	}
 
-	// Writes a times b into out; all three are 4x4, column after column.
+	// Writes a times b into out. All three are 4x4 matrices, stored column by column.
 	static function multiply(a:Array<Float>, b:Array<Float>, out:Array<Float>):Void {
 		for (col in 0...4)
 			for (row in 0...4) {
@@ -191,7 +190,7 @@ class Renderer {
 				drawRange(view, pass, pipeline, run.plane, run.texture != null ? run.texture : white, buffers, run.start, run.count);
 	}
 
-	// Draws `count` instances from `start` of `source`, on `plane`, with `image`.
+	// Draws `count` instances of `source` from index `start`, on `plane`, with `image`.
 	function drawRange(view:View, pass:RenderPass, pipeline:RenderPipeline, plane:Null<Plane>, image:Texture, source:Array<Buffer>, start:Int,
 			count:Int):Void {
 		var shared = Shader.PARAMS_GROUP == Shader.TEXTURE_image_GROUP;
@@ -258,7 +257,7 @@ class Renderer {
 	}
 }
 
-/** Each view holds what one camera needs to draw: its pass, and what it needs for each plane. **/
+/** Each view holds what one camera needs to draw: its pass, and one plane view for each plane. **/
 private class View {
 	public final camera:Camera;
 	public var pass:Pass;
@@ -267,7 +266,7 @@ private class View {
 	public function new(camera:Camera)
 		this.camera = camera;
 
-	/** Returns what the camera needs to draw on `plane`, made on first use. **/
+	/** Returns the plane view for `plane`, and makes it on first use. **/
 	public function on(plane:Plane, device:GpuDevice):PlaneView {
 		var found = planes.get(plane);
 		if (found == null) {
