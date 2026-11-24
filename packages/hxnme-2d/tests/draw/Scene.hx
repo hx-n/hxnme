@@ -36,7 +36,9 @@ import hxn.text.Font;
 	upload. The seventh and eighth cameras show the same text, a screen
 	camera and an orthographic camera with y up. The text is "L" in the first
 	frame and "T" after, so its widest row is at its top only when it was
-	laid out again and reads upright. After the plugin presents three frames, the check reads every
+	laid out again and reads upright. Right of the text, both cameras show a
+	nine-slice of a 12x12 texture with 4-texel borders, red corners, a green top edge, a yellow
+	bottom edge, cyan sides and a blue center. After the plugin presents three frames, the check reads every
 	target back, compares one pixel of each shape with the color it expects,
 	and stops the app.
 **/
@@ -54,6 +56,7 @@ class Scene {
 	static final lettered = new RenderTarget(64, 64);
 	static final letteredUp = new RenderTarget(64, 64);
 	static var label:Text;
+	static var panel:Texture;
 	static final near = new Plane();
 	static var image:Texture;
 	static var halves:Texture;
@@ -91,7 +94,17 @@ class Scene {
 		{target: kept, name: "moved sprite", x: 36, y: 36, rgb: [0, 255, 0]},
 		{target: kept, name: "where the removed sprite was", x: 20, y: 4, rgb: [0, 0, 0]},
 		{target: kept, name: "sprite that took the removed sprite's place", x: 52, y: 4, rgb: [0, 0, 255]},
-		{target: kept, name: "sprite of a second texture", x: 4, y: 52, rgb: [40, 80, 120]}
+		{target: kept, name: "sprite of a second texture", x: 4, y: 52, rgb: [40, 80, 120]},
+		{target: lettered, name: "nine-slice corner on the screen", x: 38, y: 8, rgb: [255, 0, 0]},
+		{target: lettered, name: "nine-slice top edge on the screen", x: 48, y: 8, rgb: [0, 255, 0]},
+		{target: lettered, name: "nine-slice side on the screen", x: 38, y: 24, rgb: [0, 255, 255]},
+		{target: lettered, name: "nine-slice center on the screen", x: 48, y: 24, rgb: [0, 0, 255]},
+		{target: lettered, name: "nine-slice bottom edge on the screen", x: 48, y: 40, rgb: [255, 255, 0]},
+		{target: letteredUp, name: "nine-slice corner with y up", x: 38, y: 24, rgb: [255, 0, 0]},
+		{target: letteredUp, name: "nine-slice top edge with y up", x: 48, y: 24, rgb: [0, 255, 0]},
+		{target: letteredUp, name: "nine-slice side with y up", x: 38, y: 40, rgb: [0, 255, 255]},
+		{target: letteredUp, name: "nine-slice center with y up", x: 48, y: 40, rgb: [0, 0, 255]},
+		{target: letteredUp, name: "nine-slice bottom edge with y up", x: 48, y: 56, rgb: [255, 255, 0]}
 	];
 
 	// Moving the first sprite writes its rect, and the sprite that fills the
@@ -169,6 +182,21 @@ class Scene {
 		eighth.target = letteredUp;
 		eighth.clear = {r: 0, g: 0, b: 0, a: 1};
 		cameras.add(eighth);
+		// Each region of the panel is 4x4 texels, so linear filtering keeps the middle of each piece one color.
+		var regions = [
+			[255, 0, 0], [0, 255, 0], [255, 0, 0],
+			[0, 255, 255], [0, 0, 255], [0, 255, 255],
+			[255, 0, 0], [255, 255, 0], [255, 0, 0]
+		];
+		var bytes = Bytes.alloc(12 * 12 * 4);
+		for (py in 0...12)
+			for (px in 0...12) {
+				var rgb = regions[Std.int(py / 4) * 3 + Std.int(px / 4)];
+				for (c in 0...3)
+					bytes.set((py * 12 + px) * 4 + c, rgb[c]);
+				bytes.set((py * 12 + px) * 4 + 3, 255);
+			}
+		panel = new Texture(12, 12, bytes);
 		var font = new Font(haxe.Resource.getBytes("font"), {});
 		label = (typesetter : Typesetter).text(font, "L", {size: 40});
 		near.z = 10;
@@ -248,12 +276,13 @@ class Scene {
 		draw.rect(16, 16, 32, 32, 0x0000FF);
 		draw.layer = 32;
 		draw.text(label, 8, 4, 0xFFFFFF);
+		draw.nineSlice(panel, 34, 4, 28, 40, 4, 4, 4, 4, 0xFFFFFF, 1, 0, 2);
 	}
 
-	// Returns whether the lit pixels of `pixels`, 64 wide, form a T: some lit
-	// rows, the widest of them in the top fifth.
+	// Returns whether the lit pixels in the left half of `pixels`, 64 wide,
+	// form a T: some lit rows, the widest of them in the top fifth.
 	static function upright(pixels:Bytes):Bool {
-		var rows = [for (y in 0...64) width(pixels, 64, y)];
+		var rows = [for (y in 0...64) width(pixels, 64, y, 32)];
 		var first = 0;
 		while (first < 64 && rows[first] == 0)
 			first++;
@@ -269,10 +298,10 @@ class Scene {
 		return widest - first < (last - first + 1) / 5 && rows[widest] > rows[last] * 2;
 	}
 
-	// Returns how many pixels of row `y` in a `size`-wide readback are white.
-	static function width(pixels:Bytes, size:Int, y:Int):Int {
+	// Returns how many of the first `columns` pixels of row `y` in a `size`-wide readback are white.
+	static function width(pixels:Bytes, size:Int, y:Int, columns = -1):Int {
 		var n = 0;
-		for (x in 0...size)
+		for (x in 0...(columns < 0 ? size : columns))
 			if (pixels.get((y * size + x) * 4) > 128)
 				n++;
 		return n;

@@ -11,8 +11,8 @@ package hxn.me.render2d;
 	to `radius.zw`, in pixels from the quad's corner, with the radius
 	`shape.z` at its start and `shape.w` at its end. When `shape.y` is above
 	0, the shape has a border of that width in the color in `border`. For
-	kinds 0 and 1, `shape.w` above 0 marks a glyph of a text whose box starts
-	at y = `shape.z` and is `shape.w` high. Signed distance functions give
+	kinds 0 and 1, `shape.w` above 0 marks a glyph of a text, or a piece of a
+	nine-slice, whose box starts at y = `shape.z` and is `shape.w` high. Signed distance functions give
 	the shapes their edges, so they are smooth at any size and angle. The
 	functions come from Ashui's `Sdf.hx`.
 **/
@@ -52,9 +52,9 @@ class Shader implements hxn.gpu.Shader {
 			kind = input.shape;
 			radii = input.radius;
 			edge = input.border;
-			// Glyphs are laid out from the top of their text's box, which starts at
-			// y = shape.z and is shape.w high. A view with y up mirrors them within
-			// the box, so the text reads upright.
+			// Glyphs and nine-slice pieces are laid out from the top of their box,
+			// which starts at y = shape.z and is shape.w high. A view with y up
+			// mirrors them within the box, so they read upright.
 			var mirror = 0.;
 			if (input.shape.x < 1.5 && input.shape.w > 0. && flags.x < 0.5)
 				mirror = 1.;

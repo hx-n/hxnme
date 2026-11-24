@@ -1,6 +1,6 @@
 ---
 name: hxnme-2d
-description: Draw sprites, shapes and text, and keep sprites from frame to frame, in an hxnme app with the hxnme-2d haxelib (package `hxn.me.render2d`), the 2D renderer of the hxn media engine, through hxnme-gpu on HashLink, Ash, hxcpp and CPPIA. Use when an app draws 2D shapes, sprites or textures, moves a 2D camera, or draws 2D into a render target, or when changing the renderer itself.
+description: Draw sprites, shapes, nine-slices and text, and keep sprites from frame to frame, in an hxnme app with the hxnme-2d haxelib (package `hxn.me.render2d`), the 2D renderer of the hxn media engine, through hxnme-gpu on HashLink, Ash, hxcpp and CPPIA. Use when an app draws 2D shapes, sprites or textures, moves a 2D camera, or draws 2D into a render target, or when changing the renderer itself.
 ---
 
 # hxnme-2d
@@ -32,6 +32,7 @@ draw.stroke(points /* x, y pairs */, width, color, alpha, widths);
 draw.plane = plane;   // hxn.me.render2d.Plane: x, y, z, rx..rw or rotate(), scale; null is the XY plane
 // camera.depth = true: nearer planes hide farther ones in any order; one plane still draws in order
 draw.sprite(texture, x, y, w, h, tint, alpha, angle, u0, v0, u1, v1);
+draw.nineSlice(texture, x, y, w, h, left, top, right, bottom /* texture px */, tint, alpha, angle, scale);
 ```
 
 Sprites that stay from frame to frame go in `ResMut<Sprites>`. Only the

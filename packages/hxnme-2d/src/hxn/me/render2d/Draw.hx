@@ -90,6 +90,46 @@ class Draw {
 	}
 
 	/**
+		Adds `texture` as a nine-slice over the rectangle at `x`, `y`: the
+		corners keep their size, the edges stretch along their length, and the
+		center stretches both ways. `left`, `top`, `right` and `bottom` are the
+		widths of the borders in texture pixels, drawn `scale` logical pixels
+		for each texture pixel. When the rectangle is smaller than its borders,
+		the borders shrink to fit. The top border reads at the top through a
+		camera with y up and through a screen camera. `angle` turns the
+		rectangle in radians about its center.
+	**/
+	public function nineSlice(texture:Texture, x:Float, y:Float, width:Float, height:Float, left:Float, top:Float, right:Float, bottom:Float,
+			color = 0xFFFFFF, alpha = 1.0, angle = 0.0, scale = 1.0):Void {
+		var l = left * scale, r = right * scale, t = top * scale, b = bottom * scale;
+		var fitX = l + r > width ? width / (l + r) : 1.0;
+		var fitY = t + b > height ? height / (t + b) : 1.0;
+		l *= fitX;
+		r *= fitX;
+		t *= fitY;
+		b *= fitY;
+		var xs = [x, x + l, x + width - r, x + width];
+		// Rows run from the top of the box, as for text, and the shader mirrors them for a view with y up.
+		var ys = [y, y + t, y + height - b, y + height];
+		var us = [0, left / texture.width, 1 - right / texture.width, 1];
+		var vs = [0, top / texture.height, 1 - bottom / texture.height, 1];
+		var c = Math.cos(angle), s = Math.sin(angle);
+		for (row in 0...3)
+			for (col in 0...3) {
+				var pw = xs[col + 1] - xs[col], ph = ys[row + 1] - ys[row];
+				if (pw <= 0 || ph <= 0)
+					continue;
+				var i = instances.add();
+				instances.set(Instances.RECT, i, xs[col], ys[row], pw, ph);
+				instances.set(Instances.UV, i, us[col], vs[row], us[col + 1], vs[row + 1]);
+				tint(Instances.COLOR, i, color, alpha);
+				instances.set(Instances.XFORM, i, c, s, (x + width / 2 - xs[col]) / pw, (y + height / 2 - ys[row]) / ph);
+				instances.set(Instances.SHAPE, i, 0, 0, y, height);
+				textured(texture, i);
+			}
+	}
+
+	/**
 		Adds `text` with its box's corner with the smaller coordinates at `x`,
 		`y`, in `color` and `alpha`. `angle` turns it in radians about the
 		box's center. The text reads upright through a camera with y up and

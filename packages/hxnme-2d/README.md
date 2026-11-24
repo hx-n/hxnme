@@ -58,6 +58,8 @@ static function draw(draw:ResMut<Draw>) {
 | `line(x0, y0, x1, y1, width, color, alpha, endWidth)` | Adds a line with round ends, `width` wide at its start and `endWidth` wide at its end. |
 | `stroke(points, width, color, alpha, widths)` | Adds lines through the x, y pairs of `points`, with the width at each point from `widths`, such as a pen's pressure. |
 | `sprite(texture, x, y, width, height, color, alpha, angle, u0, v0, u1, v1)` | Adds the texture stretched over the rectangle and multiplied by the color, turned by `angle` about its center. `u0` to `v1` select part of the texture. |
+| `nineSlice(texture, x, y, width, height, left, top, right, bottom, color, alpha, angle, scale)` | Adds the texture as a nine-slice, for panels and buttons. The corners keep their size, the edges stretch along their length and the center stretches both ways. `left` to `bottom` are the borders in texture pixels, drawn `scale` logical pixels for each texture pixel. |
+| `text(text, x, y, color, alpha, angle)` | Adds a `Text`. See [Text](#text). |
 
 ## Text
 
@@ -175,11 +177,13 @@ In `tests/draw`, run `hxn check hl cpp cppia app.hxml --vm ash`. The check
 draws through a screen camera, an orthographic camera, a perspective camera
 a perspective camera tilted back 45 degrees, an orthographic camera with
 depth, a screen camera that shows `Sprites`, and a screen camera and an
-orthographic camera that show the same text, each into a render target.
+orthographic camera that show the same text and nine-slice, each into a
+render target.
 It compares pixels of each shape with the colors it expects, and checks that
 the tilted camera sees the far side of a square narrower than its near side.
 After it moves one sprite and removes another, it checks that the next frame
 uploads only the changed parts, and the frame after that uploads nothing.
 It changes the text from L to T after the first frame, and checks that both
-text cameras show an upright T. The check's font is Noto Sans, under the
+text cameras show an upright T, with the nine-slice's top border at the
+top. The check's font is Noto Sans, under the
 license listed in [third-party/NOTICES.md](third-party/NOTICES.md).
