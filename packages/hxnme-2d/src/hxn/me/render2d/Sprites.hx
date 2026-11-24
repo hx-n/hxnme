@@ -8,9 +8,10 @@ import hxn.gpu.Buffer;
 /**
 	`Sprites` keeps sprites from frame to frame, for example the tiles and
 	characters of a scene. `add` returns a handle to the new sprite, and the
-	other methods take that handle. In each frame, the renderer uploads only the
-	part of each field that changed since the last frame. Sprites that do not
-	change cost no upload.
+	other methods take that handle. The renderer writes one of its sets of
+	buffers in each frame, and uploads to that set only the parts of each field
+	that changed since it last wrote the set. A change therefore reaches each
+	set in turn. Sprites that do not change cost no upload.
 
 	Sprites with the same texture, layer, plane and clip form a group, and each group
 	draws with one instanced draw. Groups draw in the order that their first
@@ -111,8 +112,9 @@ class Sprites {
 			texts.remove(entry);
 			for (group in entry.groups) {
 				groups.remove(group);
-				for (b in group.buffers)
-					b.close();
+				for (own in group.buffers)
+					for (b in own)
+						b.close();
 			}
 			slotText[slot] = null;
 			release(slot);
@@ -272,13 +274,14 @@ class SpriteGroup {
 	// The slot of the sprite at each index.
 	final slots:Array<Int> = [];
 
-	// For each field, the first changed index and one past the last.
-	final low = [for (_ in 0...Instances.FIELDS) 0];
-	final high = [for (_ in 0...Instances.FIELDS) 0];
+	// For each set of the renderer's buffers and each field, the first index that
+	// changed since the renderer last uploaded that set, and one past the last.
+	final low = [for (_ in 0...Renderer.SETS) [for (_ in 0...Instances.FIELDS) 0]];
+	final high = [for (_ in 0...Renderer.SETS) [for (_ in 0...Instances.FIELDS) 0]];
 
-	// The vertex buffers of the fields, and the number of instances they hold.
-	final buffers:Array<Buffer> = [];
-	var bufferCapacity = 0;
+	// For each set, the vertex buffers of the fields and the number of instances they hold.
+	final buffers:Array<Array<Buffer>> = [for (_ in 0...Renderer.SETS) []];
+	final capacities = [for (_ in 0...Renderer.SETS) 0];
 
 	function new(texture:Texture, layer:Int, plane:Null<Plane>, clip:Null<Clip>) {
 		this.texture = texture;
@@ -287,21 +290,25 @@ class SpriteGroup {
 		this.clip = clip;
 	}
 
-	inline function changed(field:Int, index:Int):Void {
-		if (low[field] >= high[field]) {
-			low[field] = index;
-			high[field] = index + 1;
-		} else {
-			if (index < low[field])
+	// Marks `index` of `field` as changed in every set, so each set uploads it in turn.
+	function changed(field:Int, index:Int):Void
+		for (set in 0...Renderer.SETS) {
+			var low = low[set], high = high[set];
+			if (low[field] >= high[field]) {
 				low[field] = index;
-			if (index >= high[field])
 				high[field] = index + 1;
+			} else {
+				if (index < low[field])
+					low[field] = index;
+				if (index >= high[field])
+					high[field] = index + 1;
+			}
 		}
-	}
 
-	function settle():Void
+	// Clears the changed ranges of `set` after the renderer uploads it.
+	function settle(set:Int):Void
 		for (field in 0...Instances.FIELDS)
-			low[field] = high[field] = 0;
+			low[set][field] = high[set][field] = 0;
 }
 
 /**

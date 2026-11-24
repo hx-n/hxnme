@@ -148,9 +148,11 @@ and use only `alpha`.
 
 The resource `Sprites` keeps sprites from frame to frame, for example the
 tiles and characters of a scene. `add` returns a handle to the new sprite,
-and the other methods take that handle. In each frame, the renderer uploads to
-the GPU only what changed since the last frame. Sprites that
-do not change cost no upload.
+and the other methods take that handle. The renderer keeps three sets of
+buffers and writes one set in each frame, so it never waits for the GPU to
+finish with a buffer. It uploads only what changed since it last wrote that
+set, so each change is uploaded in each of the next three frames. Sprites
+that do not change cost no upload.
 
 ```haxe
 static var hero:Sprite;
@@ -260,7 +262,7 @@ It also tests that:
 - A pixel near the corner of a squircle is inside it, and the same pixel near a round corner is outside.
 - A rectangle in a clip with rounded corners shows only inside the clip.
 - The middle of a shadow is fully covered, and the blur covers its edge in part.
-- After one sprite moves and another is removed, the next frame uploads only the changed parts. The frame after that uploads nothing.
+- After one sprite moves and another is removed, each of the next three frames uploads only the changed parts. Later frames upload nothing.
 - The text changes from L to T after the first frame. The two text cameras show a T with its bar at the top, so the text was laid out again and is not mirrored. The top border of the nine-slice is at the top.
 - Text in `Sprites` that changes from L to T also shows a T, and uploads only its one new glyph.
 

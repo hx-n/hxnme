@@ -27,13 +27,24 @@ import hxn.me.gpu.Pass;
 	Each group and each run is one instanced draw.
 **/
 class Renderer {
+	/**
+		The number of sets of buffers that the renderer writes in turn, one set
+		in each frame. The GPU finished with a set long before the renderer
+		writes it again, so the writes do not wait for the GPU.
+	**/
+	public static inline final SETS = 3;
+
 	final device:GpuDevice;
 	final gpu:Gpu;
 	final shader:ShaderModule;
 	final pipelines = new Map<String, RenderPipeline>();
 	final sampler:Sampler;
 	final white = Texture.solid(0xFFFFFF);
-	final buffers:Array<Buffer> = [];
+	// The instance buffers of `Draw` in each set, and the instances each set holds.
+	final buffers:Array<Array<Buffer>> = [for (_ in 0...SETS) []];
+	final capacities = [for (_ in 0...SETS) 0];
+	// The set of this frame.
+	var set = 0;
 	final views = new ObjectMap<Camera, View>();
 	final params = Bytes.alloc(Shader.PARAMS_SIZE);
 	final matrix = [for (_ in 0...16) 0.0];
@@ -47,7 +58,6 @@ class Renderer {
 	final open = new Clip(0, 0, 0, 0);
 	final draw:Draw;
 	final sprites:Sprites;
-	var capacity = 0;
 
 	public function new(gpu:Gpu, draw:Draw, sprites:Sprites) {
 		this.gpu = gpu;
@@ -60,22 +70,24 @@ class Renderer {
 
 	/** Uploads the instances in `draw` and the changed parts of the sprite groups, for the passes of this frame. **/
 	public function upload():Void {
+		set = (set + 1) % SETS;
 		for (view in views)
 			view.pass.enabled = false;
 		uploadSprites();
 		var instances = draw.instances;
 		if (instances.length == 0)
 			return;
-		if (instances.length > capacity) {
-			for (b in buffers)
+		var own = buffers[set];
+		if (instances.length > capacities[set]) {
+			for (b in own)
 				b.close();
-			buffers.resize(0);
-			capacity = instances.capacity;
+			own.resize(0);
+			capacities[set] = instances.capacity;
 			for (_ in 0...Instances.FIELDS)
-				buffers.push(device.createBuffer({size: capacity * Instances.STRIDE, usage: Vertex}));
+				own.push(device.createBuffer({size: instances.capacity * Instances.STRIDE, usage: Vertex}));
 		}
 		for (i in 0...Instances.FIELDS)
-			device.writeBuffer(buffers[i], 0, instances.fields[i].sub(0, instances.length * Instances.STRIDE));
+			device.writeBuffer(own[i], 0, instances.fields[i].sub(0, instances.length * Instances.STRIDE));
 		for (run in draw.runs)
 			if (run.texture != null)
 				run.texture.upload(device);
@@ -88,33 +100,34 @@ class Renderer {
 			var instances = group.instances;
 			var length = instances.length;
 			if (length == 0) {
-				group.settle();
+				group.settle(set);
 				continue;
 			}
 			group.texture.upload(device);
-			if (instances.capacity > group.bufferCapacity) {
+			var own = group.buffers[set];
+			if (instances.capacity > group.capacities[set]) {
 				// New buffers start empty, so every instance is uploaded.
-				for (b in group.buffers)
+				for (b in own)
 					b.close();
-				group.buffers.resize(0);
-				group.bufferCapacity = instances.capacity;
+				own.resize(0);
+				group.capacities[set] = instances.capacity;
 				for (i in 0...Instances.FIELDS) {
-					group.buffers.push(device.createBuffer({size: group.bufferCapacity * Instances.STRIDE, usage: Vertex}));
-					device.writeBuffer(group.buffers[i], 0, instances.fields[i].sub(0, length * Instances.STRIDE));
+					own.push(device.createBuffer({size: instances.capacity * Instances.STRIDE, usage: Vertex}));
+					device.writeBuffer(own[i], 0, instances.fields[i].sub(0, length * Instances.STRIDE));
 					bytes += length * Instances.STRIDE;
 				}
 			} else
 				for (i in 0...Instances.FIELDS) {
 					// After a removal, the changed range can end past the group, so it is cut to the group's length.
-					var high = group.high[i] < length ? group.high[i] : length;
-					var low = group.low[i];
+					var high = group.high[set][i] < length ? group.high[set][i] : length;
+					var low = group.low[set][i];
 					if (low >= high)
 						continue;
 					var at = low * Instances.STRIDE, size = (high - low) * Instances.STRIDE;
-					device.writeBuffer(group.buffers[i], at, instances.fields[i].sub(at, size));
+					device.writeBuffer(own[i], at, instances.fields[i].sub(at, size));
 					bytes += size;
 				}
-			group.settle();
+			group.settle(set);
 		}
 		sprites.count(bytes);
 	}
@@ -148,7 +161,7 @@ class Renderer {
 
 	// Writes the camera's matrix times the matrix of `plane`, and `clip`, into the camera's uniforms for that plane and clip.
 	function writeUniforms(view:View, plane:Null<Plane>, clip:Null<Clip>):Void {
-		var on = view.on(plane != null ? plane : flat, clip != null ? clip : open, device);
+		var on = view.on(plane != null ? plane : flat, clip != null ? clip : open, set, device);
 		if (on.shown == shown)
 			return;
 		on.shown = shown;
@@ -197,17 +210,17 @@ class Renderer {
 		pass.setPipeline(pipeline);
 		for (group in sprites.groups)
 			if (group.layer & camera.layers != 0 && group.instances.length > 0)
-				drawRange(view, pass, pipeline, group.plane, group.clip, group.texture, group.buffers, 0, group.instances.length);
+				drawRange(view, pass, pipeline, group.plane, group.clip, group.texture, group.buffers[set], 0, group.instances.length);
 		for (run in draw.runs)
 			if (run.layer & camera.layers != 0)
-				drawRange(view, pass, pipeline, run.plane, run.clip, run.texture != null ? run.texture : white, buffers, run.start, run.count);
+				drawRange(view, pass, pipeline, run.plane, run.clip, run.texture != null ? run.texture : white, buffers[set], run.start, run.count);
 	}
 
 	// Draws `count` instances of `source` from index `start`, on `plane` inside `clip`, with `image`.
 	function drawRange(view:View, pass:RenderPass, pipeline:RenderPipeline, plane:Null<Plane>, clip:Null<Clip>, image:Texture, source:Array<Buffer>,
 			start:Int, count:Int):Void {
 		var shared = Shader.PARAMS_GROUP == Shader.TEXTURE_image_GROUP;
-		var on = view.on(plane != null ? plane : flat, clip != null ? clip : open, device);
+		var on = view.on(plane != null ? plane : flat, clip != null ? clip : open, set, device);
 		if (!shared) {
 			if (on.params == null)
 				on.params = device.createBindGroup({
@@ -270,21 +283,21 @@ class Renderer {
 	}
 }
 
-/** Each view holds what one camera needs to draw: its pass, and one plane view for each plane and clip. **/
+/** Each view holds what one camera needs to draw: its pass, and one plane view for each plane, clip and set of buffers. **/
 private class View {
 	public final camera:Camera;
 	public var pass:Pass;
-	final planes = new ObjectMap<Plane, ObjectMap<Clip, PlaneView>>();
+	final planes = [for (_ in 0...Renderer.SETS) new ObjectMap<Plane, ObjectMap<Clip, PlaneView>>()];
 
 	public function new(camera:Camera)
 		this.camera = camera;
 
-	/** Returns the plane view for `plane` and `clip`, and makes it on first use. **/
-	public function on(plane:Plane, clip:Clip, device:GpuDevice):PlaneView {
-		var clips = planes.get(plane);
+	/** Returns the plane view for `plane` and `clip` in buffer set `set`, and makes it on first use. **/
+	public function on(plane:Plane, clip:Clip, set:Int, device:GpuDevice):PlaneView {
+		var clips = planes[set].get(plane);
 		if (clips == null) {
 			clips = new ObjectMap();
-			planes.set(plane, clips);
+			planes[set].set(plane, clips);
 		}
 		var found = clips.get(clip);
 		if (found == null) {

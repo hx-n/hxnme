@@ -18,8 +18,8 @@ import hxn.text.Font;
 
 /**
 	The 2D check. It draws through nine cameras, each into its own render
-	target, changes part of what it draws after the first frame, and after
-	three frames reads every target back and compares it with what each
+	target, changes part of what it draws once the renderer has filled each of
+	its sets of buffers, and a few frames later reads every target back and compares it with what each
 	camera must show. The README's Checks section lists what it tests.
 **/
 class Scene {
@@ -32,7 +32,10 @@ class Scene {
 	static var moved:Sprite;
 	static var removed:Sprite;
 	static var changed = false;
-	static var uploadedAfterChange = -1;
+	// The frame in which the check changes what it draws, after the renderer filled each set of buffers.
+	static inline final CHANGE = hxn.me.render2d.Renderer.SETS;
+	// What `Sprites` uploaded in each frame after the change.
+	static final uploadsAfterChange:Array<Int> = [];
 	static final lettered = new RenderTarget(64, 64);
 	static final letteredUp = new RenderTarget(64, 64);
 	static final retained = new RenderTarget(64, 64);
@@ -236,18 +239,18 @@ class Scene {
 		store.addText(keptLabel, 8, 4, 0xFFFFFF);
 	}
 
-	// After the first frame, moves one sprite, removes another and changes both texts. In the next frame, records what `Sprites` uploaded.
+	// In frame `CHANGE`, moves one sprite, removes another and changes both texts. In the frames after, records what `Sprites` uploaded.
 	@:system(Update)
 	static function change(gpu:Res<Gpu>, sprites:ResMut<Sprites>) {
 		var store:Sprites = sprites;
-		if (gpu.presented == 1 && !changed) {
+		if (gpu.presented == CHANGE && !changed) {
 			changed = true;
 			store.move(moved, 32, 32);
 			store.remove(removed);
 			label.set("T");
 			keptLabel.set("T");
-		} else if (gpu.presented == 2 && uploadedAfterChange < 0)
-			uploadedAfterChange = store.uploaded;
+		} else if (changed && uploadsAfterChange.length < hxn.me.render2d.Renderer.SETS)
+			uploadsAfterChange.push(store.uploaded);
 	}
 
 	static function fail(message:String) {
@@ -339,7 +342,7 @@ class Scene {
 			lifecycle.quit();
 			return;
 		}
-		if (gpu.presented < 3 || reading)
+		if (gpu.presented < CHANGE + hxn.me.render2d.Renderer.SETS + 2 || reading)
 			return;
 		reading = true;
 		var state:Lifecycle = lifecycle;
@@ -396,10 +399,11 @@ class Scene {
 				failed++;
 			Sys.println('${target == lettered ? "text through the screen camera" : target == letteredUp ? "text through the camera with y up" : "text in Sprites"}: ${ok ? "an upright T" : "not an upright T"}');
 		}
-		var changes = uploadedAfterChange == CHANGED_BYTES;
+		// The change reaches each set of buffers in turn, so each of the frames after it uploads the changed parts.
+		var changes = uploadsAfterChange.length == hxn.me.render2d.Renderer.SETS && uploadsAfterChange.filter(b -> b != CHANGED_BYTES).length == 0;
 		if (!changes)
 			failed++;
-		Sys.println('sprite upload after the change: ${changes ? "only the changed parts" : '$uploadedAfterChange bytes, not $CHANGED_BYTES'}');
+		Sys.println('sprite uploads after the change: ${changes ? "only the changed parts, once for each set" : '${uploadsAfterChange.join(", ")} bytes, not $CHANGED_BYTES each'}');
 		var still = sprites.uploaded == 0;
 		if (!still)
 			failed++;
