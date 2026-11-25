@@ -12,7 +12,9 @@ apps and experiences. It is part of the [hxn](https://github.com/hx-n/hxn)
 project. The engine has a small kernel and a set of plugins, and each one is
 published as its own haxelib. Apps depend on the kernel and add the plugins
 that they need. The [hxnme repository](https://github.com/hx-n/hxnme)
-describes the architecture and the platforms.
+lists the platforms, and its
+[architecture guide](https://github.com/hx-n/hxnme/blob/main/docs/architecture.md)
+describes the design.
 
 ## Kernel
 
