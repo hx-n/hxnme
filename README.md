@@ -26,9 +26,24 @@ cd my-game
 hxn run hl app.hxml
 ```
 
-To learn how to build an hxnme app, read the
-[kernel's guides](packages/hxnme/docs). They cover the project file,
-plugins, systems, running an app and assets in depth.
+## Guides
+
+The guides describe how to build an hxnme app in depth:
+
+- [Creating an app](packages/hxnme/docs/new.md): the game that `hxn me new`
+  creates, and how to run it in a web page.
+- [Hot reload](packages/hxnme/docs/dev.md): `hxn me dev`, which hot reloads
+  the code and assets of a running app.
+- [Project file](packages/hxnme/docs/project-file.md): the keys of
+  `hxnme.toml`.
+- [Plugins](packages/hxnme/docs/plugins.md): the manifest, the plugin class
+  and the native libraries of each target.
+- [Systems](packages/hxnme/docs/systems.md): `@:system`, the phases of a
+  frame, and resources.
+- [Running an app](packages/hxnme/docs/running.md): the app loop, fixed
+  steps, the lifecycle, and services such as the host that drives the frames.
+- [Assets](packages/hxnme/docs/assets.md): asset classes, typed references,
+  loading and releasing.
 
 ## Platforms
 
