@@ -8,6 +8,9 @@ inputs:
   hashlink:
     description: true to install stock HashLink 1.15 and set HL to its command.
     default: "false"
+  web:
+    description: true to install the Emscripten SDK, node and the browser GPU drivers, for runs in a web page.
+    default: "false"
 
 runs:
   using: composite
@@ -33,7 +36,7 @@ runs:
     # for hxn run and hxn check, and Ash builds ahead of time. The command and the haxelib
     # come from the same commit.
     - shell: bash
-      run: echo "HXN_REV=fe775d09867053c5ee3a08431774b7dcbaf7df0c" >> "$GITHUB_ENV"
+      run: echo "HXN_REV=ad0310c501334106488db8993791cda7b46fdf4c" >> "$GITHUB_ENV"
     - id: hxn-cache
       uses: actions/cache@v4
       with:
@@ -60,6 +63,9 @@ runs:
             Linux) drivers="hxn-gpu-vulkan:0.3.3 hxn-gpu-gles:0.3.3" ;;
             Windows) drivers="hxn-gpu-d3d12:0.2.3" ;;
           esac
+        fi
+        if [ "${{ inputs.web }}" = true ]; then
+          drivers="$drivers hxn-gpu-webgpu:0.3.6 hxn-gpu-webgl2:0.3.5"
         fi
         for lib in format:3.8.0 hashlink:1.15.0 ash-simd:0.1.1 hxnsl:0.2.1 hxn-file:0.2.2 hxn-assets:0.2.2 \
           hxn-text:0.1.0 hxn-window:0.2.3 hxn-gpu:0.2.5 $drivers; do
@@ -136,3 +142,15 @@ runs:
         gh release download 1.15 --repo HaxeFoundation/hashlink --pattern '*-win.zip' --dir "$temp"
         unzip -q "$temp"/*-win.zip -d "$temp/hl"
         echo "HL=$(cygpath -w "$(find "$temp/hl" -name hl.exe | head -1)")" >> "$GITHUB_ENV"
+    - if: inputs.web == 'true'
+      shell: bash
+      run: |
+        git clone -q --depth 1 https://github.com/emscripten-core/emsdk "$RUNNER_TEMP/emsdk"
+        "$RUNNER_TEMP/emsdk/emsdk" install 5.0.7 > /dev/null
+        "$RUNNER_TEMP/emsdk/emsdk" activate 5.0.7 > /dev/null
+        echo "$RUNNER_TEMP/emsdk" >> "$GITHUB_PATH"
+        echo "$RUNNER_TEMP/emsdk/upstream/emscripten" >> "$GITHUB_PATH"
+    - if: inputs.web == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22

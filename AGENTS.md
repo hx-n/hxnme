@@ -83,15 +83,16 @@ and each one is a haxelib under `packages/`. Read the
 - CI runs every check on macOS, Linux and Windows, in one workflow for each
   runtime: `ash.yml`, `hxcpp.yml` and `cppia.yml`, and `hashlink.yml` for
   stock HashLink on Linux and Windows. Ash runs in hybrid mode, and each
-  check is also built ahead of time. `checks.yml` lists the
-  checks: the kernel, physics and plugin checks, and a game made with
-  `hxn me new`, on each platform's default GPU driver. `ios.yml` and
+  check is also built ahead of time. `checks.yml` lists the checks: the
+  kernel, physics and plugin checks, and a game made with `hxn me new`, on
+  each platform's default GPU driver. `web.yml` runs the kernel and plugin
+  checks and the game in headless Chrome, on Ash and on hxcpp. `ios.yml` and
   `android.yml` build the kernel and physics checks with Ash for an iPhone
   simulator and an x86_64 Android emulator, and compare each with the
-  desktop build. When you add a check program, add it to `checks.yml` and,
-  if it runs as a plain program on a device, to both mobile workflows. A
-  change is not known to work on Windows, iOS or Android until CI has run
-  it.
+  desktop build. Add each new check program to `checks.yml`. If it runs in a
+  web page, add it to `web.yml`. If it runs as a plain program on a device,
+  add it to both mobile workflows. CI must run a change before it is known
+  to work on Windows, in a web page, on iOS or on Android.
 - Report each runtime that you did not run.
 
 ## Issues and commits

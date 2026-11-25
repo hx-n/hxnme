@@ -1,0 +1,65 @@
+name: web-check
+description: >-
+  Runs a check program in a web page in headless Chrome. The threaded page runs on Ash
+  and on hxcpp, and both must print the same output. The page without threads runs on
+  hxcpp. The output must also be what the program prints on the desktop, unless it
+  depends on the GPU backend.
+
+inputs:
+  directory:
+    description: The directory of the program file.
+    required: true
+  file:
+    description: The program file.
+    default: app.hxml
+  threads:
+    description: true for the threaded page on Ash and hxcpp, false for the page without threads on hxcpp.
+    required: true
+  compare:
+    description: false to leave out the comparison with the desktop.
+    default: "true"
+  webgl2:
+    description: true to run on WebGL2 alone. It changes hxnme.toml, so later steps in the directory also run on WebGL2.
+    default: "false"
+  minutes:
+    description: The time limit for each run, in minutes.
+    default: "20"
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ inputs.directory }}
+      run: |
+        set +e
+        limit=$(( ${{ inputs.minutes }} * 60 ))
+        file=${{ inputs.file }}
+        fail() { echo "::error::$1 in ${{ inputs.directory }}"; exit 1; }
+        runtimes="cpp"
+        flags="--wasm --browser"
+        if [ "${{ inputs.threads }}" = true ]; then
+          runtimes="hl cpp"
+          flags="--wasm --threads --browser"
+        fi
+        if [ "${{ inputs.webgl2 }}" = true ]; then
+          printf '\n[libraries.hxnme-gpu]\nwasm32 = ["hxn-gpu-webgl2"]\n' >> hxnme.toml
+        fi
+        timeout $limit hxn check $runtimes $file $flags --ash "$ASH" 2> page.err | tee page.txt
+        [ "${PIPESTATUS[0]}" -eq 0 ] || { cat page.err; fail "the check failed in a web page"; }
+        # hxn check prints a line that starts with == before each run's output.
+        awk '/^== /{text=""; next} /^PASS/{next} {text=text $0 "\n"} END{printf "%s", text}' page.txt > out.txt
+        [ -s out.txt ] || [ "${{ inputs.compare }}" != true ] || fail "the page printed nothing"
+        # hxn-gpu falls back to WebGL2 when WebGPU does not open.
+        backend=webgpu
+        [ "${{ inputs.webgl2 }}" = true ] && backend=webgl2
+        if grep -q '^backend:' out.txt && ! grep -qx "backend: $backend" out.txt; then
+          fail "the page did not run on $backend"
+        fi
+        if [ "${{ inputs.compare }}" = true ]; then
+          echo "== desktop"
+          # On Linux, windows open on a virtual X display when the setup installed one.
+          wrap=()
+          if [ "$RUNNER_OS" = Linux ] && command -v xvfb-run > /dev/null; then wrap=(xvfb-run -a); fi
+          timeout $limit "${wrap[@]}" hxn run hl $file --vm "$ASH" > expected.txt 2> expected.err || { cat expected.err; fail "the check failed on the desktop"; }
+          diff -u expected.txt out.txt || fail "the page differs from the desktop"
+        fi

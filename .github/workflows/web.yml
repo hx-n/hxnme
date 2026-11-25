@@ -1,0 +1,135 @@
+name: Web
+
+# The checks and a game made with `hxn me new` in a web page in headless Chrome. The
+# threaded page runs on Ash and on hxcpp, and both print the same. The page without
+# threads runs on hxcpp. Chrome renders with SwiftShader, on WebGPU, and the GPU and 2D
+# checks also run on WebGL2.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  page:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Ash and hxcpp with threads", threads: "true" }
+          - { name: "hxcpp without threads", threads: "false" }
+    env:
+      HXN_BROWSER_ARGS: >-
+        --enable-unsafe-webgpu --enable-unsafe-swiftshader --use-webgpu-adapter=swiftshader
+        --enable-features=Vulkan --use-vulkan=swiftshader --use-angle=swiftshader
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Haxe, hxcpp, Ash, hxn, Emscripten and the haxelibs
+        id: setup
+        uses: ./.github/actions/setup
+        with:
+          gpu: "true"
+          web: "true"
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/plugins
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme/tests/plugins
+          threads: ${{ matrix.threads }}
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/systems
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme/tests/systems
+          threads: ${{ matrix.threads }}
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/loop
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme/tests/loop
+          threads: ${{ matrix.threads }}
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/headless
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme/tests/headless
+          threads: ${{ matrix.threads }}
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/assets
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme/tests/assets
+          threads: ${{ matrix.threads }}
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-window/tests/window
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme-window/tests/window
+          threads: ${{ matrix.threads }}
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-input/tests/input
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme-input/tests/input
+          threads: ${{ matrix.threads }}
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-gpu/tests/gpu
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme-gpu/tests/gpu
+          threads: ${{ matrix.threads }}
+          compare: "false"
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-2d/tests/draw
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme-2d/tests/draw
+          threads: ${{ matrix.threads }}
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-2d/tests/assets
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme-2d/tests/assets
+          threads: ${{ matrix.threads }}
+      # The game the template makes, for 60 frames. It prints nothing to compare.
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: Create a game
+        run: |
+          mkdir -p "$RUNNER_TEMP/new"
+          cd "$RUNNER_TEMP/new"
+          hxn me new game
+          perl -0pi -e 's/^\[app\]\n/[app]\nframes = 60\n/m; s/^width = \d+$/width = 160/m; s/^height = \d+$/height = 90/m' game/hxnme.toml
+          echo "GAME=$RUNNER_TEMP/new/game" >> "$GITHUB_ENV"
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: the game made with hxn me new
+        uses: ./.github/actions/web-check
+        with:
+          directory: ${{ env.GAME }}
+          threads: ${{ matrix.threads }}
+          compare: "false"
+      # These change hxnme.toml, so they come last.
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-gpu/tests/gpu on WebGL2
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme-gpu/tests/gpu
+          threads: ${{ matrix.threads }}
+          compare: "false"
+          webgl2: "true"
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-2d/tests/draw on WebGL2
+        uses: ./.github/actions/web-check
+        with:
+          directory: packages/hxnme-2d/tests/draw
+          threads: ${{ matrix.threads }}
+          webgl2: "true"

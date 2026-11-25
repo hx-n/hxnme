@@ -4,6 +4,7 @@
 [![HashLink](https://github.com/hx-n/hxnme/actions/workflows/hashlink.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/hashlink.yml)
 [![hxcpp](https://github.com/hx-n/hxnme/actions/workflows/hxcpp.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/hxcpp.yml)
 [![CPPIA](https://github.com/hx-n/hxnme/actions/workflows/cppia.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/cppia.yml)
+[![Web](https://github.com/hx-n/hxnme/actions/workflows/web.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/web.yml)
 [![iOS](https://github.com/hx-n/hxnme/actions/workflows/ios.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/ios.yml)
 [![Android](https://github.com/hx-n/hxnme/actions/workflows/android.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/android.yml)
 
