@@ -26,7 +26,7 @@ import sys.io.Process;
 	For each haxelib that hxnme.toml brings in, this hook runs that haxelib's
 	hook for the same phase, and also returns what that hook returns, such as
 	the browser agent of hxn-window as a file for the web page. `command`
-	handles commands such as `new`.
+	handles the commands `new` and `dev`.
 **/
 class Tool {
 	// Holds the target triple, such as `aarch64-apple-darwin`, or "" when the
@@ -44,6 +44,15 @@ class Tool {
 	static final pageFiles:Array<String> = [];
 
 	static function main() {
+		try
+			answer()
+		catch (failure:Failure) {
+			Sys.stderr().writeString(failure.message + "\n");
+			Sys.exit(1);
+		}
+	}
+
+	static function answer() {
 		request = Json.parse(Sys.stdin().readAll().toString());
 		if (request.kind == "command") {
 			command(request.arguments, request.cwd, request.root);
@@ -54,38 +63,7 @@ class Tool {
 			Sys.exit(2);
 		}
 		var reply:Dynamic = {version: 1};
-		var project:Dynamic = request.context.project;
-		file = Path.join([project.directory, "hxnme.toml"]);
-		var target:Dynamic = request.context.target;
-		if (target != null)
-			triple = target.triple != null ? target.triple : host();
-		var args = [];
-		var command = request.context.command;
-		if (request.phase == "before-build" && (command == "run" || command == "check"))
-			args.push(["-D", "hxnme_reload"]);
-		if (request.phase == "before-build" && FileSystem.exists(file)) {
-			args.push(["-D", 'hxnme_project=${Path.normalize(FileSystem.absolutePath(file))}']);
-			var toml:Dynamic = try Toml.parse(File.getContent(file), file) catch (error:String) fail(error);
-			var app:Dynamic = toml.app;
-			if (app != null && app.preset != null)
-				ashArgs.push(["--preset", string(app.preset, "app.preset", file)]);
-			var plugins:Array<Dynamic> = toml.plugins == null ? [] : toml.plugins;
-			if (!Std.isOfType(plugins, Array))
-				fail('$file: `plugins` must be an array of haxelib names');
-			if (toml.libraries != null)
-				overrides = toml.libraries;
-			var selected = project.hxml == null ? [] : libraries(File.getContent(project.hxml));
-			// The program file already selects these plugins, but the compiler does
-			// not have their target libraries yet.
-			var seen = selected.copy();
-			for (name in selected) {
-				var root = find(name);
-				if (root != null)
-					targetLibraries(Json.parse(File.getContent(Path.join([root, "haxelib.json"]))), root, project.directory, seen, args);
-			}
-			for (plugin in plugins)
-				add(string(plugin, "plugins", file), project.directory, seen, args);
-		}
+		var args = request.phase == "before-build" ? build() : [];
 		if (args.length > 0)
 			reply.haxe_args = args;
 		if (ashArgs.length > 0)
@@ -95,12 +73,105 @@ class Tool {
 		Sys.println(Json.stringify(reply));
 	}
 
-	static final USAGE = "usage: hxn me new <name>\n  Creates an hxnme game called <name> in a new directory of that name.\n";
+	// Returns the haxe arguments for the app of the hook request, and collects its Ash
+	// arguments and web page files.
+	static function build():Array<Array<String>> {
+		var project:Dynamic = request.context.project;
+		file = Path.join([project.directory, "hxnme.toml"]);
+		overrides = {};
+		ashArgs.resize(0);
+		pageFiles.resize(0);
+		var target:Dynamic = request.context.target;
+		if (target != null)
+			triple = target.triple != null ? target.triple : host();
+		var args = [];
+		var command = request.context.command;
+		if (command == "run" || command == "check")
+			args.push(["-D", "hxnme_reload"]);
+		if (!FileSystem.exists(file))
+			return args;
+		args.push(["-D", 'hxnme_project=${Path.normalize(FileSystem.absolutePath(file))}']);
+		var toml:Dynamic = try Toml.parse(File.getContent(file), file) catch (error:String) fail(error);
+		var app:Dynamic = toml.app;
+		if (app != null && app.preset != null)
+			ashArgs.push(["--preset", string(app.preset, "app.preset", file)]);
+		var plugins:Array<Dynamic> = toml.plugins == null ? [] : toml.plugins;
+		if (!Std.isOfType(plugins, Array))
+			fail('$file: `plugins` must be an array of haxelib names');
+		if (toml.libraries != null)
+			overrides = toml.libraries;
+		var selected = project.hxml == null ? [] : libraries(File.getContent(project.hxml));
+		// The program file already selects these plugins, but the compiler does
+		// not have their target libraries yet.
+		var seen = selected.copy();
+		for (name in selected) {
+			var root = find(name);
+			if (root != null)
+				targetLibraries(Json.parse(File.getContent(Path.join([root, "haxelib.json"]))), root, project.directory, seen, args);
+		}
+		for (plugin in plugins)
+			add(string(plugin, "plugins", file), project.directory, seen, args);
+		return args;
+	}
+
+	/**
+		Returns the haxe and Ash arguments that `hxn run hl` uses for the program file
+		`hxml` in `directory`, whose output goes to `output`: those of this hook, and those
+		of the hooks of the haxelibs that the program file selects, with their dependencies.
+	**/
+	@:allow(hxn.me.cli.Dev) static function arguments(directory:String, hxml:String, output:String):{haxe:Array<Array<String>>, ash:Array<Array<String>>} {
+		request = {
+			version: 1,
+			kind: "hook",
+			phase: "before-build",
+			context: {
+				command: "run",
+				project: {directory: directory, hxml: hxml, library: null, haxelib: null},
+				target: {runtime: "hl", wasm: false, threads: false, triple: null},
+				output: output
+			}
+		};
+		var args = build();
+		var seen = ["hxnme"];
+		for (phase in ["before-build", "after-build"]) {
+			request.phase = phase;
+			for (name in libraries(File.getContent(hxml)))
+				forwardSelected(name, seen.copy(), args);
+		}
+		return {haxe: args, ash: ashArgs.copy()};
+	}
+
+	static function forwardSelected(name:String, seen:Array<String>, args:Array<Array<String>>) {
+		var root = find(name);
+		if (root == null)
+			return;
+		var info:Dynamic = Json.parse(File.getContent(Path.join([root, "haxelib.json"])));
+		for (dependency in Reflect.fields(info.dependencies == null ? {} : info.dependencies))
+			if (!seen.contains(dependency)) {
+				seen.push(dependency);
+				forwardSelected(dependency, seen, args);
+			}
+		if (name != "hxnme")
+			forward(info, root, args);
+	}
+
+	static final USAGE = "usage: hxn me new <name>\n"
+		+ "  Creates an hxnme game called <name> in a new directory of that name.\n"
+		+ "       hxn me dev [<file.hxml>] [--ash <command>]\n"
+		+ "  Runs the program file, app.hxml by default, on Ash, and reloads it when its\n"
+		+ "  sources change. HXN_ASH, or `ash`, is the Ash command.\n";
 
 	static function command(arguments:Array<String>, cwd:String, root:String):Void {
 		switch (arguments) {
 			case ["new", name]:
 				create(name, cwd, root);
+			case _ if (arguments[0] == "dev"):
+				var status = Dev.launch(arguments.slice(1), cwd, root);
+				if (status == null) {
+					Sys.stderr().writeString(USAGE);
+					status = 2;
+				}
+				Sys.exit(status);
 			case [] | ["help"] | ["--help"]:
 				Sys.print(USAGE);
 			case _:
@@ -194,7 +265,7 @@ class Tool {
 		if (err.length > 0)
 			Sys.stderr().writeString(err);
 		if (code != 0)
-			fail('the ${request.phase} hook of ${info.name}, which hxnme.toml brings in, failed with status $code');
+			fail('the ${request.phase} hook of ${info.name} failed with status $code');
 		var reply:Dynamic = try Json.parse(out) catch (e:Dynamic) fail('the ${request.phase} hook of ${info.name} returned no JSON reply: $out');
 		if (reply.haxe_args != null)
 			for (pair in (reply.haxe_args : Array<Array<String>>))
@@ -299,7 +370,7 @@ class Tool {
 	}
 
 	// Returns the haxelibs that a program file selects with -lib, -L or --library.
-	static function libraries(text:String):Array<String> {
+	@:allow(hxn.me.cli.Dev) static function libraries(text:String):Array<String> {
 		var found = [];
 		var words = [for (word in ~/\s+/g.split(text)) if (word != "") word];
 		for (i in 0...words.length - 1)
@@ -316,7 +387,7 @@ class Tool {
 	}
 
 	// Returns the directory of the haxelib `name`, or null when haxelib does not have it.
-	static function find(name:String):Null<String> {
+	@:allow(hxn.me.cli.Dev) static function find(name:String):Null<String> {
 		var process = new Process("haxelib", ["libpath", name]);
 		var out = StringTools.trim(process.stdout.readAll().toString());
 		var code = process.exitCode();
@@ -330,9 +401,9 @@ class Tool {
 		return value;
 	}
 
-	static function fail(message:String):Dynamic {
-		Sys.stderr().writeString(message + "\n");
-		Sys.exit(1);
-		return null;
-	}
+	static function fail(message:String):Dynamic
+		throw new Failure(message);
 }
+
+/** `Failure` carries the message of an error in the project, which ends a command with status 1. **/
+class Failure extends haxe.Exception {}

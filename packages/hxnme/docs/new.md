@@ -12,6 +12,9 @@ cd my-game
 hxn run hl app.hxml
 ```
 
+To update the running game while you edit it, use
+[`hxn me dev`](dev.md).
+
 To run the game in a web page, compile it to wasm with Ash or with hxcpp:
 
 ```

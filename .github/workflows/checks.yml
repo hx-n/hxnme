@@ -90,6 +90,14 @@ jobs:
         with:
           directory: packages/hxnme/tests/new
           runtime: ${{ inputs.runtime }}
+      # The check runs `hxn me dev`, which runs apps on Ash.
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' && inputs.runtime == 'ash' }}
+        name: hxnme/tests/dev
+        uses: ./.github/actions/check
+        with:
+          directory: packages/hxnme/tests/dev
+          runtime: ash
+          ash-modes: ""
       # Each error check compiles broken programs with Haxe's interpreter and expects
       # each one's compile error, so it runs in one workflow only.
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' && inputs.runtime == 'ash' }}

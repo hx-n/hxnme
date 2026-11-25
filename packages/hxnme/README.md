@@ -46,6 +46,8 @@ hxn run hl app.hxml
 
 - [Creating an app](https://github.com/hx-n/hxnme/blob/main/packages/hxnme/docs/new.md):
   the game that `hxn me new` creates, and how to run it in a web page.
+- [Developing an app](https://github.com/hx-n/hxnme/blob/main/packages/hxnme/docs/dev.md):
+  `hxn me dev`, which updates the running app when its files change.
 - [Project file](https://github.com/hx-n/hxnme/blob/main/packages/hxnme/docs/project-file.md):
   the keys of `hxnme.toml`.
 - [Plugins](https://github.com/hx-n/hxnme/blob/main/packages/hxnme/docs/plugins.md):
