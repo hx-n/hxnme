@@ -41,7 +41,8 @@ class AtlasNames {
 			});
 			fields.push({
 				name: "get_" + id,
-				access: [AInline],
+				// Extern functions are not in the program, so a new region adds no function to it.
+				access: [AExtern, AInline],
 				kind: FFun({args: [], ret: macro :hxn.me.render2d.Region, expr: macro return this.at($v{i})}),
 				pos: pos
 			});

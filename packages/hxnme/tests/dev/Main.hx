@@ -29,8 +29,15 @@ class Main {
 		FileSystem.createDirectory(app);
 		write("app.hxml", "-lib hxnme\n-main App\n");
 		write("hxnme.toml", "[app]\nrate = 60\n");
-		write("App.hx", "class App {\n\tstatic function main()\n\t\thxn.me.App.run(Probe);\n}\n");
+		write("App.hx", "class App {\n\tstatic function main()\n\t\thxn.me.App.run(Probe, Show);\n}\n");
 		write("Probe.hx", probe('"one"'));
+		write("Files.hx", FILES);
+		write("Show.hx", show("first"));
+		FileSystem.createDirectory(Path.join([app, "assets"]));
+		for (name in ["text", "box", "pair", "closed"])
+			write('assets/$name.txt', name + "1");
+		write("assets/level.json", '{"name": "level1"}');
+		write("assets/built.json", '{"name": "built1"}');
 		var ash = Sys.getEnv("ASH");
 		command = new Process("haxe", [
 			"-cp",
@@ -81,13 +88,36 @@ class Main {
 		expect("the app restarts after the error is fixed", until("probe four 60 ") != null);
 
 		write("More.hx", more("one"));
-		write("App.hx", "class App {\n\tstatic function main()\n\t\thxn.me.App.run(Probe, More);\n}\n");
+		write("App.hx", "class App {\n\tstatic function main()\n\t\thxn.me.App.run(Probe, Show, More);\n}\n");
 		expect("the app runs a system of a new class", until("more one") != null);
 		write("More.hx", more("two"));
 		expect("a changed system runs in the running app", until("more two") != null);
-		write("App.hx", "class App {\n\tstatic function main()\n\t\thxn.me.App.run(Probe);\n}\n");
+		write("App.hx", "class App {\n\tstatic function main()\n\t\thxn.me.App.run(Probe, Show);\n}\n");
 		FileSystem.deleteFile(Path.join([app, "More.hx"]));
 		expect("the app runs without the class after it is deleted", until("[dev] compiled") != null && stops("more two"));
+
+		expect("the app shows its assets", until("first text1 0 level1 box1 pair1+box1 closed1 built1 ") != null);
+		write("assets/text.txt", "text2");
+		var changed = until("first text2 1 level1 ");
+		expect("a changed text loads in the running app", changed != null && count(changed) > 1);
+		write("assets/box.txt", "box2");
+		expect("a value that the app keeps gets the change, and the value that depends on it", until(" box2 pair1+box2 ") != null);
+		write("assets/level.json", '{"name": ');
+		expect("the command reports data that does not load", until("[dev] level.json does not load") != null);
+		expect("the app keeps the data from before", until(" level1 ") != null);
+		write("assets/level.json", '{"name": "level2"}');
+		expect("the data loads after it is fixed", until(" level2 ") != null);
+		write("assets/text.txt", "text3");
+		write("Show.hx", show("second"));
+		expect("changed code runs with the text that changed with it", until("second text3 ") != null && !printed("second text2 "));
+		write("assets/closed.txt", "closed2");
+		expect("the app restarts for a type that cannot take a change", until("[dev] closed.txt changed, so the app restarts") != null);
+		expect("the app shows the files after the restart", until("second text3 0 level2 box2 pair1+box2 closed2 built1 ") != null);
+		write("assets/built.json", '{"name": "built2"}');
+		expect("the app restarts for data in its code", until("[dev] built.json changed, so the app restarts") != null && until(" built2 ") != null);
+		write("assets/notes.txt", "notes");
+		write("assets/text.txt", "text4");
+		expect("a file that the app does not declare changes nothing", until(" text4 1 ") != null);
 
 		write("crash", "");
 		expect("the command reports a crash", until("[dev] the app exited with status") != null);
@@ -140,6 +170,86 @@ class More {
 			Sys.println("more $label");
 }
 ';
+
+	// Declares files of types that the app can change in different ways.
+	static final FILES = 'import hxn.Future;
+import hxn.me.AssetRef;
+import hxn.me.AssetType;
+
+typedef Named = {name:String};
+
+class Box {
+	public var text:String;
+
+	public function new(text:String)
+		this.text = text;
+}
+
+class Types {
+	public static final box = new AssetType<Box>("box", (bytes, _) -> Future.resolved(new Box(bytes.toString())), _ -> {}, (box, by) -> {
+		box.text = by.text;
+		true;
+	});
+	public static final pair = new AssetType<String>("pair", (bytes, context) -> context.load("box.txt", box).map(box -> bytes.toString() + "+" + box.text));
+	public static final closed = new AssetType<String>("closed", (bytes, _) -> Future.resolved(bytes.toString()), _ -> {});
+}
+
+@:build(hxn.me.Assets.build())
+class Files {
+	@:asset("text.txt") public static var Text:AssetRef<String>;
+	@:asset("level.json") public static var Level:AssetRef<Named>;
+	@:asset("box.txt") @:assetType(Files.Types.box) public static var Boxed:AssetRef<Box>;
+	@:asset("pair.txt") @:assetType(Files.Types.pair) public static var Pair:AssetRef<String>;
+	@:asset("closed.txt") @:assetType(Files.Types.closed) public static var Closed:AssetRef<String>;
+	@:asset("built.json") public static var Built:Named;
+}
+';
+
+	// Returns the source of a system that prints `label` and what the files of `Files` hold ten times a second.
+	static function show(label:String):String
+		return 'import hxn.me.Asset;
+import hxn.me.Assets;
+import hxn.me.Res;
+import hxn.me.ResMut;
+import hxn.me.Time;
+
+class Show {
+	static var text:Asset<String>;
+	static var level:Asset<Files.Named>;
+	static var box:Files.Box;
+	static var pair:Asset<String>;
+	static var closed:Asset<String>;
+	static var printed = 0;
+
+	@:system(Start)
+	static function start(assets:ResMut<Assets>) {
+		var store:Assets = assets;
+		store.load(Files.Text).then(a -> text = a);
+		store.load(Files.Level).then(a -> level = a);
+		store.load(Files.Boxed).then(a -> box = a.value);
+		store.load(Files.Pair).then(a -> pair = a);
+		store.load(Files.Closed).then(a -> closed = a);
+	}
+
+	@:system(Update)
+	static function tick(time:Res<Time>) {
+		if (time.frame % 6 != 0 || text == null || level == null || box == null || pair == null || closed == null)
+			return;
+		printed++;
+		Sys.println("$label " + [
+			text.value, Std.string(text.revision), level.value.name, box.text, pair.value, closed.value, Files.Built.name, Std.string(printed)
+		].join(" "));
+	}
+}
+';
+
+	// Returns whether the app printed `text` at any time.
+	static function printed(text:String):Bool {
+		lock.acquire();
+		var found = Lambda.exists(lines, line -> line.indexOf(text) >= 0);
+		lock.release();
+		return found;
+	}
 
 	static function count(line:String):Int
 		return Std.parseInt(line.split(" ").pop());

@@ -13,18 +13,18 @@ class AssetContext {
 	public final path:String;
 
 	final assets:Assets;
-	final entry:AssetEntry;
+	final held:Array<Asset<Dynamic>>;
 
-	@:allow(hxn.me) function new(assets:Assets, entry:AssetEntry) {
+	@:allow(hxn.me) function new(assets:Assets, path:String, held:Array<Asset<Dynamic>>) {
 		this.assets = assets;
-		this.entry = entry;
-		path = entry.path;
+		this.path = path;
+		this.held = held;
 	}
 
 	/** Loads the bundled file at `path` as `type`, and holds it until the value of this asset closes. **/
 	public function load<T>(path:String, type:AssetType<T>):Future<T>
 		return assets.loadFile(path, type).map(asset -> {
-			entry.held.push(cast asset);
+			held.push(cast asset);
 			asset.value;
 		});
 

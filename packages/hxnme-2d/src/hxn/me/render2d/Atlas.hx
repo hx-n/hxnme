@@ -45,6 +45,22 @@ class Atlas {
 		ordered.push(region);
 	}
 
+	// Gives this atlas the regions of `by`. Regions that both have stay the same objects, with the new rectangles. Returns false if the images differ.
+	@:allow(hxn.me.render2d) function adopt(by:Atlas):Bool {
+		if (by.texture != texture)
+			return false;
+		var kept = [for (region in ordered) region.name => region];
+		regions.clear();
+		ordered.resize(0);
+		for (region in by.ordered) {
+			var old = kept.get(region.name);
+			if (old != null)
+				old.adopt(region);
+			add(old != null ? old : region);
+		}
+		return true;
+	}
+
 	/** Returns the region at `index` in the order they were added. The properties of a declared atlas use it. **/
 	@:noCompletion public inline function at(index:Int):Region
 		return ordered[index];

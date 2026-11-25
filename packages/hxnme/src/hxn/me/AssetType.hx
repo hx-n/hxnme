@@ -17,21 +17,34 @@ class AssetType<T> {
 
 	final decoder:(Bytes, AssetContext) -> Future<T>;
 	final closer:Null<T->Void>;
+	final replacer:Null<(T, T) -> Bool>;
 
 	/**
 		Makes a type called `name`. `decode` turns the bytes into a value, and
 		loads through its `AssetContext` the other assets that the value holds.
 		`close` releases what the value holds outside the heap, such as a GPU
-		texture.
+		texture. After the file changes under `hxn me dev`, `replace` gives
+		the first value the contents of the second, so that everything which
+		holds the first one shows the change. It returns false if it cannot.
+		Without `replace`, the new value takes the place of the old one in the
+		handles, and the app restarts instead if the type has `close`.
 	**/
-	public function new(name:String, decode:(Bytes, AssetContext) -> Future<T>, ?close:T->Void) {
+	public function new(name:String, decode:(Bytes, AssetContext) -> Future<T>, ?close:T->Void, ?replace:(T, T) -> Bool) {
 		this.name = name;
 		decoder = decode;
 		closer = close;
+		replacer = replace;
 	}
 
 	@:allow(hxn.me) function decode(bytes:Bytes, context:AssetContext):Future<T>
 		return decoder(bytes, context);
+
+	// Returns the value to keep after the file of `value` changed and decodes to `by`, or null if neither can stay.
+	@:allow(hxn.me) function replace(value:T, by:T):Null<T> {
+		if (replacer != null)
+			return replacer(value, by) ? value : null;
+		return closer == null ? by : null;
+	}
 
 	@:allow(hxn.me) function close(value:T):Void
 		if (closer != null)

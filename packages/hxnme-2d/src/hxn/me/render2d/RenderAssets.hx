@@ -17,7 +17,10 @@ class RenderAssets {
 	public static final texture = new AssetType<Texture>("hxnme-2d texture", (bytes, _) -> try {
 		var image = hxn.assets.AssetDecode.png(bytes);
 		Future.resolved(new Texture(image.width, image.height, image.pixels));
-	} catch (e:haxe.Exception) Future.rejected(e), t -> t.close());
+	} catch (e:haxe.Exception) Future.rejected(e), t -> t.close(), (texture, by) -> {
+		texture.adopt(by);
+		true;
+	});
 
 	/** `font` loads a TTF, OpenType or WOFF2 file as an `hxn.text.Font`, for `Typesetter.text`. **/
 	public static final font = new AssetType<Font>("hxnme-2d font", (bytes, _) -> try Future.resolved(new Font(bytes, {})) catch (e:haxe.Exception)
@@ -27,7 +30,7 @@ class RenderAssets {
 		`atlas` loads a JSON file of regions, and the image it lists, as an
 		`Atlas`. The app must declare the image too, so that it is bundled.
 	**/
-	public static final atlas = new AssetType<Atlas>("hxnme-2d atlas", decodeAtlas);
+	public static final atlas = new AssetType<Atlas>("hxnme-2d atlas", decodeAtlas, null, (atlas, by) -> atlas.adopt(by));
 
 	static function sortedNames(regions:Dynamic):Array<String> {
 		var names = Reflect.fields(regions);

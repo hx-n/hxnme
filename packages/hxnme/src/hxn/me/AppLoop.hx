@@ -54,7 +54,9 @@ class AppLoop {
 	**/
 	public function frame(seconds:Float):Bool {
 		hxn.Loop.sync();
-		#if (hl && hxnme_reload)
+		#if hxnme_dev
+		hxn.me.dev.Session.frame();
+		#elseif (hl && hxnme_reload)
 		hl.Api.checkReload();
 		#end
 		if (!started) {

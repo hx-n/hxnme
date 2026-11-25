@@ -22,10 +22,13 @@ class Texture {
 	/** `closed` is true after a call to `close`. **/
 	public var closed(default, null) = false;
 
+	// Holds the GPU texture that `adopt` replaced, until the start of the next frame.
+	var replaced:Null<GpuTexture>;
+
 	var format:TextureFormat;
 	var pixels:Null<Bytes>;
 
-	// Holds the closed textures. `release` closes their GPU textures at the start of the next frame, because draws earlier in the frame still use them.
+	// Holds the textures that closed or that `adopt` changed. `release` closes their GPU textures at the start of the next frame, because draws earlier in the frame still use them.
 	static final retired:Array<Texture> = [];
 
 	// Holds the writes to parts of the texture that wait for the next upload.
@@ -89,14 +92,35 @@ class Texture {
 		retired.push(this);
 	}
 
-	// Releases the GPU textures of the textures closed before this frame, and returns those textures.
+	// Gives this texture the image of `by`, a texture that nothing draws yet. Everything that draws this texture then shows that image.
+	@:allow(hxn.me.render2d) function adopt(by:Texture):Void {
+		width = by.width;
+		height = by.height;
+		pixels = by.pixels;
+		format = by.format;
+		patches = [];
+		if (texture == null)
+			return;
+		if (replaced != null)
+			replaced.close();
+		replaced = texture;
+		texture = null;
+		retired.push(this);
+	}
+
+	// Releases the GPU textures that closed or were replaced before this frame, and returns their textures.
 	@:allow(hxn.me.render2d) static function release():Array<Texture> {
 		var released = retired.copy();
-		for (t in released)
-			if (t.texture != null) {
+		for (t in released) {
+			if (t.closed && t.texture != null) {
 				t.texture.close();
 				t.texture = null;
 			}
+			if (t.replaced != null) {
+				t.replaced.close();
+				t.replaced = null;
+			}
+		}
 		retired.resize(0);
 		return released;
 	}

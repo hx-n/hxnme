@@ -10,7 +10,7 @@ class Asset<T> {
 	/** The path of the file that `Assets` loaded the asset from. **/
 	public final path:String;
 
-	var entry:Null<AssetEntry>;
+	@:allow(hxn.me) var entry:Null<AssetEntry>;
 
 	@:allow(hxn.me) function new(entry:AssetEntry) {
 		this.entry = entry;
@@ -25,6 +25,16 @@ class Asset<T> {
 			throw 'the asset $path was released';
 		return entry.value;
 	}
+
+	/**
+		The number of times that `hxn me dev` replaced the value after its file
+		changed. Systems that build something from the value can compare it to
+		build that again.
+	**/
+	public var revision(get, never):Int;
+
+	function get_revision():Int
+		return entry == null ? 0 : entry.revision;
 
 	/** Returns whether the app released the handle. **/
 	public var released(get, never):Bool;

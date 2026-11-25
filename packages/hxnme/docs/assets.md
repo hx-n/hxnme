@@ -61,5 +61,13 @@ final pair = new AssetType<String>("pair", (bytes, context) ->
 	context.load(context.resolve("other.txt"), note).map(other -> bytes.toString() + other));
 ```
 
+`hxn me dev` loads an asset again after its file changes. The new value takes the
+place of the old one in the handles, and `Asset.revision` counts how often that
+happened. Systems that build something from a value, such as a level, compare
+`revision` to build it again. Some values stay in other objects, such as the texture
+in an atlas. Their types take a `replace` function, which gives the value that the
+app has the contents of the new one. Types with `close` and without `replace` restart
+the app instead.
+
 The check in `tests/assets` declares text, JSON and a type with a dependency,
 and tests what handles share, close and release.

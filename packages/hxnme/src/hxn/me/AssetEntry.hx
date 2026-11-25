@@ -12,7 +12,8 @@ class AssetEntry {
 	var value:Dynamic;
 	var ready:Null<hxn.Future<Dynamic>>;
 	var count = 0;
-	final held:Array<Asset<Dynamic>> = [];
+	var held:Array<Asset<Dynamic>> = [];
+	var revision = 0;
 	final unload:() -> Void;
 
 	function new(assets:Assets, key:String, path:String, type:AssetType<Dynamic>, unload:() -> Void) {

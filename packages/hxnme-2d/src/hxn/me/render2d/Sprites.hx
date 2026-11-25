@@ -321,10 +321,32 @@ class Sprites {
 	@:allow(hxn.me.render2d) function count(bytes:Int):Void
 		uploaded = bytes;
 
-	/** Writes the glyph instances of each text that moved, changed or was laid out again, before the renderer uploads them. **/
-	@:allow(hxn.me.render2d) function refresh():Void
+	/** Writes the glyph instances of each text that moved, changed or was laid out again, and the sprites of regions that changed, before the renderer uploads them. **/
+	@:allow(hxn.me.render2d) function refresh():Void {
 		for (entry in texts)
 			entry.refresh(groups);
+		if (regionChanges != Region.changes) {
+			regionChanges = Region.changes;
+			refreshRegions();
+		}
+	}
+
+	// Writes the part of the texture and the pivot of each sprite of a region again. The sprites keep their size and place.
+	function refreshRegions():Void
+		for (slot in 0...slotGroup.length) {
+			var region = slotRegion[slot], group = slotGroup[slot], i = slotIndex[slot];
+			if (region == null || group == null)
+				continue;
+			group.instances.set(Instances.UV, i, region.u0, region.v0, region.u1, region.v1);
+			group.instances.setPair(Instances.XFORM, i, 2, region.pivotX, region.pivotY);
+			group.changed(Instances.UV, i);
+			group.changed(Instances.XFORM, i);
+			var sprite = new Sprite(slot, slotGeneration[slot]);
+			if (slotShadow[slot] >= 0)
+				resize(sprite, group.instances.get(Instances.RECT, i, 2), group.instances.get(Instances.RECT, i, 3));
+		}
+
+	var regionChanges = 0;
 
 	static inline function setTint(instances:Instances, i:Int, color:Int, alpha:Float):Void
 		instances.set(Instances.COLOR, i, ((color >> 16) & 0xFF) / 255, ((color >> 8) & 0xFF) / 255, (color & 0xFF) / 255, alpha);

@@ -172,34 +172,13 @@ class AssetFields {
 		fields = hxn.assets.Assets.process(fields);
 		if (refs.length == 0)
 			return fields;
-		var pos = Context.currentPos();
-		fields.push({
-			name: "__hxnme_catalog",
-			access: [APrivate, AStatic],
-			kind: FVar(macro :Null<hxn.assets.AssetCatalog>, macro null),
-			pos: pos
-		});
-		fields.push({
-			name: "__hxnme_listed",
-			access: [APrivate, AStatic],
-			kind: FFun({
-				args: [],
-				ret: macro :hxn.assets.AssetCatalog,
-				expr: macro {
-					if (__hxnme_catalog == null)
-						__hxnme_catalog = catalog();
-					return __hxnme_catalog;
-				}
-			}),
-			pos: pos
-		});
 		for (ref in refs) {
 			var field = Lambda.find(fields, f -> f.name == ref.name);
 			var inner = ref.inner;
 			var access = [for (a in ref.access) if (a != AFinal && a != AInline) a];
 			access.push(AFinal);
 			field.access = access;
-			field.kind = FVar(macro :hxn.me.AssetRef<$inner>, macro new hxn.me.AssetRef<$inner>($v{ref.address}, $v{ref.path}, ${ref.type}, $v{ownerPath}, __hxnme_listed));
+			field.kind = FVar(macro :hxn.me.AssetRef<$inner>, macro new hxn.me.AssetRef<$inner>($v{ref.address}, $v{ref.path}, ${ref.type}, $v{ownerPath}, catalog));
 		}
 		return fields;
 	}

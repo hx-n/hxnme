@@ -15,6 +15,11 @@ class AssetRef<T> {
 	/** The path of the asset's file in the bundled assets. **/
 	public final path:String;
 
+	#if hxnme_dev
+	/** The paths of the files that the app declares. It has no initializer, because the refs of the app are made in initializers. **/
+	@:allow(hxn.me) static var declared:Null<Array<String>>;
+	#end
+
 	final type:AssetType<T>;
 	final owner:String;
 	final catalog:() -> AssetCatalog;
@@ -25,6 +30,11 @@ class AssetRef<T> {
 		this.type = type;
 		this.owner = owner;
 		this.catalog = catalog;
+		#if hxnme_dev
+		if (declared == null)
+			declared = [];
+		declared.push(path);
+		#end
 	}
 
 	@:allow(hxn.me) function decoder():AssetType<T>
