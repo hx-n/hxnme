@@ -12,15 +12,19 @@ cd my-game
 hxn run hl app.hxml
 ```
 
+The same program file runs on every runtime:
+
+| Runtime | Command |
+|---|---|
+| HashLink | `hxn run hl app.hxml` |
+| Ash | `hxn run hl app.hxml --vm ash` |
+| hxcpp | `hxn run cpp app.hxml` |
+| CPPIA | `hxn run cppia app.hxml` |
+| Ash in a web page | `hxn run hl app.hxml --wasm --threads --browser` |
+| hxcpp in a web page | `hxn run cpp app.hxml --wasm --browser` |
+
 To run the game with [hot reload](dev.md) of its code and assets, use
 `hxn me dev`.
-
-To run the game in a web page, compile it to wasm with Ash or with hxcpp:
-
-```
-hxn run hl app.hxml --wasm --threads --browser
-hxn run cpp app.hxml --wasm --browser
-```
 
 The template keeps the license of its font in `licenses/`. Keep it with
 the game, or replace the font. The check in `tests/new` creates a game with

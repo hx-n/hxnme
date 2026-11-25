@@ -31,11 +31,11 @@ hxn run hl app.hxml
 The guides describe how to build an hxnme app in depth:
 
 - [Creating an app](packages/hxnme/docs/new.md): the game that `hxn me new`
-  creates, and how to run it in a web page.
+  creates, and how to run it on each runtime.
 - [Hot reload](packages/hxnme/docs/dev.md): `hxn me dev`, which hot reloads
   the code and assets of a running app.
-- [Project file](packages/hxnme/docs/project-file.md): the keys of
-  `hxnme.toml`.
+- [Project file](packages/hxnme/docs/project-file.md): `hxnme.toml`
+  project metadata file guide.
 - [Plugins](packages/hxnme/docs/plugins.md): the manifest, the plugin class
   and the native libraries of each target.
 - [Systems](packages/hxnme/docs/systems.md): `@:system`, the phases of a

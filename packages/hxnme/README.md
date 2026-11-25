@@ -45,11 +45,11 @@ hxn run hl app.hxml
 ## Guides
 
 - [Creating an app](https://github.com/hx-n/hxnme/blob/main/packages/hxnme/docs/new.md):
-  the game that `hxn me new` creates, and how to run it in a web page.
+  the game that `hxn me new` creates, and how to run it on each runtime.
 - [Hot reload](https://github.com/hx-n/hxnme/blob/main/packages/hxnme/docs/dev.md):
   `hxn me dev`, which hot reloads the code and assets of a running app.
 - [Project file](https://github.com/hx-n/hxnme/blob/main/packages/hxnme/docs/project-file.md):
-  the keys of `hxnme.toml`.
+  `hxnme.toml` project metadata file guide.
 - [Plugins](https://github.com/hx-n/hxnme/blob/main/packages/hxnme/docs/plugins.md):
   the manifest, the plugin class and the native libraries of each target.
 - [Systems](https://github.com/hx-n/hxnme/blob/main/packages/hxnme/docs/systems.md):
