@@ -14,7 +14,10 @@ class Frames {
 	@:system(Update)
 	static function count(time:Res<Time>, lifecycle:ResMut<Lifecycle>) {
 		Sys.println('frame ${time.frame}');
-		if (time.frame == 3)
+		if (time.frame == 3) {
+			Sys.println("hxnme-window: " + hxn.me.Plugins.names.join(", "));
+			Sys.println("Window checks passed");
 			lifecycle.quit();
+		}
 	}
 }

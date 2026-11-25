@@ -339,11 +339,8 @@ class Scene {
 
 	@:system(Update)
 	static function check(gpu:Res<Gpu>, lifecycle:ResMut<Lifecycle>, sprites:Res<Sprites>) {
-		if (gpu.failure != null) {
-			Sys.println('no GPU: ${gpu.failure}');
-			lifecycle.quit();
-			return;
-		}
+		if (gpu.failure != null)
+			fail('no GPU: ${gpu.failure}');
 		if (gpu.presented < CHANGE + hxn.me.render2d.Renderer.SETS + 2 || reading)
 			return;
 		reading = true;
@@ -412,6 +409,8 @@ class Scene {
 		Sys.println('sprite upload without a change: ${still ? "nothing" : '${sprites.uploaded} bytes'}');
 		if (failed > 0)
 			fail('$failed checks failed');
+		Sys.println("hxnme-2d: " + hxn.me.Plugins.names.join(", "));
+		Sys.println("2D checks passed");
 		state.quit();
 	}
 

@@ -45,6 +45,8 @@ class Pacing {
 			Sys.println('the mean frame time is ${Math.round(mean * 100000) / 100} ms for a refresh of ${display.refresh} Hz, with $long long frames');
 			Sys.exit(1);
 		}
+		Sys.println("hxnme-gpu: " + hxn.me.Plugins.names.join(", "));
+		Sys.println("pacing checks passed");
 		(lifecycle : Lifecycle).quit();
 	}
 }

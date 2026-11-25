@@ -7,10 +7,11 @@ import hxn.me.gpu.RenderTarget;
 /**
 	`Frames` adds a pass that clears a 4x4 render target and a pass that
 	clears the frame. After the plugin presents three frames, `Frames` reads
-	the target back and stops the app.
+	the target back, checks its color and stops the app.
 **/
 class Frames {
 	static final target = new RenderTarget(4, 4);
+	static final COLOR = [64, 128, 191, 255];
 	static var reading = false;
 
 	@:system(Start)
@@ -28,8 +29,7 @@ class Frames {
 	static function check(gpu:ResMut<Gpu>, lifecycle:ResMut<Lifecycle>) {
 		if (gpu.failure != null) {
 			Sys.println('no GPU: ${gpu.failure}');
-			lifecycle.quit();
-			return;
+			Sys.exit(1);
 		}
 		if (gpu.presented < 3 || reading)
 			return;
@@ -38,11 +38,19 @@ class Frames {
 		gpu.device.readTexture(target.texture).then(pixels -> {
 			Sys.println('frames presented: at least 3');
 			Sys.println('backend: ${gpu.device.backend}');
-			Sys.println('target: ${target.texture.width}x${target.texture.height} of ${[for (c in 0...4) pixels.get(c)].join(", ")}');
+			var color = [for (c in 0...4) pixels.get(c)];
+			Sys.println('target: ${target.texture.width}x${target.texture.height} of ${color.join(", ")}');
+			for (c in 0...4)
+				if (Math.abs(color[c] - COLOR[c]) > 1) {
+					Sys.println('the target is not ${COLOR.join(", ")}');
+					Sys.exit(1);
+				}
+			Sys.println("hxnme-gpu: " + hxn.me.Plugins.names.join(", "));
+			Sys.println("GPU checks passed");
 			state.quit();
 		}, e -> {
 			Sys.println('readback failed: ${e.message}');
-			state.quit();
+			Sys.exit(1);
 		});
 	}
 }
