@@ -238,6 +238,19 @@ jobs:
           hxn me new game
           perl -0pi -e 's/^\[app\]\n/[app]\nframes = 60\n/m; s/^\[window\]\n/[window]\nvisible = false\n/m; s/^width = \d+$/width = 160/m; s/^height = \d+$/height = 90/m' game/hxnme.toml
           cat game/hxnme.toml
+          # Temporary trace, on stderr, of where the game stops on Windows: every tenth
+          # frame, and the return of App.run.
+          cat > game/Trace.hx <<'EOF'
+          class Trace {
+          	@:system(Render)
+          	static function frame(time:hxn.me.Res<hxn.me.Time>) {
+          		if (time.frame % 10 == 0)
+          			Sys.stderr().writeString('trace: frame ${time.frame}\n');
+          	}
+          }
+          EOF
+          perl -0pi -e 's/hxn\.me\.App\.run\(Game\);/hxn.me.App.run(Game, Trace);\n\t\tSys.stderr().writeString("trace: app returned\\n");/' game/Main.hx
+          cat game/Main.hx
           echo "GAME=$RUNNER_TEMP/new/game" >> "$GITHUB_ENV"
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         name: the game made with hxn me new
@@ -245,3 +258,4 @@ jobs:
         with:
           directory: ${{ env.GAME }}
           runtime: ${{ inputs.runtime }}
+          minutes: "5"
