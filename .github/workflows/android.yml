@@ -1,0 +1,109 @@
+name: Android
+
+# The kernel and physics checks on an Android emulator, each built with Ash for
+# x86_64-linux-android and compared with the same program built for the desktop.
+# GitHub's macOS runners have no nested virtualization, so the emulator is an x86_64
+# image on a Linux runner with KVM. The assets check is left out: hxn-file reads bundled
+# files through an Activity, which a program started from adb shell does not have.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  emulator:
+    name: Android emulator
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # Ash otherwise counts allocations only in whole 32 KiB regions, and the physics
+      # allocation checks can pass when the code allocates.
+      ASH_GC_TLAB: "0"
+      ANDROID_TRIPLE: x86_64-linux-android
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Haxe, hxcpp, Ash, hxn and the haxelibs
+        id: setup
+        uses: ./.github/actions/setup
+      - name: Boot an emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm.rules > /dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          image="system-images;android-34;default;x86_64"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$image" emulator platform-tools > /dev/null
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n ci -k "$image" --force > /dev/null
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          echo "ANDROID_NDK_ROOT=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+          nohup "$ANDROID_HOME/emulator/emulator" -avd ci -no-window -no-audio -no-boot-anim -no-snapshot \
+            -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          adb="$ANDROID_HOME/platform-tools/adb"
+          timeout 600 "$adb" wait-for-device
+          timeout 600 bash -c "until [ \"\$('$adb' shell getprop sys.boot_completed 2> /dev/null | tr -d '\r')\" = 1 ]; do sleep 5; done" \
+            || { cat "$RUNNER_TEMP/emulator.log"; exit 1; }
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/toml-checks.hxml
+        uses: ./.github/actions/android-check
+        with:
+          directory: packages/hxnme/tests
+          file: toml-checks.hxml
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/plugins
+        uses: ./.github/actions/android-check
+        with:
+          directory: packages/hxnme/tests/plugins
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/systems
+        uses: ./.github/actions/android-check
+        with:
+          directory: packages/hxnme/tests/systems
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/loop
+        uses: ./.github/actions/android-check
+        with:
+          directory: packages/hxnme/tests/loop
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/headless
+        uses: ./.github/actions/android-check
+        with:
+          directory: packages/hxnme/tests/headless
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/libraries
+        uses: ./.github/actions/android-check
+        with:
+          directory: packages/hxnme/tests/libraries
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme/tests/libraries-override
+        uses: ./.github/actions/android-check
+        with:
+          directory: packages/hxnme/tests/libraries-override
+      # Android's math library rounds some results differently from the desktop's, so
+      # this check only has to pass on the emulator. It exits with an error when a check
+      # fails.
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-physics/tests/checks.hxml
+        uses: ./.github/actions/android-check
+        with:
+          directory: packages/hxnme-physics/tests
+          file: checks.hxml
+          compare: "false"
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-physics/tests/concurrent-checks.hxml
+        uses: ./.github/actions/android-check
+        with:
+          directory: packages/hxnme-physics/tests
+          file: concurrent-checks.hxml
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-physics/tests/world-growth-checks.hxml
+        uses: ./.github/actions/android-check
+        with:
+          directory: packages/hxnme-physics/tests
+          file: world-growth-checks.hxml

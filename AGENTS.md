@@ -85,10 +85,13 @@ and each one is a haxelib under `packages/`. Read the
   stock HashLink on Linux and Windows. Ash runs in hybrid mode, and each
   check is also built ahead of time. `checks.yml` lists the
   checks: the kernel, physics and plugin checks, and a game made with
-  `hxn me new`, on each platform's default GPU driver. `ios.yml` builds the
-  kernel and physics checks with Ash for an iPhone simulator, and compares
-  each with the desktop build. When you add a check program, add it to both.
-  A change is not known to work on Windows or iOS until CI has run it.
+  `hxn me new`, on each platform's default GPU driver. `ios.yml` and
+  `android.yml` build the kernel and physics checks with Ash for an iPhone
+  simulator and an x86_64 Android emulator, and compare each with the
+  desktop build. When you add a check program, add it to `checks.yml` and,
+  if it runs as a plain program on a device, to both mobile workflows. A
+  change is not known to work on Windows, iOS or Android until CI has run
+  it.
 - Report each runtime that you did not run.
 
 ## Issues and commits
