@@ -21,6 +21,8 @@ class AssetFields {
 	static final refiners = new Map<String, (file:String, owner:ClassType, field:String, pos:Position) -> Null<ComplexType>>();
 	// Holds the endings of the names of refined types. Each refined type's name is the declaring class's name, the field's name and one of these endings.
 	static final suffixes:Array<String> = [];
+	// The metadata that `define` adds to the declaring class, with the name of each of its refined types.
+	static inline final REFINED = ":hxnme.refined";
 	// Holds the refined types that the not-found hook asked for. The hook returns these types instead of defining them.
 	static final requested = new Map<String, Null<TypeDefinition>>();
 
@@ -50,14 +52,17 @@ class AssetFields {
 	public static function define(type:TypeDefinition):ComplexType {
 		var name = type.name;
 		type.name = name + "Data";
-		Context.defineType(type);
+		// The type belongs to the module of the declaring class, which the build macro builds.
+		var module = Context.getLocalModule();
+		Context.defineType(type, module);
 		var data = TPath({pack: type.pack, name: type.name});
 		var alias:TypeDefinition = {pack: type.pack, name: name, pos: type.pos, doc: type.doc, kind: TDAlias(data), fields: []};
 		var full = type.pack.concat([name]).join(".");
 		if (requested.exists(full))
 			requested.set(full, alias);
 		else
-			Context.defineType(alias);
+			Context.defineType(alias, module);
+		Context.getLocalClass().get().meta.add(REFINED, [macro $v{full}], type.pos);
 		return data;
 	}
 
@@ -66,6 +71,9 @@ class AssetFields {
 		before anything builds the class that declares it. When the compiler
 		cannot find such a name, the hook builds each class that the name can
 		start with, and returns the type that the build macro made. The
+		compilation server also asks the hook whether a type that it keeps
+		still exists. It keeps the declaring class too, so no build macro runs,
+		and the hook reads the answer from the metadata of the class. The
 		kernel's `extraParams.hxml` calls it.
 	**/
 	public static function install():Void
@@ -84,7 +92,18 @@ class AssetFields {
 			var owner = parts.concat([short.substr(0, i)]).join(".");
 			// Reading the statics builds the class, which runs the refiner.
 			switch (try Context.getType(owner) catch (_:Dynamic) null) {
-				case TInst(c, _): c.get().statics.get();
+				case TInst(c, _):
+					var declaring = c.get();
+					declaring.statics.get();
+					for (entry in declaring.meta.extract(REFINED))
+						if (requested.get(name) == null && literal(entry.params[0]) == name)
+							requested.set(name, {
+								pack: parts,
+								name: short,
+								pos: entry.pos,
+								kind: TDAlias(TPath({pack: parts, name: short + "Data"})),
+								fields: []
+							});
 				case _:
 			}
 			var made = requested.get(name);

@@ -71,8 +71,23 @@ class Main {
 		write("Probe.hx", probe('"four"', "\tstatic function more():Int\n\t\treturn 14;\n\n"));
 		expect("the app reloads after the error is fixed", until("probe four ") != null);
 
-		write("hxnme.toml", "[app]\nrate = 61\n");
-		expect("the app restarts after hxnme.toml changes", until("[dev] hxnme.toml changed") != null && until("probe four ") != null);
+		write("hxnme.toml", "[app]\nrate = 60\nstep = 30\n");
+		expect("the app restarts after hxnme.toml changes", until("[dev] hxnme.toml changed") != null);
+		expect("the app gets the new value", until("probe four 30 ") != null);
+
+		write("hxnme.toml", "[app]\nrate = 60\nstep = \"often\"\n");
+		expect("the command prints the error in hxnme.toml", until("`app.step` must be a number") != null);
+		write("hxnme.toml", "[app]\nrate = 60\nstep = 60\n");
+		expect("the app restarts after the error is fixed", until("probe four 60 ") != null);
+
+		write("More.hx", more("one"));
+		write("App.hx", "class App {\n\tstatic function main()\n\t\thxn.me.App.run(Probe, More);\n}\n");
+		expect("the app runs a system of a new class", until("more one") != null);
+		write("More.hx", more("two"));
+		expect("a changed system runs in the running app", until("more two") != null);
+		write("App.hx", "class App {\n\tstatic function main()\n\t\thxn.me.App.run(Probe);\n}\n");
+		FileSystem.deleteFile(Path.join([app, "More.hx"]));
+		expect("the app runs without the class after it is deleted", until("[dev] compiled") != null && stops("more two"));
 
 		write("crash", "");
 		expect("the command reports a crash", until("[dev] the app exited with status") != null);
@@ -103,13 +118,26 @@ $more	static function label():String
 	static function tick(time:Res<Time>, lifecycle:ResMut<Lifecycle>) {
 		if (time.frame % 6 == 0) {
 			printed++;
-			Sys.println("probe " + label() + " " + printed);
+			Sys.println("probe " + label() + " " + Math.round(1 / time.step) + " " + printed);
 		}
 		if (sys.FileSystem.exists("crash"))
 			throw "crashed";
 		if (sys.FileSystem.exists("stop"))
 			lifecycle.quit();
 	}
+}
+';
+
+	// Returns the source of a class with a system that prints `label` ten times a second.
+	static function more(label:String):String
+		return 'import hxn.me.Res;
+import hxn.me.Time;
+
+class More {
+	@:system(Update)
+	static function tick(time:Res<Time>)
+		if (time.frame % 6 == 0)
+			Sys.println("more $label");
 }
 ';
 
@@ -144,6 +172,21 @@ $more	static function label():String
 			Sys.sleep(0.05);
 		}
 		return null;
+	}
+
+	// Returns whether the app stops printing `text`, within 20 lines of the probe.
+	static function stops(text:String):Bool {
+		for (_ in 0...20)
+			if (until("probe ") == null)
+				return false;
+		var from = seen;
+		for (_ in 0...10)
+			if (until("probe ") == null)
+				return false;
+		lock.acquire();
+		var printed = [for (i in from...seen) if (lines[i].indexOf(text) >= 0) i];
+		lock.release();
+		return printed.length == 0;
 	}
 
 	static function read(input:haxe.io.Input) {

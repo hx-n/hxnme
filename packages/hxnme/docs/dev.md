@@ -23,7 +23,8 @@ The command watches these files:
 - `hxnme.toml` and the program file.
 
 After a Haxe file changes, the command compiles the app again and gives the running
-app the new code. The app loop loads that code at the start of a frame, so the app
+app the new code. One Haxe compiler stays in memory while the command runs, and it
+compiles again only the modules that a change affects. The app loop loads that code at the start of a frame, so the app
 keeps its state: the values of its fields stay, and the next frames run the new
 functions.
 

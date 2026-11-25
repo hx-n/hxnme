@@ -1,5 +1,6 @@
 package hxn.me.cli;
 
+import haxe.crypto.Crc32;
 import haxe.io.Bytes;
 import haxe.io.Eof;
 import haxe.io.Path;
@@ -12,10 +13,11 @@ import sys.thread.Thread;
 
 /**
 	`Dev` runs an app on Ash while its sources change. It compiles the program file,
-	starts it with `ash --hot-reload`, and compiles again when a file changes. The
-	running program then gets the new bytecode, and the app loop reloads it at the start
-	of a frame. The program restarts when a change cannot reload: a change to
-	`hxnme.toml`, a program file or an asset, or a change that Ash refuses.
+	starts it with `ash --hot-reload`, and compiles again when a file changes. One Haxe
+	compiler stays in memory for every compile. The running program then gets the new
+	bytecode, and the app loop reloads it at the start of a frame. The program restarts
+	when a change cannot reload: a change to `hxnme.toml`, a program file or an asset, or
+	a change that Ash refuses.
 
 	Each compile writes to the `build` directory, and the program runs from the `run`
 	directory. The compile copies the native libraries next to its output, and the
@@ -29,6 +31,8 @@ class Dev {
 	// must stay as they are before a compile, because editors can save in several writes.
 	static inline final INTERVAL = 0.2;
 	static inline final SETTLE = 0.05;
+	// The number of seconds for which a file that changed is read again on each look.
+	static inline final RECENT = 3;
 
 	// Matches the line that Ash prints when it cannot load a change, with the reason.
 	static final REFUSAL = ~/^\[hot-reload\] reload (?:refused|failed): (?:the program cannot reload in place: )?(.*)$/;
@@ -40,6 +44,9 @@ class Dev {
 	final running:String;
 	// Gets the reason each time that Ash refuses a reload.
 	final refusals = new Deque<String>();
+	final compiler = new Compiler();
+	// The files that changed after the last compile.
+	final uncompiled:Array<String> = [];
 
 	var arguments:{haxe:Array<Array<String>>, ash:Array<Array<String>>};
 	var program:Null<Process>;
@@ -109,11 +116,14 @@ class Dev {
 
 	/** Runs the app until it exits with status 0, and returns the status for the command. **/
 	public function run():Int {
-		try
-			return loop()
-		catch (failure:haxe.Exception) {
+		try {
+			var status = loop();
+			compiler.close();
+			return status;
+		} catch (failure:haxe.Exception) {
 			// The program does not end with this command.
 			stop();
+			compiler.close();
 			throw failure;
 		}
 	}
@@ -154,6 +164,9 @@ class Dev {
 	}
 
 	function apply(changed:Array<String>) {
+		for (path in changed)
+			if (!uncompiled.contains(path))
+				uncompiled.push(path);
 		var sources = true;
 		for (path in changed)
 			if (Path.extension(path) != "hx")
@@ -185,15 +198,10 @@ class Dev {
 				if (word != "")
 					args.push(word);
 		args = args.concat(["-hl", Path.join([built, "main.hl"])]);
-		var process = new Process("haxe", args);
-		// Both pipes are read at the same time, because the compiler stops when one is full.
-		var errors = new Deque<String>();
-		Thread.create(() -> errors.add(process.stderr.readAll().toString()));
-		var out = process.stdout.readAll().toString() + errors.pop(true);
-		var status = process.exitCode();
-		process.close();
-		if (status != 0) {
-			Sys.print(out);
+		var result = compiler.compile(directory, args, uncompiled);
+		uncompiled.resize(0);
+		if (!result.success) {
+			Sys.print(result.output);
 			say(program == null ? "the app does not compile." : "the app does not compile, and the running program stays as it is.");
 			return false;
 		}
@@ -282,13 +290,12 @@ class Dev {
 		FileSystem.rename(next, Path.join([running, "main.hl"]));
 	}
 
-	// Returns the size and the time of each file that the app is made from.
+	// Returns the state of each file that the app is made from.
 	function snapshot():Map<String, String> {
 		var found = new Map<String, String>();
 		function note(path:String)
 			try {
-				var stat = FileSystem.stat(path);
-				found[path] = '${stat.mtime.getTime()} ${stat.size}';
+				found[path] = state(path);
 			} catch (_:haxe.Exception) {}
 		function walk(path:String, take:String->Bool)
 			try
@@ -309,6 +316,20 @@ class Dev {
 		note(Path.join([directory, "hxnme.toml"]));
 		return found;
 	}
+
+	// Returns the size, the time and the checksum of a file.
+	function state(path:String):String {
+		var stat = FileSystem.stat(path);
+		var time = stat.mtime.getTime();
+		var now = '$time ${stat.size}';
+		var known = states[path];
+		// A file can change twice in the second that its time is measured in, and keep its size.
+		if (known == null || known.now != now || time > Date.now().getTime() - RECENT * 1000)
+			states[path] = known = {now: now, sum: Crc32.make(File.getBytes(path))};
+		return '$now ${known.sum}';
+	}
+
+	final states = new Map<String, {now:String, sum:Int}>();
 
 	// Returns the class paths of the app: its directory, those of its program file, of the
 	// haxelibs that the program file selects, and of its plugins.

@@ -32,18 +32,27 @@ private typedef Manifest = {
 	they provide. The registry checks each plugin class against those
 	interfaces by method name and type, and the generated code calls the
 	class directly. Classes that implement them get the same checks.
+
+	The compilation server keeps types from one compile to the next, and runs
+	the build macro of a class only when it compiles that class again. Macro
+	statics start empty in each compile. So `check` keeps what the metadata of
+	a plugin class declares on the class itself, and the registry reads it from
+	there.
 **/
 class Registry {
 	static final RUNTIMES = ["hl", "cpp", "cppia"];
 	static final KINDS = ["desktop", "wasm", "android", "ios"];
 
+	// The metadata that `check` adds to a plugin class: its description, the paths of its
+	// classes of systems, and the path of each service that it provides.
+	static inline final DESCRIPTION = ":hxnme.description";
+	static inline final SYSTEMS = ":hxnme.systems";
+	static inline final PROVIDES = ":hxnme.provides";
+
 	static var names:Array<String> = [];
 	static var manifests:Map<String, Manifest> = [];
 	static var order:Array<String> = [];
-	static var systems:Map<String, Array<String>> = [];
-	static var descriptions:Map<String, String> = [];
 	static var fields:Map<String, String> = [];
-	static var providers:Map<String, String> = [];
 	static var checked:Array<String> = [];
 	static var installed = false;
 
@@ -92,24 +101,23 @@ class Registry {
 		for (param in meta[0].params.slice(1))
 			switch param.expr {
 				case EBinop(OpAssign, {expr: EConst(CIdent("description"))}, value):
-					descriptions.set(name, Scheduler.text(value, "description"));
+					local.meta.add(DESCRIPTION, [macro $v{Scheduler.text(value, "description")}], param.pos);
 				case _:
 					Context.error('@:plugin takes the haxelib name, then `description = "..."`', param.pos);
 			}
 		for (entry in local.meta.extract(":provides"))
 			for (param in entry.params)
-				provide(param, name, local);
+				provide(param, local);
 		var classes = [];
 		for (entry in local.meta.extract(":systems"))
 			for (param in entry.params)
 				classes.push(Scheduler.classOf(param, "@:systems takes the classes that hold the plugin's systems"));
-		systems.set(path, classes);
+		local.meta.add(SYSTEMS, [for (c in classes) macro $v{c}], local.pos);
 		return null;
 	}
 
-	// Records that the plugin `name`, whose class is `local`, provides the
-	// service that `expr` refers to. Each service has one provider at most.
-	static function provide(expr:Expr, name:String, local:ClassType) {
+	// Keeps on the plugin class `local` that it provides the service that `expr` refers to.
+	static function provide(expr:Expr, local:ClassType) {
 		var service = switch Context.typeExpr(expr).expr {
 			case TTypeExpr(TClassDecl(c)) if (c.get().isInterface): c.get();
 			case _: Context.error("@:provides takes the interfaces of the services that the plugin provides", expr.pos);
@@ -117,11 +125,37 @@ class Registry {
 		var path = service.pack.concat([service.name]).join(".");
 		if (!service.meta.has(":service"))
 			Context.error('`$path` is not a service: mark the interface with @:service', expr.pos);
-		var other = providers.get(path);
-		if (other != null && other != name)
-			Context.error('`$name` and `$other` both provide `$path`: an app has one provider for each service', expr.pos);
-		providers.set(path, name);
+		local.meta.add(PROVIDES, [macro $v{path}], expr.pos);
 	}
+
+	// Returns the plugin class of the plugin `name`, which the compiler builds if it did not yet.
+	static function classOf(name:String):ClassType {
+		var manifest = manifests.get(name);
+		return switch Context.getType(manifest.plugin) {
+			case TInst(c, _): c.get();
+			case _: Context.error('${manifest.file} specifies ${manifest.plugin} as the plugin class of `$name`, and it is not a class', at(manifest));
+		}
+	}
+
+	// Returns the plugin that provides each service, of which there is one at most.
+	static function providers():Map<String, String> {
+		var found:Map<String, String> = [];
+		for (name in order)
+			for (entry in classOf(name).meta.extract(PROVIDES)) {
+				var path = literal(entry.params[0]);
+				var other = found.get(path);
+				if (other != null && other != name)
+					Context.error('`$name` and `$other` both provide `$path`: an app has one provider for each service', entry.pos);
+				found.set(path, name);
+			}
+		return found;
+	}
+
+	static function literal(e:Expr):String
+		return switch e.expr {
+			case EConst(CString(value)): value;
+			case _: "";
+		}
 
 	/**
 		Checks each plugin class against `hxn.me.Plugin`, and each provider
@@ -132,10 +166,7 @@ class Registry {
 	public static function contracts():Expr {
 		for (name in order) {
 			var manifest = manifests.get(name);
-			var c = switch Context.getType(manifest.plugin) {
-				case TInst(c, _): c.get();
-				case _: Context.error('${manifest.file} specifies ${manifest.plugin} as the plugin class of `$name`, and it is not a class', at(manifest));
-			}
+			var c = classOf(name);
 			var constructor = c.constructor == null ? null : c.constructor.get();
 			var takesNothing = constructor != null && constructor.isPublic && switch Context.follow(constructor.type) {
 				case TFun(args, _): Lambda.foreach(args, arg -> arg.opt);
@@ -145,13 +176,8 @@ class Registry {
 				Context.error('${manifest.plugin} is the plugin class of `$name`: it needs a public constructor that takes no arguments', c.pos);
 			conform(c, manifest.plugin, "hxn.me.Plugin", name);
 		}
-		for (service => name in providers) {
-			var path = manifests.get(name).plugin;
-			switch Context.getType(path) {
-				case TInst(c, _): conform(c.get(), path, service, name);
-				case _:
-			}
-		}
+		for (service => name in providers())
+			conform(classOf(name), manifests.get(name).plugin, service, name);
 		return macro {};
 	}
 
@@ -177,7 +203,7 @@ class Registry {
 		`path`, or null if no plugin of the app provides it.
 	**/
 	public static function provider(path:String):Null<Expr> {
-		var name = providers.get(path);
+		var name = providers().get(path);
 		if (name == null)
 			return null;
 		var field = fields.get(name);
@@ -185,18 +211,25 @@ class Registry {
 	}
 
 	/** Returns the description that `@:plugin` gives the plugin `name`, or null. **/
-	public static function description(name:String):Null<String>
-		return descriptions.get(name);
+	public static function description(name:String):Null<String> {
+		var entries = classOf(name).meta.extract(DESCRIPTION);
+		return entries.length == 0 ? null : literal(entries[0].params[0]);
+	}
 
 	/** Returns the plugin classes of the app, in the order that they start. **/
 	public static function pluginClasses():Array<String>
 		return [for (name in order) manifests.get(name).plugin];
 
 	/** Returns the classes that the plugin class `path` lists with `@:systems`. **/
-	public static function systemClasses(path:String):Array<String>
-		return systems.exists(path) ? systems.get(path) : [];
+	public static function systemClasses(path:String):Array<String> {
+		return switch Context.getType(path) {
+			case TInst(c, _): [for (entry in c.get().meta.extract(SYSTEMS)) for (param in entry.params) literal(param)];
+			case _: [];
+		}
+	}
 
 	static function generate() {
+		haxe.macro.CompilationServer.invalidateFiles([Context.resolvePath("hxn/me/Generated.hx")]);
 		for (name in names)
 			manifests.set(name, read(name));
 		var runtime = Context.defined("cppia") ? "cppia" : Context.defined("hl") ? "hl" : Context.defined("cpp") ? "cpp" : null;
@@ -247,7 +280,7 @@ class Registry {
 		definition.pack = ["hxn", "me"];
 		definition.doc = "The plugins of the app, generated by hxnme at compile time.";
 		definition.fields = definition.fields.concat(instances);
-		Context.defineType(definition);
+		Context.defineType(definition, "hxn.me.Generated");
 		Dump.add(definition);
 	}
 

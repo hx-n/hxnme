@@ -425,7 +425,7 @@ class Scheduler {
 			fields: fields,
 			pos: pos,
 		};
-		Context.defineType(definition);
+		Context.defineType(definition, "hxn.me.Generated");
 		Dump.add(definition);
 	}
 

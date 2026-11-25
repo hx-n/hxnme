@@ -14,8 +14,9 @@ import sys.io.File;
 	compiles that module again when the file changes.
 **/
 class ProjectFile {
-	static var parsed:Null<Dynamic>;
-	static var path:Null<String>;
+	// The compilation server starts a compile by running the initializers of macro statics. A static without one would keep the value of the compile before.
+	static var parsed:Null<Dynamic> = null;
+	static var path:Null<String> = null;
 
 	/** Returns the constant at `key`, or `fallback`. `kind` describes the expected type in the error. **/
 	public static function value(key:String, fallback:Dynamic, kind:String):Expr {
