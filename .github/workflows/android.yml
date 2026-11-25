@@ -41,16 +41,17 @@ jobs:
           sudo udevadm trigger --name-match=kvm
           image="system-images;android-34;default;x86_64"
           # yes ends with a broken pipe when sdkmanager exits, which pipefail would report.
-          { yes || true; } | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$image" emulator platform-tools > /dev/null
-          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n ci -k "$image" --force > /dev/null
+          { yes || true; } | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$image" emulator platform-tools | grep -v '^\[' || true
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n ci -k "$image" --force
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           echo "ANDROID_NDK_ROOT=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
           nohup "$ANDROID_HOME/emulator/emulator" -avd ci -no-window -no-audio -no-boot-anim -no-snapshot \
             -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
           adb="$ANDROID_HOME/platform-tools/adb"
+          # The emulator's log shows why it did not start or boot.
+          trap 'echo "== emulator log"; cat "$RUNNER_TEMP/emulator.log"; ls -l /dev/kvm' ERR
           timeout 600 "$adb" wait-for-device
-          timeout 600 bash -c "until [ \"\$('$adb' shell getprop sys.boot_completed 2> /dev/null | tr -d '\r')\" = 1 ]; do sleep 5; done" \
-            || { cat "$RUNNER_TEMP/emulator.log"; exit 1; }
+          timeout 600 bash -c "until [ \"\$('$adb' shell getprop sys.boot_completed 2> /dev/null | tr -d '\r')\" = 1 ]; do sleep 5; done"
       - if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
         name: hxnme/tests/toml-checks.hxml
         uses: ./.github/actions/android-check
