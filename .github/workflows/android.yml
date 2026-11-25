@@ -40,6 +40,9 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
           image="system-images;android-34;default;x86_64"
+          # avdmanager and the emulator look for devices in different places by default.
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
           # yes ends with a broken pipe when sdkmanager exits, which pipefail would report.
           { yes || true; } | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$image" emulator platform-tools | grep -v '^\[' || true
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n ci -k "$image" --force
