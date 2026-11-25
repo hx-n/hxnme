@@ -14,8 +14,8 @@ compile time.
 
 `hxn me new <name>` creates a small game (window, input, GPU and 2D plugins,
 an atlas and a font declared in `GameAssets`) in `<name>/`. Run it with
-`hxn run hl app.hxml`, or with `hxn me dev` to reload it on Ash while its
-sources change. `app.frames` in `hxnme.toml` stops an app after that
+`hxn run hl app.hxml`, or with `hxn me dev` for hot reload of its code and
+assets on Ash. `app.frames` in `hxnme.toml` stops an app after that
 many frames, for unattended checks.
 
 ## Setup

@@ -17,13 +17,13 @@ import sys.thread.Deque;
 import sys.thread.Thread;
 
 /**
-	`Dev` runs an app on Ash while its sources change. It compiles the program file,
-	starts it with `ash --hot-reload`, and compiles again when a file changes. One Haxe
-	compiler stays in memory for every compile. The running program then gets the new
-	bytecode and the assets that changed, and `hxn.me.dev.Session` in the program loads
-	them at the start of a frame. The program restarts when a change cannot reload: a
-	change to `hxnme.toml` or a program file, a change that Ash refuses, or an asset that
-	the program cannot load again.
+	`Dev` runs an app on Ash with hot reload of code and assets. It compiles the program
+	file, starts it with `ash --hot-reload`, and compiles again when a file changes. One
+	Haxe compiler stays in memory for every compile. The running program then gets the
+	new bytecode and the assets that changed, and `hxn.me.dev.Session` in the program
+	loads them at the start of a frame. The program restarts when a change cannot hot
+	reload: a change to `hxnme.toml` or a program file, a change that Ash refuses, or an
+	asset that the program cannot load again.
 
 	Each compile writes to the `build` directory, and the program runs from the `run`
 	directory. The compile copies the native libraries next to its output, and the

@@ -61,7 +61,7 @@ final pair = new AssetType<String>("pair", (bytes, context) ->
 	context.load(context.resolve("other.txt"), note).map(other -> bytes.toString() + other));
 ```
 
-`hxn me dev` loads an asset again after its file changes. The new value takes the
+`hxn me dev` [hot reloads](dev.md) an asset after its file changes. The new value takes the
 place of the old one in the handles, and `Asset.revision` counts how often that
 happened. Systems that build something from a value, such as a level, compare
 `revision` to build it again. Some values stay in other objects, such as the texture
