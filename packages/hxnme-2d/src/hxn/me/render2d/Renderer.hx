@@ -80,7 +80,7 @@ class Renderer {
 		var own = buffers[set];
 		if (instances.length > capacities[set]) {
 			for (b in own)
-				b.close();
+				gpu.retire(b);
 			own.resize(0);
 			capacities[set] = instances.capacity;
 			for (field in 0...Instances.FIELDS)
@@ -95,6 +95,9 @@ class Renderer {
 
 	function uploadSprites():Void {
 		sprites.refresh();
+		for (b in sprites.dropped)
+			gpu.retire(b);
+		sprites.dropped.resize(0);
 		var bytes = 0;
 		for (group in sprites.groups) {
 			var instances = group.instances;
@@ -108,7 +111,7 @@ class Renderer {
 			if (instances.capacity > group.capacities[set]) {
 				// New buffers start empty, so every instance is uploaded.
 				for (b in own)
-					b.close();
+					gpu.retire(b);
 				own.resize(0);
 				group.capacities[set] = instances.capacity;
 				for (i in 0...Instances.FIELDS) {
@@ -216,11 +219,13 @@ class Renderer {
 				drawRange(view, pass, pipeline, run.plane, run.clip, run.texture != null ? run.texture : white, buffers[set], run.start, run.count);
 	}
 
-	/** Closes the bind groups of `textures`, whose GPU textures were released. **/
-	public function forget(textures:Array<Texture>):Void
-		if (textures.length > 0)
+	/** Retires the GPU textures of the textures that closed or changed before this frame, and their bind groups. **/
+	public function release():Void {
+		var released = Texture.release(gpu);
+		if (released.length > 0)
 			for (view in views)
-				view.forget(textures);
+				view.forget(released, gpu);
+	}
 
 	// Draws the sprite groups in the camera's layers that hold shadows, or the groups that do not.
 	function drawGroups(view:View, pass:RenderPass, pipeline:RenderPipeline, shadows:Bool):Void
@@ -307,15 +312,15 @@ private class View {
 	public function new(camera:Camera)
 		this.camera = camera;
 
-	/** Closes and removes the bind groups of `textures` in every plane view. **/
-	public function forget(textures:Array<Texture>):Void
+	/** Retires and removes the bind groups of `textures` in every plane view. **/
+	public function forget(textures:Array<Texture>, gpu:Gpu):Void
 		for (sets in planes)
 			for (clips in sets)
 				for (on in clips)
 					for (t in textures) {
 						var group = on.groups.get(t);
 						if (group != null) {
-							group.close();
+							gpu.retire(group);
 							on.groups.remove(t);
 						}
 					}

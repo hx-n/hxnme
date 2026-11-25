@@ -3,6 +3,7 @@ package hxn.me.gpu;
 import hxn.gpu.Descriptors.Color;
 import hxn.gpu.GpuDevice;
 import hxn.gpu.GpuSurface;
+import hxn.gpu.Resource;
 import hxn.gpu.Texture;
 import hxn.gpu.TextureFormat;
 
@@ -41,11 +42,23 @@ class Gpu {
 
 	@:allow(hxn.me.gpu.GpuPlugin) var opening = false;
 
+	// Holds the resources that close after the GPU finishes the next frame that the plugin presents.
+	final retired:Array<Resource> = [];
+
 	public function new() {}
 
 	/** Returns true when the device is open. Make pipelines and buffers only after that. **/
 	public inline function ready():Bool
 		return device != null;
+
+	/**
+		Closes `resource` after the GPU finishes the frames that use it. Passes
+		must not use it after the frame in progress. hxn-gpu closes a resource
+		at once, even if the GPU still reads it for an earlier frame, so use
+		this for every resource that frames used.
+	**/
+	public function retire(resource:Resource):Void
+		retired.push(resource);
 
 	@:allow(hxn.me.gpu.GpuPlugin) function opened(device:GpuDevice, surface:GpuSurface):Void {
 		this.device = device;
@@ -62,5 +75,13 @@ class Gpu {
 	@:allow(hxn.me.gpu.GpuPlugin) function shown():Void {
 		frame = null;
 		presented++;
+		if (retired.length == 0)
+			return;
+		var closing = retired.copy();
+		retired.resize(0);
+		function close()
+			for (resource in closing)
+				resource.close();
+		device.completed().then(_ -> close(), _ -> close());
 	}
 }

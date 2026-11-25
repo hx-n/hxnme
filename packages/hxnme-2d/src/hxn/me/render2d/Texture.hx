@@ -4,6 +4,7 @@ import haxe.io.Bytes;
 import hxn.gpu.GpuDevice;
 import hxn.gpu.Texture as GpuTexture;
 import hxn.gpu.TextureFormat;
+import hxn.me.gpu.Gpu;
 
 /**
 	`Texture` holds an image that sprites draw. The app can make it at any
@@ -22,14 +23,14 @@ class Texture {
 	/** `closed` is true after a call to `close`. **/
 	public var closed(default, null) = false;
 
-	// Holds the GPU texture that `adopt` replaced, until the start of the next frame.
-	var replaced:Null<GpuTexture>;
-
 	var format:TextureFormat;
 	var pixels:Null<Bytes>;
 
-	// Holds the textures that closed or that `adopt` changed. `release` closes their GPU textures at the start of the next frame, because draws earlier in the frame still use them.
+	// Holds the textures that closed or that `adopt` changed. `release` retires their GPU textures at the start of the next frame, because draws earlier in the frame still use them.
 	static final retired:Array<Texture> = [];
+
+	// Holds the GPU textures that `adopt` replaced.
+	static final replaced:Array<GpuTexture> = [];
 
 	// Holds the writes to parts of the texture that wait for the next upload.
 	var patches:Array<Patch>;
@@ -80,7 +81,7 @@ class Texture {
 
 	/**
 		Closes the texture. What was drawn with it earlier in the frame still
-		shows, and its GPU texture is released at the start of the next frame.
+		shows, and its GPU texture closes after the GPU finishes that frame.
 		The texture draws nothing after this.
 	**/
 	@:allow(hxn.me.render2d) function close():Void {
@@ -101,27 +102,23 @@ class Texture {
 		patches = [];
 		if (texture == null)
 			return;
-		if (replaced != null)
-			replaced.close();
-		replaced = texture;
+		replaced.push(texture);
 		texture = null;
 		retired.push(this);
 	}
 
-	// Releases the GPU textures that closed or were replaced before this frame, and returns their textures.
-	@:allow(hxn.me.render2d) static function release():Array<Texture> {
+	// Retires the GPU textures that closed or were replaced before this frame, and returns their textures.
+	@:allow(hxn.me.render2d) static function release(gpu:Gpu):Array<Texture> {
 		var released = retired.copy();
-		for (t in released) {
+		for (t in released)
 			if (t.closed && t.texture != null) {
-				t.texture.close();
+				gpu.retire(t.texture);
 				t.texture = null;
 			}
-			if (t.replaced != null) {
-				t.replaced.close();
-				t.replaced = null;
-			}
-		}
+		for (old in replaced)
+			gpu.retire(old);
 		retired.resize(0);
+		replaced.resize(0);
 		return released;
 	}
 

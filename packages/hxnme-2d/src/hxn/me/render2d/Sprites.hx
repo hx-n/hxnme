@@ -38,6 +38,9 @@ class Sprites {
 
 	@:allow(hxn.me.render2d) final groups:Array<SpriteGroup> = [];
 
+	// Holds the buffers of removed texts, which the renderer retires.
+	@:allow(hxn.me.render2d) final dropped:Array<Buffer> = [];
+
 	// Holds the texts in the store, in the order they were added.
 	@:allow(hxn.me.render2d) final texts:Array<TextEntry> = [];
 
@@ -166,7 +169,7 @@ class Sprites {
 				groups.remove(group);
 				for (own in group.buffers)
 					for (b in own)
-						b.close();
+						dropped.push(b);
 			}
 			slotText[slot] = null;
 			release(slot);

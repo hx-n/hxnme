@@ -32,9 +32,9 @@ class RenderPlugin {
 	static function reset(draw:ResMut<Draw>, typesetter:ResMut<Typesetter>, display:Res<Display>) {
 		(draw : Draw).clear();
 		(typesetter : Typesetter).begin(display.scale);
-		var released = Texture.release();
+		// Without a renderer, no texture has a GPU texture yet.
 		if (renderer != null)
-			renderer.forget(released);
+			renderer.release();
 	}
 
 	@:system(Render, before = GpuPlugin.present, description = "Uploads the instances, the changed sprites and each camera's matrix for this frame")

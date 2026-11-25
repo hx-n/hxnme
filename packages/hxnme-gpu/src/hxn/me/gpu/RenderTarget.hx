@@ -36,11 +36,11 @@ class RenderTarget {
 	public static function ofFrame(scale:Float, ?format:TextureFormat):RenderTarget
 		return new RenderTarget(0, 0, format, scale);
 
-	@:allow(hxn.me.gpu.FrameGraph) function resolve(device:GpuDevice, frame:Texture):Texture {
+	@:allow(hxn.me.gpu.FrameGraph) function resolve(device:GpuDevice, frame:Texture, gpu:Gpu):Texture {
 		var w = scale > 0 ? Std.int(Math.max(1, Math.round(frame.width * scale))) : width;
 		var h = scale > 0 ? Std.int(Math.max(1, Math.round(frame.height * scale))) : height;
 		if (texture != null && (texture.width != w || texture.height != h)) {
-			texture.close();
+			gpu.retire(texture);
 			texture = null;
 		}
 		if (texture == null)
@@ -48,9 +48,9 @@ class RenderTarget {
 		return texture;
 	}
 
-	@:allow(hxn.me.gpu.FrameGraph) function resolveDepth(device:GpuDevice):Texture {
+	@:allow(hxn.me.gpu.FrameGraph) function resolveDepth(device:GpuDevice, gpu:Gpu):Texture {
 		if (depthTexture != null && (depthTexture.width != texture.width || depthTexture.height != texture.height)) {
-			depthTexture.close();
+			gpu.retire(depthTexture);
 			depthTexture = null;
 		}
 		if (depthTexture == null)

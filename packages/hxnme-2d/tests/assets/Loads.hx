@@ -31,6 +31,8 @@ class Loads {
 	static var reading = false;
 	// Is the number of presented frames when the atlas changed, or -1 before that.
 	static var changed = -1;
+	// The number of frames in which the image changes.
+	static inline final CHANGES = 20;
 	static var failed = 0;
 
 	@:system(Start)
@@ -70,7 +72,10 @@ class Loads {
 		} else if (gpu.presented == shown + 1)
 			// The shadow moves with the sprite.
 			store.move(kept, 34, 80);
-		if (gpu.presented < (changed < 0 ? shown : changed) + 3 || reading)
+		// The image changes in many frames in a row, so the GPU still draws frames with the images before it.
+		if (changed >= 0 && gpu.presented < changed + CHANGES)
+			green(sheet);
+		if (gpu.presented < (changed < 0 ? shown : changed + CHANGES) + 3 || reading)
 			return;
 		reading = true;
 		var state:Lifecycle = lifecycle;
@@ -127,10 +132,7 @@ class Loads {
 	static function change() {
 		var sheet:Atlas = atlas.value;
 		var red = sheet.region("red");
-		var pixels = Bytes.alloc(80 * 40 * 4);
-		for (i in 0...80 * 40)
-			pixels.setInt32(i * 4, 0xFF00FF00);
-		@:privateAccess sheet.texture.adopt(new Texture(80, 40, pixels));
+		green(sheet);
 		var next = new Atlas(sheet.texture);
 		next.add(new Region("feet", sheet.texture, 4, 4, 16, 16));
 		next.add(new Region("panel", sheet.texture, 40, 4, 30, 30, 3, 3, 3, 3));
@@ -139,6 +141,13 @@ class Loads {
 		Sys.println('the atlas takes another image and other regions: ${taken ? "yes" : "no"}');
 		if (!taken)
 			failed++;
+	}
+
+	static function green(sheet:Atlas) {
+		var pixels = Bytes.alloc(80 * 40 * 4);
+		for (i in 0...80 * 40)
+			pixels.setInt32(i * 4, 0xFF00FF00);
+		@:privateAccess sheet.texture.adopt(new Texture(80, 40, pixels));
 	}
 
 	static function checkChanged(pixels:Bytes, state:Lifecycle) {

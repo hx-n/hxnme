@@ -31,9 +31,9 @@ class FrameGraph {
 		passes.remove(pass);
 
 	// Returns the frame's depth texture, made again when the frame's size changes.
-	function frameDepthFor(device:GpuDevice, frame:Texture):Texture {
+	function frameDepthFor(device:GpuDevice, frame:Texture, gpu:Gpu):Texture {
 		if (frameDepth != null && (frameDepth.width != frame.width || frameDepth.height != frame.height)) {
-			frameDepth.close();
+			gpu.retire(frameDepth);
 			frameDepth = null;
 		}
 		if (frameDepth == null)
@@ -53,7 +53,7 @@ class FrameGraph {
 		for (pass in passes) {
 			if (!pass.enabled)
 				continue;
-			var into = pass.target == null ? frame : pass.target.resolve(device, frame);
+			var into = pass.target == null ? frame : pass.target.resolve(device, frame, gpu);
 			var color:hxn.gpu.Descriptors.ColorAttachment = if (pass.target == null) {
 				var clear = pass.clear != null ? pass.clear : frameCleared ? null : gpu.clear;
 				frameCleared = true;
@@ -63,7 +63,7 @@ class FrameGraph {
 			}
 			var depth:Null<hxn.gpu.Descriptors.DepthAttachment> = null;
 			if (pass.depth) {
-				var texture = pass.target == null ? frameDepthFor(device, frame) : pass.target.resolveDepth(device);
+				var texture = pass.target == null ? frameDepthFor(device, frame, gpu) : pass.target.resolveDepth(device, gpu);
 				var first = cleared.indexOf(texture) < 0;
 				if (first)
 					cleared.push(texture);
