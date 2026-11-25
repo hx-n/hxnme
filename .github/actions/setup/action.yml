@@ -61,7 +61,7 @@ runs:
             Windows) drivers="hxn-gpu-d3d12:0.2.3" ;;
           esac
         fi
-        for lib in format:3.8.0 hashlink:1.15.0 ash-simd:0.1.1 hxnsl:0.2.1 hxn-file:0.2.1 hxn-assets:0.2.1 \
+        for lib in format:3.8.0 hashlink:1.15.0 ash-simd:0.1.1 hxnsl:0.2.1 hxn-file:0.2.2 hxn-assets:0.2.2 \
           hxn-text:0.1.0 hxn-window:0.2.3 hxn-gpu:0.2.5 $drivers; do
           haxelib install "${lib%%:*}" "${lib##*:}" --always --skip-dependencies
         done
