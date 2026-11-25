@@ -34,12 +34,14 @@ jobs:
         id: setup
         uses: ./.github/actions/setup
       - name: Boot an emulator
+        id: boot
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm.rules > /dev/null
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
           image="system-images;android-34;default;x86_64"
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$image" emulator platform-tools > /dev/null
+          # yes ends with a broken pipe when sdkmanager exits, which pipefail would report.
+          { yes || true; } | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "$image" emulator platform-tools > /dev/null
           echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n ci -k "$image" --force > /dev/null
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           echo "ANDROID_NDK_ROOT=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
@@ -49,38 +51,38 @@ jobs:
           timeout 600 "$adb" wait-for-device
           timeout 600 bash -c "until [ \"\$('$adb' shell getprop sys.boot_completed 2> /dev/null | tr -d '\r')\" = 1 ]; do sleep 5; done" \
             || { cat "$RUNNER_TEMP/emulator.log"; exit 1; }
-      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+      - if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
         name: hxnme/tests/toml-checks.hxml
         uses: ./.github/actions/android-check
         with:
           directory: packages/hxnme/tests
           file: toml-checks.hxml
-      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+      - if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
         name: hxnme/tests/plugins
         uses: ./.github/actions/android-check
         with:
           directory: packages/hxnme/tests/plugins
-      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+      - if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
         name: hxnme/tests/systems
         uses: ./.github/actions/android-check
         with:
           directory: packages/hxnme/tests/systems
-      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+      - if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
         name: hxnme/tests/loop
         uses: ./.github/actions/android-check
         with:
           directory: packages/hxnme/tests/loop
-      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+      - if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
         name: hxnme/tests/headless
         uses: ./.github/actions/android-check
         with:
           directory: packages/hxnme/tests/headless
-      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+      - if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
         name: hxnme/tests/libraries
         uses: ./.github/actions/android-check
         with:
           directory: packages/hxnme/tests/libraries
-      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+      - if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
         name: hxnme/tests/libraries-override
         uses: ./.github/actions/android-check
         with:
@@ -88,20 +90,20 @@ jobs:
       # Android's math library rounds some results differently from the desktop's, so
       # this check only has to pass on the emulator. It exits with an error when a check
       # fails.
-      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+      - if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
         name: hxnme-physics/tests/checks.hxml
         uses: ./.github/actions/android-check
         with:
           directory: packages/hxnme-physics/tests
           file: checks.hxml
           compare: "false"
-      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+      - if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
         name: hxnme-physics/tests/concurrent-checks.hxml
         uses: ./.github/actions/android-check
         with:
           directory: packages/hxnme-physics/tests
           file: concurrent-checks.hxml
-      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+      - if: ${{ !cancelled() && steps.boot.outcome == 'success' }}
         name: hxnme-physics/tests/world-growth-checks.hxml
         uses: ./.github/actions/android-check
         with:
