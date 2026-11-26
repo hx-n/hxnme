@@ -55,7 +55,7 @@ as other resources:
 |---|---|
 | `hxn.me.Time` | `delta`, the seconds of the last frame. `elapsed`, the seconds of all frames. `frame`, the number of frames. `step`, the seconds of a fixed step. `steps`, the fixed steps of this frame. `fixedElapsed`, the seconds of all fixed steps. `alpha`, the fraction of a fixed step, from 0 to 1, that the clock counted and did not run yet. |
 | `hxn.me.Lifecycle` | `running`, `suspended`, `visible` and `focused`. `quit()` stops the app after the current frame. |
-| `hxn.me.Display` | `width` and `height`, in physical pixels. `scale`, the physical pixels for each logical pixel. `refresh`, the frames that the display shows in a second. `vsync`, whether presenting a frame waits for the refresh. |
+| `hxn.me.Display` | `width` and `height`, in physical pixels. `safeLeft`, `safeTop`, `safeRight` and `safeBottom`, the insets of the safe area that a notch, the status bar and the home indicator leave free. `scale`, the physical pixels for each logical pixel. `refresh`, the frames that the display shows in a second. `vsync`, whether presenting a frame waits for the refresh. |
 
 The host reads the events of the platform, and it sets `Lifecycle` and
 `Display`. `hxn.me.Host` is a service. Each service is an interface with

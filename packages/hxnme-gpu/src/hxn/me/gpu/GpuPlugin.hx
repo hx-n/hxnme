@@ -52,8 +52,9 @@ class GpuPlugin {
 		}
 		if (lifecycle.suspended)
 			return;
-		var width = window.width();
-		var height = window.height();
+		// The host sets the display to the area that the window's surface covers.
+		var width = (display : Display).width;
+		var height = (display : Display).height;
 		if (width <= 0 || height <= 0)
 			return;
 		var surface = state.surface;

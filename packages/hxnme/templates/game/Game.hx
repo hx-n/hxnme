@@ -1,5 +1,6 @@
 import hxn.me.Asset;
 import hxn.me.Assets;
+import hxn.me.Display;
 import hxn.me.Res;
 import hxn.me.ResMut;
 import hxn.me.Time;
@@ -15,12 +16,13 @@ import hxn.text.Font;
 /**
 	`Game` holds the systems of a small game. The player moves with WASD, the
 	arrow keys or the left stick of a gamepad, and collects the gems. R or the
-	Start button of the gamepad starts the game again. The world is 960 by
-	540 units with y up, and a screen camera draws the score over it.
+	Start button of the gamepad starts the game again. The floor fills the
+	window, or the screen of a mobile device, with one unit for each logical
+	pixel and y up. The player, the gems and the score stay in the display's
+	safe area, clear of a notch and the home indicator. A screen camera draws
+	the score over the floor.
 **/
 class Game {
-	static inline final WIDTH = 960;
-	static inline final HEIGHT = 540;
 	static inline final SPEED = 320.0;
 	static inline final GEMS = 5;
 	// The player collects a gem when the player's center comes this near to the gem's center.
@@ -34,17 +36,24 @@ class Game {
 	static var sheet:Null<Asset<GameAssetsSheetAtlas>>;
 	static var font:Null<Asset<Font>>;
 	static var label:Null<Text>;
-	static var x = WIDTH / 2;
-	static var y = HEIGHT / 2;
+	// These hold the size of the floor and the bounds of the safe area in it, which `fit` takes from the display in each frame.
+	static var width = 0.0;
+	static var height = 0.0;
+	static var left = 0.0;
+	static var right = 0.0;
+	static var bottom = 0.0;
+	static var top = 0.0;
+	static var x = 0.0;
+	static var y = 0.0;
 	static var score = 0;
 	// Holds the centers of the gems, as pairs of x and y.
 	static final gems:Array<Float> = [];
 
 	@:system(Start)
-	static function setup(cameras:ResMut<Cameras>, assets:ResMut<Assets>) {
-		var main = cameras.main;
-		main.x = WIDTH / 2;
-		main.y = HEIGHT / 2;
+	static function setup(cameras:ResMut<Cameras>, assets:ResMut<Assets>, display:Res<Display>) {
+		fit(cameras, display);
+		x = (left + right) / 2;
+		y = (bottom + top) / 2;
 		var hud = new Camera();
 		hud.projection = Screen;
 		hud.layers = HUD;
@@ -73,8 +82,8 @@ class Game {
 			dx /= length;
 			dy /= length;
 		}
-		x = Math.max(16, Math.min(WIDTH - 16, x + dx * SPEED * time.delta));
-		y = Math.max(16, Math.min(HEIGHT - 16, y + dy * SPEED * time.delta));
+		x = Math.max(left + 16, Math.min(right - 16, x + dx * SPEED * time.delta));
+		y = Math.max(bottom + 16, Math.min(top - 16, y + dy * SPEED * time.delta));
 		for (i in 0...GEMS)
 			if (Math.abs(gems[i * 2] - x) < REACH && Math.abs(gems[i * 2 + 1] - y) < REACH) {
 				setScore(score + 1);
@@ -82,12 +91,31 @@ class Game {
 			}
 	}
 
+	// Makes the floor the size of the display, and moves the gems that a smaller safe area leaves out back into it.
+	@:system(Begin)
+	static function fit(cameras:ResMut<Cameras>, display:Res<Display>) {
+		var scale = display.scale;
+		width = display.width / scale;
+		height = display.height / scale;
+		// The world has y up, so the bottom inset is at the smallest y.
+		left = display.safeLeft / scale;
+		right = width - display.safeRight / scale;
+		bottom = display.safeBottom / scale;
+		top = height - display.safeTop / scale;
+		var main = cameras.main;
+		main.x = width / 2;
+		main.y = height / 2;
+		for (i in 0...Std.int(gems.length / 2))
+			if (gems[i * 2] < left + 40 || gems[i * 2] > right - 40 || gems[i * 2 + 1] < bottom + 40 || gems[i * 2 + 1] > top - 40)
+				place(i);
+	}
+
 	// Draws the floor, the gems, the player and the score in each frame, in that order.
 	@:system(Update, after = Game.play)
-	static function draw(draw:ResMut<Draw>) {
+	static function draw(draw:ResMut<Draw>, display:Res<Display>) {
 		var d:Draw = draw;
 		d.layer = 1;
-		d.rect(0, 0, WIDTH, HEIGHT, 0x1B2430);
+		d.rect(0, 0, width, height, 0x1B2430);
 		if (sheet == null)
 			return;
 		// The atlas has a property for each region of sheet.json. Each region has its pivot at its center.
@@ -96,9 +124,11 @@ class Game {
 			d.region(atlas.gem, gems[i * 2], gems[i * 2 + 1], gemGround);
 		d.region(atlas.player, x, y, ground);
 		d.layer = HUD;
-		d.regionSlice(atlas.panel, 16, 16, 180, 48);
+		// The screen camera has y down, from the top left corner of the display.
+		var hudX = display.safeLeft / display.scale + 16, hudY = display.safeTop / display.scale + 16;
+		d.regionSlice(atlas.panel, hudX, hudY, 180, 48);
 		if (label != null)
-			d.text(label, 32, 26, 0xF1F5F9);
+			d.text(label, hudX + 16, hudY + 10, 0xF1F5F9);
 	}
 
 	static function setScore(value:Int) {
@@ -107,10 +137,10 @@ class Game {
 			label.set('Score $score');
 	}
 
-	// Moves gem `i` to a random place away from the edges.
+	// Moves gem `i` to a random place in the safe area, away from its edges.
 	static function place(i:Int) {
-		gems[i * 2] = 40 + Math.random() * (WIDTH - 80);
-		gems[i * 2 + 1] = 40 + Math.random() * (HEIGHT - 80);
+		gems[i * 2] = left + 40 + Math.random() * Math.max(0, right - left - 80);
+		gems[i * 2 + 1] = bottom + 40 + Math.random() * Math.max(0, top - bottom - 80);
 	}
 
 	static function clamp(v:Float):Float

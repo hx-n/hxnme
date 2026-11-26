@@ -2,6 +2,7 @@ package hxn.me.window;
 
 import haxe.Timer;
 import hxn.me.AppLoop;
+import hxn.me.Display;
 import hxn.me.Events;
 import hxn.me.Project;
 import hxn.me.ResMut;
@@ -65,16 +66,19 @@ class WindowPlugin {
 	public function run(loop:AppLoop):Void {
 		var attributes = new WindowAttributes();
 		attributes.title(Project.text("window.title", "hxnme"));
+		#if !hxnme_mobile
+		// On Android and iOS, the window fills the screen.
 		attributes.width(Project.integer("window.width", 1280));
 		attributes.height(Project.integer("window.height", 720));
 		attributes.resizable(Project.flag("window.resizable", true));
 		attributes.fullscreen(Project.flag("window.fullscreen", false));
+		#end
 		attributes.visible(Project.flag("window.visible", true));
 		var window = Window.open(attributes);
 		attributes.close();
 		this.window = window;
 		visible = Project.flag("window.visible", true);
-		loop.display.set(window.width(), window.height(), window.scaleFactor());
+		measure(window, loop.display, window.scaleFactor());
 		loop.lifecycle.set(suspended, visible, focused);
 		loop.display.setRefresh(rate(window));
 		var period = 1 / loop.display.refresh;
@@ -161,6 +165,18 @@ class WindowPlugin {
 		return millihertz > 0 ? millihertz / 1000 : Project.number("window.rate", 60);
 	}
 
+	// Sets the size of the display and its safe area from the window. On Android and iOS, the
+	// display is the whole screen, and the window's content is the safe area within it.
+	static function measure(window:Window, display:Display, scale:Float):Void {
+		#if hxnme_mobile
+		var left = window.innerX() - window.x(), top = window.innerY() - window.y();
+		display.set(window.outerWidth(), window.outerHeight(), scale);
+		display.setSafeArea(left, top, window.outerWidth() - window.width() - left, window.outerHeight() - window.height() - top);
+		#else
+		display.set(window.width(), window.height(), scale);
+		#end
+	}
+
 	function handle(event:Event, loop:AppLoop):Void {
 		switch event {
 			case None:
@@ -172,10 +188,10 @@ class WindowPlugin {
 		switch event {
 			case Closed:
 				loop.lifecycle.quit();
-			case Resized(width, height):
-				display.set(width.low, height.low, display.scale);
+			case Resized(_, _):
+				measure(this.window, display, display.scale);
 			case ScaleFactorChanged(scale):
-				display.set(display.width, display.height, scale);
+				measure(this.window, display, scale);
 			case Focused(focus):
 				focused = focus;
 			case Occluded(occluded):

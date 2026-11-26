@@ -13,6 +13,19 @@ class Display {
 	/** The height in physical pixels. **/
 	public var height(default, null):Int = Project.integer("display.height", 720);
 
+	/**
+		The insets of the safe area from each edge, in physical pixels. The
+		safe area is the part of the display that a notch, rounded corners,
+		the status bar and the home indicator leave free. Draw the controls and
+		text there, and the background over the whole display. The insets are
+		0 on a desktop.
+	**/
+	public var safeLeft(default, null) = 0;
+
+	public var safeTop(default, null) = 0;
+	public var safeRight(default, null) = 0;
+	public var safeBottom(default, null) = 0;
+
 	/** The physical pixels for each logical pixel. **/
 	public var scale(default, null):Float = Project.number("display.scale", 1);
 
@@ -36,6 +49,14 @@ class Display {
 	/** Sets whether presenting a frame waits for the display's refresh. Only the plugin that presents frames calls it. **/
 	public function setVsync(on:Bool):Void
 		vsync = on;
+
+	/** Sets the insets of the safe area. Only a host calls it. **/
+	public function setSafeArea(left:Int, top:Int, right:Int, bottom:Int):Void {
+		safeLeft = left;
+		safeTop = top;
+		safeRight = right;
+		safeBottom = bottom;
+	}
 
 	/** Sets the size and the scale. Only a host calls it. **/
 	public function set(width:Int, height:Int, scale:Float):Void {

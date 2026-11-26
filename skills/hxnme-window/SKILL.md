@@ -43,7 +43,8 @@ as it does natively. When it is compiled to wasm with hxcpp, `run` returns
 and the browser runs each turn of the host. Between frames, the host reads
 the window's events:
 
-- `Display` gets the size in physical pixels and the scale.
+- `Display` gets the size in physical pixels and the scale. On Android and iOS,
+  the window fills the screen, and `Display` also gets the safe area insets.
 - `Lifecycle.focused` and `Lifecycle.visible` follow the window.
 - `Lifecycle.suspended` follows the platform. The app runs no frame while it is suspended.
 - When the user closes the window, the app stops after the current frame.

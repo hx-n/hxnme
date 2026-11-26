@@ -142,7 +142,7 @@ Every schedule has three kernel resources. Take them as `Res<T>` or
   `fixedElapsed`, `alpha`.
 - `hxn.me.Lifecycle`: `running`, `suspended`, `visible`, `focused`,
   `quit()`.
-- `hxn.me.Display`: `width`, `height`, `scale`, `refresh`, `vsync`.
+- `hxn.me.Display`: `width`, `height`, the safe area insets `safeLeft`, `safeTop`, `safeRight` and `safeBottom`, `scale`, `refresh`, `vsync`.
 
 The host paces the frames and calls `loop.frame(seconds)` on the
 `hxn.me.AppLoop`. It is the service `hxn.me.Host`. Plugins provide it with

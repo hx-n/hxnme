@@ -20,7 +20,7 @@ height = 720
 | Key | Effect |
 |---|---|
 | `window.title` | The title. The default is `hxnme`. |
-| `window.width`, `window.height` | The size in logical pixels. The defaults are 1280 and 720. |
+| `window.width`, `window.height` | The size in logical pixels. The defaults are 1280 and 720. On Android and iOS, the window fills the screen. |
 | `window.resizable` | Whether the user can resize the window. The default is `true`. |
 | `window.fullscreen` | Whether the window fills the screen. The default is `false`. |
 | `window.visible` | Whether the window shows. The default is `true`. |
@@ -46,7 +46,7 @@ The host sets the kernel resources from the window:
 
 | Event | Effect |
 |---|---|
-| The window opens, resizes or changes scale | `Display` gets the size in physical pixels and the scale. |
+| The window opens, resizes or changes scale | `Display` gets the size in physical pixels and the scale. On Android and iOS, it gets the size of the screen and the insets of its safe area. |
 | The window gains or loses the focus | `Lifecycle.focused` changes. |
 | The window is hidden or shown again | `Lifecycle.visible` changes. |
 | The platform suspends or resumes the app | `Lifecycle.suspended` changes. The app runs no frame while it is suspended. |

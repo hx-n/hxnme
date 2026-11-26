@@ -61,6 +61,10 @@ class Registry {
 		if (installed)
 			return;
 		installed = true;
+		// Plugins compile code for Android and iOS with `#if hxnme_mobile`.
+		var kind = target();
+		if (kind == "android" || kind == "ios")
+			haxe.macro.Compiler.define("hxnme_mobile");
 		Context.onAfterInitMacros(generate);
 	}
 
