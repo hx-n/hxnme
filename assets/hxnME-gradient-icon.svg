@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="228 145 392 436" role="img" aria-label="hxnME"><defs>
+<linearGradient id="silver" gradientUnits="userSpaceOnUse" x1="0" y1="194" x2="0" y2="505"><stop offset="0%" stop-color="#d1d0d0"/><stop offset="48%" stop-color="#bdbcbc"/><stop offset="100%" stop-color="#a4a3a3"/></linearGradient>
+<linearGradient id="panel" gradientUnits="userSpaceOnUse" x1="0" y1="288" x2="0" y2="576"><stop offset="0%" stop-color="#d2d1d1"/><stop offset="50%" stop-color="#bdbcbc"/><stop offset="100%" stop-color="#a6a5a5"/></linearGradient>
+<linearGradient id="orange" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ff7908"/><stop offset="50%" stop-color="#fc6801"/><stop offset="100%" stop-color="#ef5900"/></linearGradient>
+<linearGradient id="me" gradientUnits="userSpaceOnUse" x1="0" y1="280" x2="0" y2="505"><stop offset="0%" stop-color="#ff7905"/><stop offset="50%" stop-color="#f96301"/><stop offset="100%" stop-color="#e95200"/></linearGradient>
+</defs><g fill="url(#orange)">
+ <path d="M425 150 603 254 529 302 426 240 318 303 246 255Z"/>
+ <path d="M425 286 506 333V420L423 468 343 420V333Z"/>
+ </g><g fill="url(#panel)">
+ <path d="M232 288 303 332V439L404 499V576L232 474Z"/>
+ <path d="M616 288 544 333V439L442 500V575L616 473Z"/>
+ </g></svg>

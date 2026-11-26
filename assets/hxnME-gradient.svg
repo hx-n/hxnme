@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="228 145 1755 436" role="img" aria-label="hxnME"><defs>
+<linearGradient id="silver" gradientUnits="userSpaceOnUse" x1="0" y1="194" x2="0" y2="505"><stop offset="0%" stop-color="#d1d0d0"/><stop offset="48%" stop-color="#bdbcbc"/><stop offset="100%" stop-color="#a4a3a3"/></linearGradient>
+<linearGradient id="panel" gradientUnits="userSpaceOnUse" x1="0" y1="288" x2="0" y2="576"><stop offset="0%" stop-color="#d2d1d1"/><stop offset="50%" stop-color="#bdbcbc"/><stop offset="100%" stop-color="#a6a5a5"/></linearGradient>
+<linearGradient id="orange" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ff7908"/><stop offset="50%" stop-color="#fc6801"/><stop offset="100%" stop-color="#ef5900"/></linearGradient>
+<linearGradient id="me" gradientUnits="userSpaceOnUse" x1="0" y1="280" x2="0" y2="505"><stop offset="0%" stop-color="#ff7905"/><stop offset="50%" stop-color="#f96301"/><stop offset="100%" stop-color="#e95200"/></linearGradient>
+</defs><g fill="url(#orange)">
+ <path d="M425 150 603 254 529 302 426 240 318 303 246 255Z"/>
+ <path d="M425 286 506 333V420L423 468 343 420V333Z"/>
+ </g><g fill="url(#panel)">
+ <path d="M232 288 303 332V439L404 499V576L232 474Z"/>
+ <path d="M616 288 544 333V439L442 500V575L616 473Z"/>
+ </g><g fill="url(#silver)">
+ <path d="M687 242 746 194V285H842C894 285 936 324 936 369V473L903 505H877V369C877 353 865 340 849 340H746V505H687Z"/>
+ <path d="M933 285H1004L1065 350 1125 285H1196L1098 395 1196 505H1123L1064 438 1003 505H933L1030 394Z"/>
+ <path d="M1191 473V369C1191 322 1228 285 1277 285H1337C1386 285 1423 322 1423 369V505H1366V369C1366 353 1353 340 1337 340H1277C1261 340 1248 353 1248 369V505H1225Z"/>
+ </g><g fill="url(#me)">
+ <path d="M1447 280H1507L1592 387 1675 280H1736V505H1673V372L1591 477 1509 372V505H1447Z"/>
+ <path d="M1828 280H1919C1944 280 1964 302 1978 331H1832C1821 331 1812 341 1812 352V366H1939V417H1812V433C1812 444 1819 451 1830 451H1978C1964 481 1943 505 1918 505H1828C1785 505 1753 470 1753 430V354C1753 312 1785 280 1828 280Z"/>
+ </g></svg>

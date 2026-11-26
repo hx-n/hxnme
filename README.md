@@ -1,12 +1,14 @@
-# hxnme
+<h1 align="center"><img src="assets/hxnME-gradient.svg" alt="hxnme" width="440"></h1>
 
-[![Ash](https://github.com/hx-n/hxnme/actions/workflows/ash.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/ash.yml)
-[![HashLink](https://github.com/hx-n/hxnme/actions/workflows/hashlink.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/hashlink.yml)
-[![hxcpp](https://github.com/hx-n/hxnme/actions/workflows/hxcpp.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/hxcpp.yml)
-[![CPPIA](https://github.com/hx-n/hxnme/actions/workflows/cppia.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/cppia.yml)
-[![Web](https://github.com/hx-n/hxnme/actions/workflows/web.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/web.yml)
-[![iOS](https://github.com/hx-n/hxnme/actions/workflows/ios.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/ios.yml)
-[![Android](https://github.com/hx-n/hxnme/actions/workflows/android.yml/badge.svg)](https://github.com/hx-n/hxnme/actions/workflows/android.yml)
+<p align="center">
+  <a href="https://github.com/hx-n/hxnme/actions/workflows/ash.yml"><img src="https://github.com/hx-n/hxnme/actions/workflows/ash.yml/badge.svg" alt="Ash"></a>
+  <a href="https://github.com/hx-n/hxnme/actions/workflows/hashlink.yml"><img src="https://github.com/hx-n/hxnme/actions/workflows/hashlink.yml/badge.svg" alt="HashLink"></a>
+  <a href="https://github.com/hx-n/hxnme/actions/workflows/hxcpp.yml"><img src="https://github.com/hx-n/hxnme/actions/workflows/hxcpp.yml/badge.svg" alt="hxcpp"></a>
+  <a href="https://github.com/hx-n/hxnme/actions/workflows/cppia.yml"><img src="https://github.com/hx-n/hxnme/actions/workflows/cppia.yml/badge.svg" alt="CPPIA"></a>
+  <a href="https://github.com/hx-n/hxnme/actions/workflows/web.yml"><img src="https://github.com/hx-n/hxnme/actions/workflows/web.yml/badge.svg" alt="Web"></a>
+  <a href="https://github.com/hx-n/hxnme/actions/workflows/ios.yml"><img src="https://github.com/hx-n/hxnme/actions/workflows/ios.yml/badge.svg" alt="iOS"></a>
+  <a href="https://github.com/hx-n/hxnme/actions/workflows/android.yml"><img src="https://github.com/hx-n/hxnme/actions/workflows/android.yml/badge.svg" alt="Android"></a>
+</p>
 
 hxnme is an engine framework, written in Haxe, for games and rich interactive
 apps and experiences. It is part of the [hxn](https://github.com/hx-n/hxn)
