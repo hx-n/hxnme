@@ -1,7 +1,9 @@
 name: iOS
 
 # The kernel and physics checks in an iPhone simulator, each built with Ash for
-# aarch64-apple-ios-sim and compared with the same program built for the desktop.
+# aarch64-apple-ios-sim and compared with the same program built for the desktop. Then
+# the window, input, GPU and 2D checks and a game made with `hxn me new`, each built as
+# an app that runs the window host inside UIKit.
 on:
   push:
     branches: [main]
@@ -29,6 +31,8 @@ jobs:
       - name: Set up Haxe, hxcpp, Ash, hxn and the haxelibs
         id: setup
         uses: ./.github/actions/setup
+        with:
+          gpu: "true"
       - name: Boot a simulator
         run: |
           device="$(xcrun simctl list devices available | sed -n 's/.*iPhone.*(\([0-9A-F-]\{36\}\)) (Shutdown).*/\1/p' | head -1)"
@@ -100,3 +104,64 @@ jobs:
         with:
           directory: packages/hxnme-physics/tests
           file: world-growth-checks.hxml
+      # The app checks print their pass line only when every check passes. The input check
+      # replays a fixed script, so its output is compared with the desktop's instead.
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-window/tests/window
+        uses: ./.github/actions/ios-app-check
+        with:
+          directory: packages/hxnme-window/tests/window
+          expect: Window checks passed
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-input/tests/input
+        uses: ./.github/actions/ios-app-check
+        with:
+          directory: packages/hxnme-input/tests/input
+          compare: "true"
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-gpu/tests/gpu
+        uses: ./.github/actions/ios-app-check
+        with:
+          directory: packages/hxnme-gpu/tests/gpu
+          expect: GPU checks passed
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-2d/tests/draw
+        uses: ./.github/actions/ios-app-check
+        with:
+          directory: packages/hxnme-2d/tests/draw
+          expect: 2D checks passed
+          minutes: 30
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: hxnme-2d/tests/assets
+        uses: ./.github/actions/ios-app-check
+        with:
+          directory: packages/hxnme-2d/tests/assets
+          expect: 2D asset checks passed
+      # The game the template makes, for 60 frames. Probe prints a line after the last
+      # frame, because the game itself prints nothing.
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: Create a game
+        run: |
+          mkdir -p "$RUNNER_TEMP/new"
+          cd "$RUNNER_TEMP/new"
+          hxn me new game
+          perl -0pi -e 's/^\[app\]\n/[app]\nframes = 60\n/m' game/hxnme.toml
+          cat > game/Probe.hx <<'HAXE'
+          import hxn.me.Res;
+          import hxn.me.Time;
+
+          class Probe {
+          	@:system(Update)
+          	static function last(time:Res<Time>)
+          		if (time.frame == hxn.me.AppLoop.FRAMES)
+          			Sys.println("the game ran its frames");
+          }
+          HAXE
+          perl -pi -e 's/run\(Game\)/run(Game, Probe)/' game/Main.hx
+          echo "GAME=$RUNNER_TEMP/new/game" >> "$GITHUB_ENV"
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        name: the game made with hxn me new
+        uses: ./.github/actions/ios-app-check
+        with:
+          directory: ${{ env.GAME }}
+          expect: the game ran its frames

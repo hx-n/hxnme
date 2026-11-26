@@ -84,7 +84,7 @@ runs:
         esac
         mkdir -p "$RUNNER_TEMP/ash"
         # Extracted in place: tar reads a Windows path's drive as a host.
-        (cd "$RUNNER_TEMP/ash" && curl -fsSL "https://github.com/rayzor-blade/ash/releases/download/v0.1.22/$archive" | tar -xz)
+        (cd "$RUNNER_TEMP/ash" && curl -fsSL "https://github.com/rayzor-blade/ash/releases/download/v0.1.23/$archive" | tar -xz)
         echo "ASH=$RUNNER_TEMP/ash/ash" >> "$GITHUB_ENV"
     # On Windows, Ash links a program that loads HDLLs against an import library for
     # libhl.dll, which its archive does not ship. Without it, Ash hands the DLL itself to

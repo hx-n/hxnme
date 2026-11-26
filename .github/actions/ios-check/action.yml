@@ -38,8 +38,7 @@ runs:
         desktop=$(build desktop.txt) || { echo "::error::the desktop build failed in ${{ inputs.directory }}"; exit 1; }
         timeout $limit "$desktop" > expected.txt 2> expected.err || { cat expected.err; echo "::error::the desktop executable failed in ${{ inputs.directory }}"; exit 1; }
         echo "== iOS simulator"
-        # hxn-file links against Foundation, which Ash does not add itself.
-        simulator=$(ASH_LINK_ARGS="-framework Foundation -liconv -lobjc" build ios.txt --target aarch64-apple-ios-sim) \
+        simulator=$(build ios.txt --target aarch64-apple-ios-sim) \
           || { echo "::error::the iOS build failed in ${{ inputs.directory }}"; exit 1; }
         # simctl passes variables that start with SIMCTL_CHILD_ to the program.
         timeout $limit env SIMCTL_CHILD_ASH_GC_TLAB="${ASH_GC_TLAB:-}" xcrun simctl spawn "$SIMULATOR" "$simulator" > out.txt 2> out.err

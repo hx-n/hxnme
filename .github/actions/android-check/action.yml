@@ -43,8 +43,7 @@ runs:
           timeout $limit "$desktop" > expected.txt 2> expected.err || { cat expected.err; echo "::error::the desktop executable failed in ${{ inputs.directory }}"; exit 1; }
         fi
         echo "== Android emulator"
-        # hxn-file links against libandroid and liblog, which Ash does not add itself.
-        program=$(ASH_LINK_ARGS="-landroid -llog" build android.txt --target "$ANDROID_TRIPLE") \
+        program=$(build android.txt --target "$ANDROID_TRIPLE") \
           || { echo "::error::the Android build failed in ${{ inputs.directory }}"; exit 1; }
         dest="/data/local/tmp/hxnme/$(echo "${{ inputs.directory }}/$file" | tr '/.' '--')"
         adb shell "rm -rf $dest && mkdir -p $dest" && adb push "$(dirname "$program")/." "$dest" > /dev/null

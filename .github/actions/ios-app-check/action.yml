@@ -1,0 +1,63 @@
+name: ios-app-check
+description: >-
+  Builds a check program for the iOS simulator with Ash as an app, installs it on the
+  booted simulator, starts it, and fails unless its output contains a line, or matches
+  what the same program prints as a desktop Ash executable.
+
+inputs:
+  directory:
+    description: The directory of the program file.
+    required: true
+  file:
+    description: The program file.
+    default: app.hxml
+  expect:
+    description: A line that the app prints when it passes.
+    default: ""
+  compare:
+    description: true to require the output of the desktop Ash executable instead of a line.
+    default: "false"
+  minutes:
+    description: The time limit for each build and run, in minutes.
+    default: "20"
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ inputs.directory }}
+      run: |
+        set +e
+        limit=$(( ${{ inputs.minutes }} * 60 ))
+        file=${{ inputs.file }}
+        if [ "${{ inputs.compare }}" = true ]; then
+          echo "== desktop"
+          timeout $limit hxn build hl $file --ash "$ASH" > desktop.txt 2>&1 || { cat desktop.txt; echo "::error::the desktop build failed in ${{ inputs.directory }}"; exit 1; }
+          desktop=$(tail -1 desktop.txt | sed 's/^ *//')
+          timeout $limit "$desktop" > expected.txt 2> expected.err || { cat expected.err; echo "::error::the desktop executable failed in ${{ inputs.directory }}"; exit 1; }
+        fi
+        echo "== iOS simulator"
+        # hxn build writes the app bundle and prints the commands that install and start it.
+        timeout $limit hxn build hl $file --ash "$ASH" --target aarch64-apple-ios-sim > ios.txt 2>&1 || { cat ios.txt; echo "::error::the iOS build failed in ${{ inputs.directory }}"; exit 1; }
+        app=$(sed -n 's/^ *xcrun simctl install booted //p' ios.txt)
+        id=$(sed -n 's/^ *xcrun simctl launch --console-pty booted //p' ios.txt)
+        xcrun simctl install "$SIMULATOR" "$app" || { echo "::error::the app did not install in ${{ inputs.directory }}"; exit 1; }
+        # The command returns when the app exits, and returns 0 whatever the app's status is. It
+        # ends with a line of the app's identifier and process number, which the comparison leaves out.
+        timeout $limit xcrun simctl launch --console-pty --terminate-running-process "$SIMULATOR" "$id" > out.raw 2>&1
+        code=$?
+        tr -d '\r' < out.raw | grep -v "^$id: [0-9]*$" > out.txt
+        cat out.txt
+        if [ $code -ne 0 ]; then
+          echo "::error::the app did not run to its end in ${{ inputs.directory }}"
+          exit 1
+        fi
+        if [ "${{ inputs.compare }}" = true ]; then
+          if ! diff -u expected.txt out.txt; then
+            echo "::error::the iOS app in ${{ inputs.directory }} differs from the desktop"
+            exit 1
+          fi
+        elif ! grep -qxF "${{ inputs.expect }}" out.txt; then
+          echo "::error::the iOS app in ${{ inputs.directory }} did not print: ${{ inputs.expect }}"
+          exit 1
+        fi
