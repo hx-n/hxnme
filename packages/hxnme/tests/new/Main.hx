@@ -22,6 +22,28 @@ class Main {
 		expect("the app id is the name", toml.indexOf('id = "my-game"') >= 0);
 		expect("the window title is the name in words", toml.indexOf('title = "My Game"') >= 0);
 		expect("no placeholder is left", toml.indexOf("{{") < 0);
+		for (target in [
+			{triple: "aarch64-apple-ios-sim", define: "iphonesim"},
+			{triple: "x86_64-apple-ios", define: "iphonesim"},
+			{triple: "aarch64-apple-ios", define: "iphoneos"},
+			{triple: "aarch64-apple-darwin", define: ""},
+			{triple: "aarch64-linux-android", define: ""}
+		]) {
+			var reply = @:privateAccess hxn.me.cli.Tool.hook("before-build", {
+				context: {
+					command: "build",
+					project: {directory: out},
+					target: {triple: target.triple}
+				}
+			});
+			var simulator = false, device = false;
+			for (arg in reply.haxeArgs)
+				if (arg[0] == "-D") {
+					simulator = simulator || arg[1] == "iphonesim";
+					device = device || arg[1] == "iphoneos";
+				}
+			expect('the Apple SDK define for ${target.triple}', simulator == (target.define == "iphonesim") && device == (target.define == "iphoneos"));
+		}
 		if (failed > 0) {
 			Sys.println('$failed checks failed');
 			Sys.exit(1);

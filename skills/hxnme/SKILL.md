@@ -61,6 +61,11 @@ It also runs the build hook of each haxelib that `hxnme.toml` brings in, and
 returns what that hook returns. Extend the hook through those replies, and
 do not add a new protocol.
 
+For an iOS target triple, the hook adds `iphonesim` for the simulator
+(`aarch64-apple-ios-sim` or `x86_64-apple-ios`) and `iphoneos` for a device.
+Metal's shader compiler uses that define to select the SDK. Keep it in sync
+with the target so an iOS app does not embed macOS shaders.
+
 ## Plugins
 
 Each plugin is a haxelib with three parts: an `hxnme` section in

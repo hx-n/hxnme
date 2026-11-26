@@ -77,6 +77,9 @@ class Tool {
 		if (target != null)
 			triple = target.triple != null ? target.triple : host();
 		var args = [];
+		// Metal's shader compiler selects its SDK by these Haxe defines, not hxn_triple.
+		if (triple.indexOf("apple-ios") >= 0)
+			args.push(["-D", StringTools.endsWith(triple, "-sim") || StringTools.startsWith(triple, "x86_64-") ? "iphonesim" : "iphoneos"]);
 		var command = request.context.command;
 		if (command == "run" || command == "check")
 			args.push(["-D", "hxnme_reload"]);
