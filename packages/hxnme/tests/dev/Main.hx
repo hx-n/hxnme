@@ -40,6 +40,8 @@ class Main {
 		write("assets/built.json", '{"name": "built1"}');
 		var ash = Sys.getEnv("ASH");
 		command = new Process("haxe", [
+			"-lib",
+			"hxn",
 			"-cp",
 			Path.join([root, "tools"]),
 			"-cp",

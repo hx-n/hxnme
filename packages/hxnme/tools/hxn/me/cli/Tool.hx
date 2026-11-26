@@ -2,6 +2,9 @@ package hxn.me.cli;
 
 import haxe.Json;
 import haxe.io.Path;
+import hxn.cli.Cli;
+import hxn.cli.Failure;
+import hxn.cli.Reply;
 import hxn.me.project.Toml;
 import sys.FileSystem;
 import sys.io.File;
@@ -25,8 +28,8 @@ import sys.io.Process;
 	hxn runs build hooks only for the haxelibs that the program file selects.
 	For each haxelib that hxnme.toml brings in, this hook runs that haxelib's
 	hook for the same phase, and also returns what that hook returns, such as
-	the browser agent of hxn-window as a file for the web page. `command`
-	handles the commands `new` and `dev`.
+	the browser agent of hxn-window as a file for the web page. The commands
+	are `NewCommand` and `DevCommand`.
 **/
 class Tool {
 	// Holds the target triple, such as `aarch64-apple-darwin`, or "" when the
@@ -43,34 +46,23 @@ class Tool {
 	static final ashArgs:Array<Array<String>> = [];
 	static final pageFiles:Array<String> = [];
 
-	static function main() {
-		try
-			answer()
-		catch (failure:Failure) {
-			Sys.stderr().writeString(failure.message + "\n");
-			Sys.exit(1);
-		}
-	}
+	// The command classes are built by a macro, which cannot run when a macro types this class.
+	#if !macro
+	static function main()
+		hxn.cli.Plugin.main(new Cli("hxn me", "Creates hxnme apps, and runs them with hot reload.", [new NewCommand(), new DevCommand()]), hook);
+	#end
 
-	static function answer() {
-		request = Json.parse(Sys.stdin().readAll().toString());
-		if (request.kind == "command") {
-			command(request.arguments, request.cwd, request.root);
-			return;
-		}
-		if (request.kind != "hook") {
-			Sys.stderr().writeString('hxn me: unknown request ${request.kind}\n');
-			Sys.exit(2);
-		}
-		var reply:Dynamic = {version: 1};
-		var args = request.phase == "before-build" ? build() : [];
-		if (args.length > 0)
-			reply.haxe_args = args;
-		if (ashArgs.length > 0)
-			reply.ash_args = ashArgs;
-		if (pageFiles.length > 0)
-			reply.page_files = pageFiles;
-		Sys.println(Json.stringify(reply));
+	static function hook(phase:String, request:Dynamic):Reply {
+		Tool.request = request;
+		var reply = new Reply();
+		if (phase == "before-build")
+			for (pair in build())
+				reply.haxeArgs.push(pair);
+		for (flag in ashArgs)
+			reply.ashArgs.push(flag);
+		for (page in pageFiles)
+			reply.pageFiles.push(page);
+		return reply;
 	}
 
 	// Returns the haxe arguments for the app of the hook request, and collects its Ash
@@ -158,33 +150,8 @@ class Tool {
 			forward(info, root, args);
 	}
 
-	static final USAGE = "usage: hxn me new <name>\n"
-		+ "  Creates an hxnme game called <name> in a new directory of that name.\n"
-		+ "       hxn me dev [<file.hxml>] [--ash <command>]\n"
-		+ "  Runs the program file, app.hxml by default, on Ash, and reloads it when its\n"
-		+ "  sources change. HXN_ASH, or `ash`, is the Ash command.\n";
-
-	static function command(arguments:Array<String>, cwd:String, root:String):Void {
-		switch (arguments) {
-			case ["new", name]:
-				create(name, cwd, root);
-			case _ if (arguments[0] == "dev"):
-				var status = Dev.launch(arguments.slice(1), cwd, root);
-				if (status == null) {
-					Sys.stderr().writeString(USAGE);
-					status = 2;
-				}
-				Sys.exit(status);
-			case [] | ["help"] | ["--help"]:
-				Sys.print(USAGE);
-			case _:
-				Sys.stderr().writeString(USAGE);
-				Sys.exit(2);
-		}
-	}
-
 	// Copies the game template into `cwd/name`, with the app's id and title filled in.
-	static function create(name:String, cwd:String, root:String):Void {
+	@:allow(hxn.me.cli.NewCommand) static function create(name:String, cwd:String, root:String):Void {
 		if (!~/^[A-Za-z][A-Za-z0-9_-]*$/.match(name))
 			fail('$name is not a directory name for a project: use letters, digits, - and _, starting with a letter');
 		var into = Path.join([cwd, name]);
@@ -407,6 +374,3 @@ class Tool {
 	static function fail(message:String):Dynamic
 		throw new Failure(message);
 }
-
-/** `Failure` carries the message of an error in the project, which ends a command with status 1. **/
-class Failure extends haxe.Exception {}

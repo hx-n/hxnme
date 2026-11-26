@@ -27,6 +27,8 @@
       "version": 1,
       "command": [
         "haxe",
+        "-lib",
+        "hxn",
         "-cp",
         "{root}/tools",
         "-cp",

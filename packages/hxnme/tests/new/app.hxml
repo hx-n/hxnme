@@ -1,3 +1,4 @@
+-lib hxn
 -cp ../../src
 -cp ../../tools
 -main Main

@@ -32,11 +32,11 @@ runs:
         dir="$(haxelib libpath hxcpp)"
         git -C "$dir" checkout -q 615adc73d5ef28f3f74ea47977c39c4f25ce256d
         (cd "$dir/tools/hxcpp" && haxe compile.hxml)
-    # hxnme uses hxn after 0.3.10: typed buffers in each runtime's layout, program files
-    # for hxn run and hxn check, and Ash builds ahead of time. The command and the haxelib
-    # come from the same commit.
+    # hxnme uses hxn 0.3.11: hxn.cli for its tool, typed buffers in each runtime's layout,
+    # program files for hxn run and hxn check, and Ash builds ahead of time. The command
+    # and the haxelib come from the same commit.
     - shell: bash
-      run: echo "HXN_REV=ad0310c501334106488db8993791cda7b46fdf4c" >> "$GITHUB_ENV"
+      run: echo "HXN_REV=da060b2d6570988d21d030c10af5d61b31b4ad8b" >> "$GITHUB_ENV"
     - id: hxn-cache
       uses: actions/cache@v4
       with:

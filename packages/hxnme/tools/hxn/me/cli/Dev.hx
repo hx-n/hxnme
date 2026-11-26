@@ -5,7 +5,7 @@ import haxe.crypto.Crc32;
 import haxe.io.Bytes;
 import haxe.io.Eof;
 import haxe.io.Path;
-import hxn.me.cli.Tool.Failure;
+import hxn.cli.Failure;
 import hxn.me.dev.Channel;
 import hxn.me.dev.Update;
 import sys.FileSystem;
@@ -68,8 +68,10 @@ class Dev {
 	// Gets an entry from each reader of the program's output after it passed all of it on.
 	var ended = new Deque<Bool>();
 
+	// Runs with the absolute path of the program file and the Ash command, which `launch` gives.
 	static function main() {
-		var dev = parse(Sys.args(), Sys.getCwd());
+		var args = Sys.args();
+		var dev = new Dev(args[0], args[1]);
 		var status = 1;
 		try
 			status = dev.run()
@@ -79,45 +81,20 @@ class Dev {
 	}
 
 	/**
-		Compiles `Dev` and runs it on Ash with the arguments of `hxn me dev`. Returns its
-		status, or null if the arguments are not valid.
+		Compiles `Dev` and runs it on Ash for the program file `file`, relative to `cwd`,
+		with the Ash command `ash`. Returns its status.
 	**/
-	public static function launch(arguments:Array<String>, cwd:String, root:String):Null<Int> {
-		var dev = parse(arguments, cwd);
-		if (dev == null)
-			return null;
+	public static function launch(file:String, ash:String, cwd:String, root:String):Int {
+		var dev = new Dev(Path.normalize(Path.isAbsolute(file) ? file : Path.join([cwd, file])), ash);
 		if (!FileSystem.exists(dev.hxml))
 			throw new Failure('${dev.hxml} does not exist');
 		var out = Path.directory(dev.built);
 		FileSystem.createDirectory(out);
 		var tool = Path.join([out, "dev.hl"]);
 		var compile = Sys.command("haxe", [
-			"-cp", Path.join([root, "tools"]), "-cp", Path.join([root, "src"]), "-main", "hxn.me.cli.Dev", "-hl", tool
+			"-lib", "hxn", "-cp", Path.join([root, "tools"]), "-cp", Path.join([root, "src"]), "-main", "hxn.me.cli.Dev", "-hl", tool
 		]);
-		return compile != 0 ? compile : Sys.command(dev.ash[0], [tool, dev.hxml, "--ash", dev.ash.join(" ")]);
-	}
-
-	/** Returns a `Dev` for the arguments of `hxn me dev`, or null if they are not valid. **/
-	static function parse(arguments:Array<String>, cwd:String):Null<Dev> {
-		var file = null;
-		var ash = Sys.getEnv("HXN_ASH");
-		var i = 0;
-		while (i < arguments.length) {
-			switch arguments[i] {
-				case "--ash" if (i + 1 < arguments.length):
-					ash = arguments[++i];
-				case value if (file == null && StringTools.endsWith(value, ".hxml")):
-					file = value;
-				case _:
-					return null;
-			}
-			i++;
-		}
-		if (file == null)
-			file = "app.hxml";
-		if (!Path.isAbsolute(file))
-			file = Path.join([cwd, file]);
-		return new Dev(Path.normalize(file), ash == null ? "ash" : ash);
+		return compile != 0 ? compile : Sys.command(dev.ash[0], [tool, dev.hxml, dev.ash.join(" ")]);
 	}
 
 	function new(file:String, ash:String) {

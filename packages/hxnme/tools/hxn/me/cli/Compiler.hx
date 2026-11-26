@@ -4,7 +4,7 @@ import haxe.Json;
 import haxe.io.Bytes;
 import haxe.io.Eof;
 import haxe.io.Input;
-import hxn.me.cli.Tool.Failure;
+import hxn.cli.Failure;
 import sys.io.Process;
 import sys.net.Host;
 import sys.net.Socket;
