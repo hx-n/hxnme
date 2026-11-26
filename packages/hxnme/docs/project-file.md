@@ -26,7 +26,7 @@ The kernel reads these keys:
 | `app.step` | The number of fixed steps in a second. The default is 60. |
 | `app.step_snap` | The tolerance for a whole number of fixed steps in a frame, as a part of one step. The default is 0.1, and 0 turns the correction off. |
 | `app.rate` | The number of frames in a second on `HeadlessHost`, the host of an app without a window. The default is 60. |
-| `app.id` | The name of the app's storage, for its bundled files and saves. The default is `hxnme`. |
+| `app.id` | The name of the app's storage, for its bundled files and saves, and the bundle identifier of its iOS app. The default is `hxnme`. |
 | `app.frames` | The number of frames after which the app stops, for checks that run an app unattended. The default is 0, which runs the app until it quits. |
 | `display.width`, `display.height`, `display.scale` | The display on `HeadlessHost`. The defaults are 1280, 720 and 1. |
 | `display.refresh` | If the host does not set the refresh rate of the display, this key sets it, in frames a second. The default is 60. |

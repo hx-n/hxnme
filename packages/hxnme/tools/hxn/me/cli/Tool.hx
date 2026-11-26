@@ -95,6 +95,9 @@ class Tool {
 		var app:Dynamic = toml.app;
 		if (app != null && app.preset != null)
 			ashArgs.push(["--preset", string(app.preset, "app.preset", file)]);
+		// hxn names the app bundle for iOS by it.
+		if (app != null && app.id != null)
+			args.push(["-D", 'hxn_bundle_id=${string(app.id, "app.id", file)}']);
 		var plugins:Array<Dynamic> = toml.plugins == null ? [] : toml.plugins;
 		if (!Std.isOfType(plugins, Array))
 			fail('$file: `plugins` must be an array of haxelib names');
