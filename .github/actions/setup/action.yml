@@ -60,7 +60,7 @@ runs:
         if [ "${{ inputs.gpu }}" = true ]; then
           case "$RUNNER_OS" in
             macOS) drivers="hxn-gpu-metal:0.2.5" ;;
-            Linux) drivers="hxn-gpu-vulkan:0.3.3 hxn-gpu-gles:0.3.3" ;;
+            Linux) drivers="hxn-gpu-vulkan:0.3.4 hxn-gpu-gles:0.3.3" ;;
             Windows) drivers="hxn-gpu-d3d12:0.2.3" ;;
           esac
         fi
