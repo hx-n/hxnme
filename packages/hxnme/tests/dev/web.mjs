@@ -107,7 +107,7 @@ try {
     ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" : "google-chrome");
   browser = spawn(chrome, ["--headless=new", "--no-first-run", "--no-default-browser-check",
     `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`,
-    ...(process.env.HXN_BROWSER_ARGS || "").split(/\s+/).filter(Boolean), "about:blank"], {stdio: "ignore"});
+    ...(process.env.HXN_BROWSER_ARGS || "").split(/\s+/).filter(Boolean), "about:blank"], {stdio: "ignore", detached: true});
   let target;
   await until(async () => {
     try {
@@ -177,7 +177,9 @@ try {
   socket?.close();
   if (browser && browser.exitCode === null && browser.signalCode === null) {
     const ended = new Promise(resolve => browser.once("exit", resolve));
-    browser.kill();
+    // Chrome's helper processes outlive the main one and write to the profile, so the
+    // whole process group stops before the profile is removed.
+    try { process.kill(-browser.pid, "SIGTERM"); } catch { browser.kill(); }
     await Promise.race([ended, sleep(3000)]);
   }
   await stop();
