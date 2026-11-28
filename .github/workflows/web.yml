@@ -40,6 +40,10 @@ jobs:
         with:
           gpu: "true"
           web: "true"
+      - if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.threads == 'true' }}
+        name: hxnme/tests/dev web
+        working-directory: packages/hxnme/tests/dev
+        run: timeout 1200 hxn run hl app.hxml --vm "$ASH" -- web
       - if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         name: hxnme/tests/plugins
         uses: ./.github/actions/web-check

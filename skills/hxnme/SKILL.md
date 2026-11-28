@@ -18,6 +18,12 @@ an atlas and a font declared in `GameAssets`) in `<name>/`. Run it with
 assets on Ash. `app.frames` in `hxnme.toml` stops an app after that
 many frames, for unattended checks.
 
+`hxn me dev web [<file.hxml>] [--port 8080]` builds threaded wasm with Ash,
+serves it on `127.0.0.1`, and reloads the page after a successful rebuild.
+Code and asset edits restart the page and reset app state. A failed build
+keeps the previous page. The web build uses `hxn build`, with a fresh Haxe
+compile each time. `--ash` and `HXN_ASH` select Ash as on the desktop.
+
 ## Setup
 
 Each app is an hxn program file that selects the kernel, with `hxnme.toml`

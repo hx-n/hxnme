@@ -25,6 +25,11 @@ class Main {
 
 	#if !macro
 	static function main() {
+		if (Sys.args()[0] == "web") {
+			var ash = Sys.getEnv("ASH");
+			Sys.exit(Sys.command("node", [Path.join([here(), "web.mjs"]), root, ash == null ? "ash" : ash]));
+			return;
+		}
 		remove(app);
 		FileSystem.createDirectory(app);
 		write("app.hxml", "-lib hxnme\n-main App\n");

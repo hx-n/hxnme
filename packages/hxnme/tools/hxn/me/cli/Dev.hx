@@ -32,6 +32,7 @@ import sys.thread.Thread;
 	`Dev` itself runs on Ash. In Haxe's interpreter, where `Tool` runs, one thread that
 	waits for output of the program stops every other thread.
 **/
+@:allow(hxn.me.cli.WebDev)
 class Dev {
 	// The number of seconds between two looks at the files, and the time that the files
 	// must stay as they are before a compile, because editors can save in several writes.

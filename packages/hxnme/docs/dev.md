@@ -60,3 +60,31 @@ Some changes cannot hot reload, and the command then restarts the app:
 The app runs from `bin/<program file>/dev/run`, with the project directory as its
 working directory. The check in `tests/dev` runs the command on an app without a
 window, and changes its sources and its assets.
+
+## Web development
+
+`hxn me dev web` builds the app with Ash for threaded wasm and serves it on the local
+machine. Open the address that the command prints:
+
+```
+hxn me dev web
+```
+
+To use another program file or port, pass them to the command:
+
+```
+hxn me dev web tools.hxml --port 8081 --ash ~/ash/ash
+```
+
+The command watches the same sources, assets, project file and program file as the
+desktop command. After a successful build, the page reloads with the new code and
+assets. A page reload starts the app again and resets its state. The web command
+rebuilds through `hxn build` and does not keep a warm Haxe compiler.
+
+If a build fails, the command prints the errors and keeps serving the previous
+successful build. If the first build fails, the page waits for a successful build.
+The server listens on `127.0.0.1` and sends the headers that threaded wasm needs.
+Press Ctrl-C in the terminal to stop the command and server.
+
+The web check in `tests/dev` runs with `hxn run hl app.hxml --vm ash -- web`.
+It needs Node 22 or later and Chrome. `HXN_BROWSER` selects another Chrome command.

@@ -117,7 +117,9 @@ class Tool {
 		`hxml` in `directory`, whose output goes to `output`: those of this hook, and those
 		of the hooks of the haxelibs that the program file selects, with their dependencies.
 	**/
-	@:allow(hxn.me.cli.Dev) static function arguments(directory:String, hxml:String, output:String):{haxe:Array<Array<String>>, ash:Array<Array<String>>} {
+	@:allow(hxn.me.cli.Dev)
+	@:allow(hxn.me.cli.WebDev)
+	static function arguments(directory:String, hxml:String, output:String, wasm = false):{haxe:Array<Array<String>>, ash:Array<Array<String>>} {
 		request = {
 			version: 1,
 			kind: "hook",
@@ -125,7 +127,7 @@ class Tool {
 			context: {
 				command: "run",
 				project: {directory: directory, hxml: hxml, library: null, haxelib: null},
-				target: {runtime: "hl", wasm: false, threads: false, triple: null},
+				target: {runtime: "hl", wasm: wasm, threads: wasm, triple: wasm ? "wasm32-wasip1-threads" : null},
 				output: output
 			}
 		};
