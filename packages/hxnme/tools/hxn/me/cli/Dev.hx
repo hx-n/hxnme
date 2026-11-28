@@ -33,6 +33,7 @@ import sys.thread.Thread;
 	waits for output of the program stops every other thread.
 **/
 @:allow(hxn.me.cli.WebDev)
+@:allow(hxn.me.cli.AndroidDev)
 class Dev {
 	// The number of seconds between two looks at the files, and the time that the files
 	// must stay as they are before a compile, because editors can save in several writes.
@@ -98,11 +99,11 @@ class Dev {
 		return compile != 0 ? compile : Sys.command(dev.ash[0], [tool, dev.hxml, dev.ash.join(" ")]);
 	}
 
-	function new(file:String, ash:String) {
+	function new(file:String, ash:String, name = "dev") {
 		directory = Path.directory(file);
 		hxml = file;
 		this.ash = [for (word in ~/\s+/g.split(ash)) if (word != "") word];
-		var out = Path.join([directory, "bin", Path.withoutExtension(Path.withoutDirectory(file)), "dev"]);
+		var out = Path.join([directory, "bin", Path.withoutExtension(Path.withoutDirectory(file)), name]);
 		built = Path.join([out, "build"]);
 		running = Path.join([out, "run"]);
 	}

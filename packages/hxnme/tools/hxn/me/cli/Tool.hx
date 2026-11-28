@@ -83,6 +83,15 @@ class Tool {
 		var command = request.context.command;
 		if (command == "run" || command == "check")
 			args.push(["-D", "hxnme_reload"]);
+		// `hxn me dev android` gives the address of its socket. An Android app gets no
+		// environment from the command, so the address is compiled in, and the app needs
+		// the permission to open a socket.
+		var dev = Sys.getEnv("HXNME_DEV");
+		if (dev != null && triple.indexOf("android") >= 0) {
+			args.push(["-D", "hxnme_dev"]);
+			args.push(["-D", 'hxnme_dev_address=$dev']);
+			args.push(["-D", "hxn_android_permissions=INTERNET"]);
+		}
 		if (!FileSystem.exists(file))
 			return args;
 		args.push(["-D", 'hxnme_project=${Path.normalize(FileSystem.absolutePath(file))}']);
@@ -119,15 +128,16 @@ class Tool {
 	**/
 	@:allow(hxn.me.cli.Dev)
 	@:allow(hxn.me.cli.WebDev)
-	static function arguments(directory:String, hxml:String, output:String, wasm = false):{haxe:Array<Array<String>>, ash:Array<Array<String>>} {
+	@:allow(hxn.me.cli.AndroidDev)
+	static function arguments(directory:String, hxml:String, output:String, wasm = false, ?cross:String):{haxe:Array<Array<String>>, ash:Array<Array<String>>} {
 		request = {
 			version: 1,
 			kind: "hook",
 			phase: "before-build",
 			context: {
-				command: "run",
+				command: cross == null ? "run" : "build",
 				project: {directory: directory, hxml: hxml, library: null, haxelib: null},
-				target: {runtime: "hl", wasm: wasm, threads: wasm, triple: wasm ? "wasm32-wasip1-threads" : null},
+				target: {runtime: "hl", wasm: wasm, threads: wasm, triple: wasm ? "wasm32-wasip1-threads" : cross},
 				output: output
 			}
 		};

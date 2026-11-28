@@ -24,6 +24,12 @@ Code and asset edits restart the page and reset app state. A failed build
 keeps the previous page. The web build uses `hxn build`, with a fresh Haxe
 compile each time. `--ash` and `HXN_ASH` select Ash as on the desktop.
 
+`hxn me dev android [<file.hxml>]` builds the app for the device or emulator
+that `adb` reaches (`ANDROID_SERIAL` chooses one), installs it and prints its
+output. A changed asset loads in the running app through `adb reverse`. Code,
+`hxnme.toml` and program file changes build, install and restart the app. The
+app needs the window plugin, `ANDROID_HOME` and an Ash that builds for Android.
+
 ## Setup
 
 Each app is an hxn program file that selects the kernel, with `hxnme.toml`

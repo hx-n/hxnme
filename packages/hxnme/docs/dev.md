@@ -88,3 +88,38 @@ Press Ctrl-C in the terminal to stop the command and server.
 
 The web check in `tests/dev` runs with `hxn run hl app.hxml --vm ash -- web`.
 It needs Node 22 or later and Chrome. `HXN_BROWSER` selects another Chrome command.
+
+## Android development
+
+`hxn me dev android` runs the app on the Android device or emulator that `adb`
+reaches:
+
+```
+hxn me dev android
+```
+
+To use another program file, pass its name. Set `ANDROID_SERIAL` to choose a device
+when more than one is connected:
+
+```
+ANDROID_SERIAL=emulator-5554 hxn me dev android tools.hxml --ash ~/ash/ash
+```
+
+The command builds the app with `hxn build` for the device, installs the APK and starts
+it. The app's output goes to the terminal. The app must use the window plugin, whose
+host starts the app on Android. The command needs the Android SDK under `ANDROID_HOME`,
+the Android NDK that Ash links with, and an Ash that builds for Android.
+
+The command watches the same sources, assets, project file and program file as the
+desktop command, and compiles each change on one Haxe compiler first:
+
+- After an asset changes, the command sends the file to the running app through
+  `adb reverse`. The app loads it in place, as on the desktop.
+- After the code, `hxnme.toml` or the program file changes, the command builds the app
+  again, installs it and restarts it.
+- If the app ended, the next asset change starts the installed app again and sends it
+  each asset that changed after the install.
+
+If the app does not compile, the command prints the errors, and the app on the device
+stays as it is. Press Ctrl-C in the terminal to stop the command. The app keeps running
+on the device.

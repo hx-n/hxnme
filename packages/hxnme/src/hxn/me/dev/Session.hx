@@ -7,7 +7,7 @@ import sys.net.Socket;
 
 /**
 	`Session` connects a running app to `hxn me dev`, which gives its address
-	in `HXNME_DEV`. It takes one update at a time. The assets of the update
+	in `HXNME_DEV`, or for Android in `-D hxnme_dev_address`. It takes one update at a time. The assets of the update
 	load first, and the code loads in the frame in which they are ready, so
 	new code never runs with the assets from before.
 **/
@@ -56,6 +56,10 @@ class Session {
 
 	static function connect() {
 		var address = Sys.getEnv("HXNME_DEV");
+		#if hxnme_dev_address
+		if (address == null)
+			address = haxe.macro.Compiler.getDefine("hxnme_dev_address");
+		#end
 		if (address == null)
 			return;
 		var parts = address.split(":");

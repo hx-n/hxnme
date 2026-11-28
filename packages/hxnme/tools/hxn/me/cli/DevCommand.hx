@@ -5,14 +5,16 @@ import hxn.cli.Context;
 /**
 	Runs an app on Ash with hot reload of its code and assets. On the desktop,
 	the running app keeps its state when it can load a change. With web, a
-	local server reloads the page after a successful build. A failed build
-	leaves the running app or page as it is.
+	local server reloads the page after a successful build. With android, the
+	app runs on the connected device or emulator: a changed asset loads in the
+	running app, and other changes install the app again and restart it. A
+	failed build leaves the running app or page as it is.
 **/
 class DevCommand implements hxn.cli.Command {
-	/** The program file, or web to run in a browser. **/
-	@:arg @:value("web|file.hxml") var file = "app.hxml";
+	/** The program file, web to run in a browser, or android to run on Android. **/
+	@:arg @:value("web|android|file.hxml") var file = "app.hxml";
 
-	/** The program file after web. **/
+	/** The program file after web or android. **/
 	@:arg @:value("file.hxml") var webFile:Null<String>;
 
 	/** The Ash command, with its options. **/
@@ -24,8 +26,13 @@ class DevCommand implements hxn.cli.Command {
 	public function run(context:Context):Int {
 		if (file == "web")
 			return WebDev.launch(webFile == null ? "app.hxml" : webFile, ash, port, context.cwd, context.root);
+		if (file == "android") {
+			if (port != 8080)
+				throw new hxn.cli.Failure("--port applies only to hxn me dev web.");
+			return AndroidDev.launch(webFile == null ? "app.hxml" : webFile, ash, context.cwd, context.root);
+		}
 		if (webFile != null)
-			throw new hxn.cli.Failure("A second program file is supported only after web.");
+			throw new hxn.cli.Failure("A second program file is supported only after web or android.");
 		if (port != 8080)
 			throw new hxn.cli.Failure("--port applies only to hxn me dev web.");
 		return Dev.launch(file, ash, context.cwd, context.root);
